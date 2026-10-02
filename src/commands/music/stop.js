@@ -1,17 +1,20 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require("discord.js");
 
 module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('stop')
-        .setDescription('Stops the music and leaves'),
-        
-    async execute(interaction, client) {
-        const player = client.manager.getPlayer(interaction.guild.id);
-        
-        if (!player) return interaction.reply({ content: 'Nothing is playing.', ephemeral: true });
-        if (interaction.member.voice.channelId !== player.voiceId) return interaction.reply({ content: 'You are not in my voice channel!', ephemeral: true });
+  name: "stop",
+  aliases: ["leave", "disconnect", "dc"],
+  category: "Music",
+  description: "Stop playback, clear queue, and leave the voice channel.",
+  usage: "stop",
+  data: new SlashCommandBuilder().setName("stop").setDescription("Stop playback and disconnect."),
 
-        player.destroy();
-        return interaction.reply('🛑 Stopped the music and left.');
+  async execute(context, args, client) {
+    const player = client.manager?.getPlayer(context.guild.id);
+    if (!player) {
+      return context.reply({ content: "❌ No active audio session in this server.", ephemeral: true });
     }
+
+    player.destroy();
+    return context.reply({ content: "⏹️ **Audio playback stopped, queue cleared, and bot disconnected.**" });
+  },
 };

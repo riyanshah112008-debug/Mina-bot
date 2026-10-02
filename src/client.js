@@ -1,4 +1,6 @@
 const { Client, GatewayIntentBits, Partials, Collection } = require("discord.js");
+const db = require("./utils/database");
+const config = require("./config");
 
 const client = new Client({
   intents: [
@@ -7,32 +9,29 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildModeration,
+    GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.DirectMessages,
   ],
-  partials: [Partials.Channel, Partials.GuildMember, Partials.Message, Partials.User],
+  partials: [
+    Partials.Channel,
+    Partials.GuildMember,
+    Partials.Message,
+    Partials.User,
+    Partials.Reaction,
+  ],
 });
 
-client.player = null;
+// Collections
 client.commands = new Collection();
-client.cooldowns = new Map();
-client.security = new Map();
-client.warns = new Map();
-client.musicStatus = new Map();
+client.slashCommands = new Collection();
+client.cooldowns = new Collection();
 
-// Manager-bot Features Collections
-client.prefixCommands = new Collection();
-client.verifyMap = new Map();
-client.voiceCalls = new Map();
-client.vcLocks = new Map();
-client.afkUsers = new Map();
-client.ticketSessions = new Map();
-client.levelingCache = new Map();
-client.giveawayCache = new Map();
-client.countingCache = new Map();
-client.petCache = new Map();
-client.reactionRolesCache = new Map();
-client.confessionQueue = new Map();
-client.truthOrDareCache = new Map();
-client.trackerCache = new Map();
+// Core references & State
+client.db = db;
+client.config = config;
+client.videoVerificationSessions = new Map();
+client.activeTicketTimers = new Map();
+client.spamTracker = new Map();
 
 module.exports = client;

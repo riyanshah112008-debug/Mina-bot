@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 function ensureSingleInstance() {
-  const lockFile = path.join(process.cwd(), ".friendbase.lock");
+  const lockFile = path.join(process.cwd(), ".mina.lock");
 
   try {
     if (fs.existsSync(lockFile)) {
@@ -17,7 +17,7 @@ function ensureSingleInstance() {
       })();
 
       if (pidIsAlive) {
-        console.error("[Friendbase] Another bot instance is already running. Only one instance is allowed.");
+        console.error("[Mina Bot] Another bot instance is already running. Only one instance is allowed.");
         process.exit(1);
       }
 
@@ -42,7 +42,7 @@ function ensureSingleInstance() {
     process.on("SIGINT", cleanup);
     process.on("SIGTERM", cleanup);
   } catch (error) {
-    console.error("[Friendbase] Another bot instance is already running. Only one instance is allowed.");
+    console.error("[Mina Bot] Another bot instance is already running. Only one instance is allowed.");
     process.exit(1);
   }
 }

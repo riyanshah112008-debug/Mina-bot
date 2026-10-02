@@ -1,45 +1,63 @@
-const { EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
+const config = require("../../config");
 
 module.exports = {
   name: "announce",
   category: "Utility",
-  description: "Create a beautiful announcement.",
-  usage: "announce <title> | <description>",
-  permissions: ["ManageMessages"],
-  async execute(message, args, client) {
-    if (!args.length) {
-      return message.reply({
-        content: "Usage: `announce <title> | <description>`\nExample: `announce Important Notice | Our server is moving channels tomorrow!`",
-        failIfNotExists: false,
-      });
+  description: "Send an announcement embed to a channel.",
+  usage: "announce <#channel> <message>",
+  permissions: ["ManageGuild"],
+  data: new SlashCommandBuilder()
+    .setName("announce")
+    .setDescription("Send an announcement embed to a channel.")
+    .addChannelOption((opt) =>
+      opt.setName("channel").setDescription("Target channel").setRequired(true)
+    )
+    .addStringOption((opt) =>
+      opt.setName("message").setDescription("Announcement content").setRequired(true)
+    )
+    .addStringOption((opt) =>
+      opt.setName("title").setDescription("Optional announcement title").setRequired(false)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+  async execute(context, args, client) {
+    const isSlash = typeof context.isChatInputCommand === "function" && context.isChatInputCommand();
+    const guild = context.guild;
+    const author = isSlash ? context.user : context.author;
+
+    let targetChannel, messageContent, title;
+
+    if (isSlash) {
+      targetChannel = context.options.getChannel("channel");
+      messageContent = context.options.getString("message");
+      title = context.options.getString("title") || "📢 Server Announcement";
+    } else {
+      if (!args || args.length < 2) {
+        return context.reply({ content: "❌ **Usage:** `,announce <#channel> <message>`" });
+      }
+      const chanId = args[0].replace(/[^0-9]/g, "");
+      targetChannel = guild.channels.cache.get(chanId);
+      messageContent = args.slice(1).join(" ");
+      title = "📢 Server Announcement";
     }
 
-    const content = args.join(" ");
-    if (!content.includes("|")) {
-      return message.reply({
-        content: "Please use the format: `announce <title> | <description>`",
-        failIfNotExists: false,
-      });
+    if (!targetChannel || !targetChannel.isTextBased()) {
+      return context.reply({ content: "❌ Please specify a valid text channel for the announcement.", ephemeral: true });
     }
-
-    const [title, description] = content.split("|").map((s) => s.trim());
 
     const embed = new EmbedBuilder()
-      .setTitle(`📢 ${title}`)
-      .setDescription(description)
-      .setColor(0xff6b6b)
-      .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+      .setColor(config.theme.primary)
+      .setTitle(title)
+      .setDescription(messageContent)
+      .setFooter({ text: `Announcement by ${author.tag || author.username}` })
       .setTimestamp();
 
     try {
-      // Delete the original command message
-      await message.delete().catch(() => {});
-
-      // Send announcement
-      await message.channel.send({ embeds: [embed] });
-    } catch (error) {
-      console.error("[Announce Command Error]", error);
-      message.reply({ content: "Error creating announcement.", failIfNotExists: false });
+      await targetChannel.send({ embeds: [embed] });
+      return context.reply({ content: `✅ Announcement successfully delivered to <#${targetChannel.id}>.`, ephemeral: true });
+    } catch (err) {
+      return context.reply({ content: `❌ Failed to send announcement: ${err.message}`, ephemeral: true });
     }
   },
 };

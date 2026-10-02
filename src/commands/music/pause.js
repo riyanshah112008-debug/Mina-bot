@@ -1,18 +1,23 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require("discord.js");
 
 module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('pause')
-        .setDescription('Pauses the current song'),
-        
-    async execute(interaction, client) {
-        const player = client.manager.getPlayer(interaction.guild.id);
-        
-        if (!player) return interaction.reply({ content: 'Nothing is currently playing.', ephemeral: true });
-        if (interaction.member.voice.channelId !== player.voiceId) return interaction.reply({ content: 'You are not in my voice channel!', ephemeral: true });
-        if (player.paused) return interaction.reply({ content: 'The music is already paused!', ephemeral: true });
+  name: "pause",
+  category: "Music",
+  description: "Pause the currently playing track.",
+  usage: "pause",
+  data: new SlashCommandBuilder().setName("pause").setDescription("Pause audio playback."),
 
-        player.pause(true);
-        return interaction.reply('⏸️ Paused the music.');
+  async execute(context, args, client) {
+    const player = client.manager?.getPlayer(context.guild.id);
+    if (!player || (!player.playing && !player.paused)) {
+      return context.reply({ content: "❌ Nothing is currently playing in this server.", ephemeral: true });
     }
+
+    if (player.paused) {
+      return context.reply({ content: "⚠️ The audio playback is already paused!", ephemeral: true });
+    }
+
+    player.pause(true);
+    return context.reply({ content: "⏸️ **Paused the music.** Use `?resume` to continue." });
+  },
 };

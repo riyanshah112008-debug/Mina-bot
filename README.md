@@ -1,63 +1,116 @@
-# Mina bot
+# 🌸 Mina Bot
 
-Mina bot is a modular Discord bot built around a premium Starry/Jarvis-inspired experience. It includes server configuration, automod controls, music playback, and mobile-friendly hosting support.
+**Mina Bot** is a high-performance, modular Discord bot specialized in:
+1. **🛡️ Advanced Moderation & Automod** (Full audit logging, warnings system, channel locking, purging, and anti-raid protection)
+2. **🎵 High-Fidelity Music Streaming** (Lavalink v4 cluster, Spotify resolution, interactive DJ dashboard, DSP audio filters)
+3. **⚙️ Server & User Utilities** (Interactive help menus, server/user statistics, AFK tracking, polling, announcements)
+4. **🎫 Support Ticket Portals** (Multi-category support desks, staff claim workflows, member management, and exportable transcripts)
+5. **✅ Dual-Tier Verification** (Instant button click / security captcha challenges AND dedicated voice channel video verification)
 
-## Features
-- Server settings and automation controls
-- Per-guild automod toggles for caps, links, invites, phishing, spam, and mass mentions
-- Music playback with Spotify-first search and filter presets
-- Premium-themed embeds and UI flows
-- Termux-ready startup script for Android host environments
+---
 
-## Local setup
-1. Install dependencies:
-   npm install
-2. Create a `.env` file with your Discord token and config values.
-3. Start the bot:
-   npm start
+## 🌟 Feature Breakdown
 
-## Termux / Android hosting
-Use the included script to launch the bot in the background with PM2:
+### 1. Moderation Suite
+- **Bans & Unbans**: `/ban` and `/unban` with reason, DM notifications, message deletion window, and modlog dispatch.
+- **Kicks**: `/kick` with role hierarchy safety checks and DM notification.
+- **Timeouts**: Native Discord timeouts via `/timeout` (e.g. `10m`, `1h`, `1d`) and `/untimeout`.
+- **Warnings System**: `/warn`, `/warnings`, `/delwarn`, and `/clearwarns` with persistent case IDs and audit history.
+- **Channel Controls**: `/lock`, `/unlock`, and `/slowmode` (0–21600 seconds).
+- **Cleanup & Nuking**: `/purge` (1–100 messages with optional user filter) and `/nuke` (recreates channel with identical permissions and deletes old channel with interactive confirmation button).
+- **Audit Logging**: `/modlogs #channel` routes all moderation actions with color-coded rich embeds.
+- **Automod Engine**: Real-time filters for Anti-Invite (`discord.gg/`), Anti-Link, Anti-Spam rate limiting, and Anti-Mass-Mention with automated timeout enforcement.
 
+### 2. Server & User Utilities
+- **Interactive Help**: `/help` with dynamic dropdown category browser and specific command lookup.
+- **Diagnostics**: `/ping` (latency, WebSocket ping, uptime) and `/botinfo` (RAM usage, platform, shard stats).
+- **Profile & Server Inspection**: `/serverinfo`, `/userinfo`, `/avatar` (with direct PNG/JPG/WEBP links), and `/banner`.
+- **AFK Tracker**: `/afk [reason]` notifies users when mentioned and automatically clears when you speak next.
+- **Community Tools**: `/poll` (automated reaction votes) and `/announce` (rich broadcast messages).
+- **Prefix Management**: `/prefix [new_prefix]` for customizable command prefixes (defaults to `,`).
+
+### 3. Support Ticket Portal
+- **One-Command Deployment**: `/ticketsetup` deploys an interactive ticket portal with dropdown categories:
+  - 💬 *General Support*
+  - 🛡️ *Player / Staff Report*
+  - 💼 *Partnerships & Staff*
+  - ❓ *Other Assistance*
+- **Private Channels**: Automatically created in dedicated ticket categories with restricted permissions.
+- **In-Ticket Controls**:
+  - ✋ `Claim Ticket`: Assigns ticket to moderator and updates channel topic.
+  - 🔒 `Close Ticket`: Prompts modal, generates full text transcript, and routes copies to the log channel & ticket creator's DMs.
+  - 👥 `Add / Remove Member`: Interactive modals for modifying member access.
+  - 📝 `Transcript`: On-demand transcript generation.
+
+### 4. Dual-Tier Verification
+- **Tier 1: Standard Member Verification** (`/verifysetup`)
+  - Supports **Instant 1-Click Button** or **Interactive 5-Character Security Captcha Challenge** to stop raid bots.
+  - Automatically assigns the Verified role and strips the Unverified role upon completion.
+- **Tier 2: Voice Channel Video Verification** (`/videoverifysetup`)
+  - Configures waiting room VC, private interview VC, reviewer staff role, and special Video Verified role.
+  - Detects candidate webcam/camera stream state in real-time.
+  - Provides staff with a live interactive review dashboard with:
+    - 🎧 `Move to Private VC`
+    - 📹 `Check Camera State`
+    - ✅ `Approve Verification` (grants role, sends congratulations DM, records audit log)
+    - ❌ `Reject Verification` (disconnects user, sends DM reason, records rejection log)
+
+---
+
+## 🚀 Setup & Hosting
+
+### 1. Requirements
+- Node.js >= 20.0.0
+- A Discord Bot Token with privileged gateway intents enabled:
+  - `Server Members Intent`
+  - `Message Content Intent`
+
+### 2. Local Installation
+```bash
+# Clone the repository
+git clone https://github.com/riyanshah112008-debug/Friendbase.git
+cd Friendbase
+
+# Install dependencies (zero native compilation required)
+npm install
+
+# Configure environment variables
+cp .env.example .env
+# Edit .env and enter DISCORD_TOKEN, CLIENT_ID, etc.
+
+# Run automated test suite
+npm test
+
+# Start the bot
+npm start
+```
+
+### 3. Termux / Android Hosting
+Mina Bot is designed with zero native C++ compilation dependencies (like node-gyp), ensuring instant, 100% crash-free operation in Termux:
 ```bash
 chmod +x termux-start.sh
 ./termux-start.sh
 ```
 
-This is best for testing and lightweight personal hosting. For always-on production use, a VPS or dedicated host is still more reliable.
+### 4. Render / Cloud Deployment
+Mina Bot includes a built-in health check web server on port 3000 (`/` and `/health`) compatible with Render, Railway, and Docker:
+- **Build Command**: `npm install`
+- **Start Command**: `npm start`
+- **Environment Variables**: Add `DISCORD_TOKEN`, `CLIENT_ID`, and optional `PREFIX` in your deployment dashboard.
 
-## Hosting on Render (easy, managed)
+---
 
-This repository now includes a small web health endpoint and Render-friendly files (Procfile, render.yaml, Dockerfile). Render expects a web service that listens on the PORT environment variable — the included lightweight Express server exposes `/` and `/health` and runs alongside the bot so the service is recognized as "healthy" by Render.
+## 🧪 Testing & Verification
+Mina Bot includes an end-to-end test suite:
+```bash
+# Run unit & integration tests
+npm test
 
-Quick steps to deploy on Render (recommended):
+# Run syntax verification across all files
+npm run check
+```
 
-1. Create a new Web Service on Render and connect your GitHub repository.
-2. If using the default (build with Render's Node environment):
-   - Build Command: `npm install`
-   - Start Command: `npm start`
-   - The `npm start` script runs `node src/boot.js` which starts the bot and the web health server.
-3. Add the required environment variables in Render Dashboard's Environment panel (never commit real secrets):
-   - DISCORD_TOKEN (your bot token)
-   - PREFIX (optional)
-   - MONGO_URI (recommended for multi-guild persistence)
-   - LAVALINK_NODES (optional JSON array)
-   - SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET (recommended for better music search)
-4. If you prefer to use the provided Dockerfile (full control), set Render to use Docker and it will build the image defined in `Dockerfile`.
+---
 
-Health checks:
-
-- `GET /health` returns JSON with status and uptime. Render will use the web process health to determine if the service is healthy.
-
-Notes & troubleshooting:
-
-- Do NOT commit your `.env` with real tokens. Use Render's Dashboard to add environment variables securely.
-- Some native dependencies (canvas, better-sqlite3) require system packages. The provided Dockerfile installs required packages for a Debian-based image. If you prefer Render's native build, add the necessary buildpacks or use the Docker option.
-
-Local run reminder:
-
-1. Fill a local `.env` (copy from `.env.example` if present) with the variables above.
-2. Install deps: `npm install`
-3. Start locally: `npm start` (this runs `src/boot.js` and opens the web health endpoint on port 3000 by default)
-
-
+## 📜 License
+MIT License. Built for modern, high-security Discord communities.

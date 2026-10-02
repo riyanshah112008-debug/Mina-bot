@@ -1,22 +1,37 @@
 const config = require("../config");
+const { loadSlashCommands } = require("../handlers/slashCommandLoader");
+const { startPresenceRotator } = require("../modules/presence/statusManager");
+const { createMusicManager } = require("../utils/musicManager");
 
 module.exports = {
   name: "ready",
   once: true,
   async execute(...args) {
-    // eventLoader will append client as last arg when calling execute(...args, client)
-    // Accept flexible params to be resilient: last param should be client
     const client = args[args.length - 1];
     if (!client || !client.user) return;
-    console.log(`Logged in as ${client.user.tag}`);
-    console.log(`Loaded commands: ${client.commands.size}`);
+
+    console.log(`[Mina Bot] 🌸 Logged in as ${client.user.tag} (${client.user.id})`);
+    console.log(`[Mina Bot] 📦 Loaded ${client.commands.size} commands across Moderation, Utility, Music, Tickets, & Verification`);
+
+    // Initialize Music Engine (Lavalink v4 Cluster)
     try {
-      client.user.setPresence({
-        activities: [{ name: `${config.prefix}help • Friendbase`, type: 0 }],
-        status: "online",
-      });
+      createMusicManager(client);
     } catch (e) {
-      // ignore presence errors
+      console.warn("[Mina Bot] Music manager init warning:", e.message);
+    }
+
+    // Start automatic rotating presence (like Starry)
+    try {
+      startPresenceRotator(client);
+    } catch (e) {
+      console.warn("[Mina Bot] Could not initiate presence rotator:", e.message);
+    }
+
+    // Register slash commands
+    try {
+      await loadSlashCommands(client, config);
+    } catch (err) {
+      console.warn("[Mina Bot] Slash command registration error:", err.message);
     }
   },
 };

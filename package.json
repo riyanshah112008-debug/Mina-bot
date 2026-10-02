@@ -1,41 +1,37 @@
 {
-  "name": "friendbase",
-  "version": "1.0.0",
-  "description": "Friendbase Discord bot with moderation, anti-raid, anti-nuke, music, games, and utilities.",
+  "name": "mina-bot",
+  "version": "2.0.0",
+  "description": "Mina Bot - High-Performance Discord Bot for Moderation, Utility, Ticket Portals, and Normal + Video VC Verification",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/boot.js",
     "dev": "node --watch src/index.js",
-    "check": "node -e \"const fs=require('fs'); const path=require('path'); const { spawnSync } = require('child_process'); let failed=false; function walk(dir){ for (const entry of fs.readdirSync(dir,{withFileTypes:true})) { const p=path.join(dir, entry.name); if (entry.isDirectory()) walk(p); else if (entry.isFile() && p.endsWith('.js')) { const res = spawnSync(process.execPath, ['--check', p], { stdio: 'inherit' }); if (res.status !== 0) failed = true; } } } walk('src'); process.exit(failed ? 1 : 0);\""
+    "test": "node tests/run-tests.js",
+    "check": "node -e \"const fs=require('fs'); const path=require('path'); const { spawnSync } = require('child_process'); let failed=false; function walk(dir){ if (!fs.existsSync(dir)) return; for (const entry of fs.readdirSync(dir,{withFileTypes:true})) { const p=path.join(dir, entry.name); if (entry.isDirectory()) walk(p); else if (entry.isFile() && p.endsWith('.js')) { const res = spawnSync(process.execPath, ['--check', p], { stdio: 'inherit' }); if (res.status !== 0) failed = true; } } } walk('src'); walk('tests'); process.exit(failed ? 1 : 0);\""
   },
   "keywords": [
+    "mina-bot",
     "discord",
-    "bot",
     "moderation",
-    "automod"
+    "utility",
+    "tickets",
+    "verification",
+    "video-verification"
   ],
   "license": "MIT",
   "dependencies": {
-    "@discord-player/extractor": "^7.2.0",
-    "@discordjs/opus": "^0.10.0",
-    "@discordjs/voice": "^0.19.2",
-    "@google/genai": "latest",
-    "better-sqlite3": "^13.0.3",
-    "canvas": "^2.11.2",
     "cors": "^2.8.5",
-    "discord-player": "^7.2.0",
-    "discord.js": "^14.16.3",
+    "discord.js": "^14.15.0",
     "dotenv": "^16.4.5",
     "express": "^4.18.2",
-    "ffmpeg-static": "^5.2.0",
-    "google-translate-api-x": "^10.6.0",
-    "kazagumo": "^3.0.0",
-    "kazagumo-spotify": "^2.1.1",
+    "kazagumo": "^3.4.3",
+    "kazagumo-spotify": "^1.2.1",
     "libsodium-wrappers": "^0.7.16",
     "mongoose": "^8.4.0",
     "opusscript": "^0.0.8",
+    "play-dl": "^1.9.7",
     "prism-media": "^1.3.5",
-    "shoukaku": "^4.0.0",
+    "shoukaku": "^4.3.0",
     "tweetnacl": "^1.0.3"
   }
 }

@@ -1,17 +1,21 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require("discord.js");
 
 module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('skip')
-        .setDescription('Skips the current song'),
-        
-    async execute(interaction, client) {
-        const player = client.manager.getPlayer(interaction.guild.id);
-        
-        if (!player) return interaction.reply({ content: 'Nothing is playing.', ephemeral: true });
-        if (interaction.member.voice.channelId !== player.voiceId) return interaction.reply({ content: 'You are not in my voice channel!', ephemeral: true });
+  name: "skip",
+  aliases: ["s", "next"],
+  category: "Music",
+  description: "Skip to the next song in the queue.",
+  usage: "skip",
+  data: new SlashCommandBuilder().setName("skip").setDescription("Skip the current song."),
 
-        player.skip();
-        return interaction.reply('⏭️ Skipped!');
+  async execute(context, args, client) {
+    const player = client.manager?.getPlayer(context.guild.id);
+    if (!player || (!player.playing && !player.queue.current)) {
+      return context.reply({ content: "❌ Nothing is currently playing.", ephemeral: true });
     }
+
+    const currentTitle = player.queue.current?.title || "Track";
+    player.skip();
+    return context.reply({ content: `⏭️ **Skipped:** \`${currentTitle}\`` });
+  },
 };

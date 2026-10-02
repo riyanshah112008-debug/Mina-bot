@@ -1,45 +1,70 @@
-const { EmbedBuilder } = require("discord.js");
-const { getWarnings } = require("../../utils/warnings");
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
+const db = require("../../utils/database");
+const config = require("../../config");
 
 module.exports = {
   name: "warnings",
-  category: "Moderation",
   aliases: ["warns"],
-  description: "View warnings for a user.",
-  usage: "warnings <user>",
-  async execute(message, args, client) {
-    const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
-    if (!target) {
-      return message.reply({
-        content: "Please mention or provide the ID of a user.",
-        failIfNotExists: false,
+  category: "Moderation",
+  description: "View warning history for a user.",
+  usage: "warnings <@user|id>",
+  permissions: ["ModerateMembers"],
+  data: new SlashCommandBuilder()
+    .setName("warnings")
+    .setDescription("View warnings for a user.")
+    .addUserOption((opt) =>
+      opt.setName("user").setDescription("The user whose warnings to view").setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+
+  async execute(context, args, client) {
+    const isSlash = typeof context.isChatInputCommand === "function" && context.isChatInputCommand();
+    const guild = context.guild;
+
+    let targetUser;
+
+    if (isSlash) {
+      targetUser = context.options.getUser("user");
+    } else {
+      if (!args || !args[0]) {
+        return context.reply({ content: "❌ **Usage:** `,warnings <@user|id>`" });
+      }
+      const rawTarget = args[0].replace(/[^0-9]/g, "");
+      targetUser = await client.users.fetch(rawTarget).catch(() => null);
+    }
+
+    if (!targetUser) {
+      return context.reply({ content: "❌ Could not find that user.", ephemeral: true });
+    }
+
+    const warns = db.getWarnings(guild.id, targetUser.id);
+
+    if (!warns.length) {
+      const cleanEmbed = new EmbedBuilder()
+        .setColor(config.theme.success)
+        .setTitle(`🛡️ Warnings for ${targetUser.tag || targetUser.username}`)
+        .setDescription("This user has a clean record with **0 warnings**.")
+        .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }));
+
+      return context.reply({ embeds: [cleanEmbed] });
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(config.theme.warning)
+      .setTitle(`⚠️ Warnings for ${targetUser.tag || targetUser.username} (${warns.length})`)
+      .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
+      .setFooter({ text: "Use ,delwarn <id> to delete a specific warning or ,clearwarns to wipe all." });
+
+    const recentWarns = warns.slice(-10).reverse();
+    for (const w of recentWarns) {
+      const dateStr = new Date(w.timestamp).toLocaleDateString();
+      embed.addFields({
+        name: `Case #${w.id} • ${dateStr}`,
+        value: `**Reason:** ${w.reason}\n**Moderator:** <@${w.moderatorId}>`,
+        inline: false,
       });
     }
 
-    const warnings = getWarnings(message.guild.id, target.user.id);
-
-    const embed = new EmbedBuilder()
-      .setTitle(`⚠️ Warnings for ${target.user.tag}`)
-      .setColor(0xffaa00)
-      .setThumbnail(target.user.displayAvatarURL());
-
-    if (warnings.length === 0) {
-      embed.setDescription("No warnings on record.");
-    } else {
-      const warningsList = warnings
-        .map((w, i) => {
-          const date = new Date(w.timestamp).toLocaleDateString();
-          return `**${i + 1}.** ${w.reason} *(${date})*`;
-        })
-        .join("\n");
-
-      embed
-        .addField("Warnings", warningsList, false)
-        .addField("Total", `${warnings.length}/3`, true)
-        .addField("Status", warnings.length >= 3 ? "⛔ At limit" : "✅ Active", true);
-    }
-
-    embed.setTimestamp();
-    return message.reply({ embeds: [embed], failIfNotExists: false });
+    return context.reply({ embeds: [embed] });
   },
 };
