@@ -1,11 +1,11 @@
 services:
   - type: web
-    name: friendbase
-    env: node
-    plan: starter
+    name: mina-bot
+    env: docker
+    plan: free
     region: oregon
-    buildCommand: npm install
-    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 3000

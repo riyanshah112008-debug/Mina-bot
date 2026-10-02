@@ -1,14 +1,14 @@
-# Dockerfile for Mina Bot - Node 20 on Debian slim
-FROM node:20-bullseye-slim
+# Dockerfile for Mina Bot - Node 20 on Debian Bookworm slim (Debian 12 active stable)
+FROM node:20-bookworm-slim
 
 WORKDIR /usr/src/app
 ENV NODE_ENV=production
 
-# Install system deps required by audio/stream modules, canvas, and ffmpeg
+# Install essential runtime tools: ffmpeg for audio DSP, python3 & curl for stream resolver
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-    build-essential python3 python3-pip pkg-config libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev ffmpeg \
-  && pip3 install --no-cache-dir --break-system-packages yt-dlp \
+  && apt-get install -y --no-install-recommends ffmpeg python3 curl ca-certificates \
+  && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
+  && chmod a+rx /usr/local/bin/yt-dlp \
   && rm -rf /var/lib/apt/lists/*
 
 # Copy package manifest and install production dependencies
