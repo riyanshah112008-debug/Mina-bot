@@ -76,85 +76,30 @@ module.exports = {
       ? (payload) => context.editReply(payload)
       : (payload) => context.reply(payload);
 
-    // 1. Check if Lavalink Cluster has active ready nodes
-    const hasLavalink = Boolean(
-      client.manager &&
-      client.manager.shoukaku &&
-      Array.from(client.manager.shoukaku.nodes.values()).some((n) => n.state === 1)
-    );
-
-    if (hasLavalink) {
-      try {
-        let player = client.manager.getPlayer(guild.id);
-        if (!player) {
-          player = await client.manager.createPlayer({
-            guildId: guild.id,
-            voiceId: voiceChannel.id,
-            textId: context.channel.id,
-            deaf: true,
-          });
-        } else if (player.voiceId !== voiceChannel.id) {
-          player.setVoiceChannel(voiceChannel.id);
-        }
-
-        const res = await client.manager.search(query, { requester: user });
-
-        if (res && res.tracks && res.tracks.length > 0 && res.loadType !== "empty" && res.loadType !== "error") {
-          if (res.loadType === "playlist") {
-            for (const track of res.tracks) {
-              player.queue.add(track);
-            }
-            if (!player.playing && !player.paused) player.play();
-
-            const totalDuration = res.tracks.reduce((acc, t) => acc + (t.length || 0), 0);
-            const embed = new EmbedBuilder()
-              .setColor(config.theme.primary || 0x5865f2)
-              .setTitle(`📚 Enqueued Playlist: ${res.playlistName || "Loaded Playlist"}`)
-              .setDescription(
-                `✅ Added **${res.tracks.length}** tracks to the server queue!\n\n` +
-                  `🕒 **Estimated Playtime:** \`${formatTime(totalDuration)}\`\n` +
-                  `🔠 **Queue Length:** \`${player.queue.length}\` upcoming songs`
-              )
-              .setFooter({ text: `Requested by ${user.tag || user.username}` })
-              .setTimestamp();
-
-            return replyFunc({ embeds: [embed] });
-          } else {
-            const track = res.tracks[0];
-            player.queue.add(track);
-
-            if (!player.playing && !player.paused && !player.queue.current) {
-              player.play();
-            }
-
-            const embed = new EmbedBuilder()
-              .setColor(config.theme.primary || 0x5865f2)
-              .setTitle("🎵 Added to Queue")
-              .setDescription(`**[${track.title}](${track.uri})**`)
-              .addFields(
-                { name: "Artist", value: `\`${track.author || "Unknown"}\``, inline: true },
-                { name: "Duration", value: `\`${formatTime(track.length)}\``, inline: true },
-                { name: "Queue Position", value: `\`#${player.queue.length}\``, inline: true }
-              )
-              .setFooter({ text: `Requested by ${user.tag || user.username}` })
-              .setTimestamp();
-
-            return replyFunc({ embeds: [embed] });
-          }
-        }
-      } catch (lavalinkErr) {
-        console.warn("[play.js Lavalink Fallback]:", lavalinkErr.message || lavalinkErr);
-      }
+    let loadingMsg = null;
+    if (!isSlash && typeof context.reply === "function") {
+      loadingMsg = await context.reply(
+        `🔍 **Searching:** \`${query.length > 50 ? query.substring(0, 47) + "..." : query}\` • *Connecting to voice...*`
+      ).catch(() => null);
     }
 
-    // 2. High-Fidelity Native Audio Engine Fallback (Zero Lavalink Dependency)
     try {
+      // 1. Primary High-Fidelity Native Audio Engine (100% Host-Anywhere • Termux Compatible)
       const player = StarryAudioEngine.getOrCreatePlayer(client, guild.id, voiceChannel, context.channel);
-      player.connect().catch(() => {});
+      if (loadingMsg) player.loadingMessage = loadingMsg;
 
-      const result = await StarryAudioEngine.search(query, user);
+      const connectPromise = player.connect().catch(() => {});
+      const searchPromise = StarryAudioEngine.search(query, user);
+
+      const [_, result] = await Promise.race([
+        Promise.all([connectPromise, searchPromise]),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Audio search or voice connect timed out")), 20000)
+        ),
+      ]);
 
       if (!result || !result.tracks || result.tracks.length === 0) {
+        if (loadingMsg) loadingMsg.delete().catch(() => {});
         return replyFunc({ content: `❌ No results found for: \`${query}\`` });
       }
 
@@ -162,8 +107,13 @@ module.exports = {
         for (const track of result.tracks) {
           player.queue.push(track);
         }
-        if (!player.currentTrack) {
+        if (!player.currentTrack && !player.isPlaying) {
           await player.playNext();
+        }
+
+        if (loadingMsg) {
+          loadingMsg.delete().catch(() => {});
+          player.loadingMessage = null;
         }
 
         const totalDurationMs = result.tracks.reduce((acc, t) => acc + (t.duration || 0), 0);
@@ -197,11 +147,20 @@ module.exports = {
         return replyFunc({ embeds: [embed] });
       } else {
         const track = result.tracks[0];
-        if (!player.currentTrack) {
+        if (!player.currentTrack && !player.isPlaying) {
           player.queue.push(track);
           await player.playNext();
+          // sendNowPlayingPanel is called by player.playTrack() automatically
+          if (isSlash) {
+            return replyFunc({ content: `▶️ **Playing:** \`${track.title}\``, ephemeral: true });
+          }
         } else {
           player.queue.push(track);
+          if (loadingMsg) {
+            loadingMsg.delete().catch(() => {});
+            player.loadingMessage = null;
+          }
+
           const embed = new EmbedBuilder()
             .setColor(config.theme.primary || 0x5865f2)
             .setAuthor({
@@ -226,6 +185,7 @@ module.exports = {
       }
     } catch (err) {
       console.error("[play.js error]:", err);
+      if (loadingMsg) loadingMsg.delete().catch(() => {});
       return replyFunc({ content: `❌ Could not play track: ${err.message}` });
     }
   },

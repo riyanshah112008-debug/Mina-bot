@@ -662,7 +662,8 @@ class StarryGuildPlayer {
                 try {
                     await refreshSoundCloudToken();
                     const primaryArtist = (track.author || '').split(',')[0].trim();
-                    let scResults = await play.search(searchQuery, { source: { soundcloud: 'tracks' }, limit: 1 }).catch(() => []);
+                    const queryText = `${primaryArtist} ${track.title}`.trim();
+                    let scResults = await play.search(queryText, { source: { soundcloud: 'tracks' }, limit: 1 }).catch(() => []);
                     if (!scResults || scResults.length === 0) {
                         scResults = await play.search(track.title, { source: { soundcloud: 'tracks' }, limit: 1 }).catch(() => []);
                     }
