@@ -31,7 +31,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.18.2",
     "kazagumo": "^3.4.3",
-    "kazagumo-spotify": "^1.2.1",
+    "kazagumo-spotify": "^2.1.1",
     "libsodium-wrappers": "^0.7.16",
     "mongoose": "^8.4.0",
     "node-fetch": "^2.7.0",
