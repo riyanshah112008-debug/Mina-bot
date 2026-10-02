@@ -1,6 +1,6 @@
-# Friendbase
+# Mina bot
 
-Friendbase is a modular Discord bot built around a premium Starry/Jarvis-inspired experience. It includes server configuration, automod controls, music playback, and mobile-friendly hosting support.
+Mina bot is a modular Discord bot built around a premium Starry/Jarvis-inspired experience. It includes server configuration, automod controls, music playback, and mobile-friendly hosting support.
 
 ## Features
 - Server settings and automation controls
