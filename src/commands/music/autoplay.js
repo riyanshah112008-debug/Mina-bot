@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { triggerAutoplayBuffer } = require("../../utils/musicManager");
+const { StarryAudioEngine } = require("../../utils/nativeAudioEngine");
 
 module.exports = {
   name: "autoplay",
@@ -10,23 +11,37 @@ module.exports = {
   data: new SlashCommandBuilder().setName("autoplay").setDescription("Toggle smart song recommendations."),
 
   async execute(context, args, client) {
-    const player = client.manager?.getPlayer(context.guild.id);
-    if (!player) {
+    const kPlayer = client.manager?.getPlayer(context.guild.id);
+    const nPlayer = StarryAudioEngine.getPlayer(context.guild.id);
+
+    if (!kPlayer && !nPlayer) {
       return context.reply({ content: "❌ Nothing is currently playing in this server.", ephemeral: true });
     }
 
-    const current = Boolean(player.data?.get("autoplay") || player.autoplay);
-    const newState = !current;
+    if (kPlayer) {
+      const current = Boolean(kPlayer.data?.get("autoplay") || kPlayer.autoplay);
+      const newState = !current;
+      kPlayer.data?.set("autoplay", newState);
+      kPlayer.autoplay = newState;
 
-    player.data.set("autoplay", newState);
-    player.autoplay = newState;
+      if (newState && kPlayer.queue.length === 0 && !kPlayer.playing) {
+        await triggerAutoplayBuffer(kPlayer, true).catch(() => {});
+      }
 
-    if (newState && player.queue.length === 0 && !player.playing) {
-      await triggerAutoplayBuffer(player, true).catch(() => {});
+      return context.reply({
+        content: `📻 **Smart Autoplay is now: \`${newState ? "ENABLED" : "DISABLED"}\`**\nWhen the queue ends, Mina will automatically pick similar tracks!`,
+      });
     }
 
-    return context.reply({
-      content: `📻 **Smart Autoplay is now: \`${newState ? "ENABLED" : "DISABLED"}\`**\nWhen the queue ends, Mina will automatically pick similar tracks!`,
-    });
+    if (nPlayer) {
+      nPlayer.autoplay = !nPlayer.autoplay;
+      const newState = nPlayer.autoplay;
+      if (nPlayer.currentTrack) {
+        await nPlayer.sendNowPlayingPanel(nPlayer.currentTrack, true).catch(() => {});
+      }
+      return context.reply({
+        content: `📻 **Smart Autoplay is now: \`${newState ? "ENABLED" : "DISABLED"}\`**\nWhen the queue ends, Mina will automatically pick similar tracks!`,
+      });
+    }
   },
 };

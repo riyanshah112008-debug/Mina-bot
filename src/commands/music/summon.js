@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
+const { StarryAudioEngine } = require("../../utils/nativeAudioEngine");
 
 module.exports = {
   name: "summon",
@@ -19,26 +20,9 @@ module.exports = {
       });
     }
 
-    if (!client.manager) {
-      return context.reply({
-        content: "⚠️ Music Manager is currently initializing. Please try again shortly.",
-        ephemeral: true,
-      });
-    }
-
     try {
-      let player = client.manager.getPlayer(context.guild.id);
-      if (!player) {
-        player = await client.manager.createPlayer({
-          guildId: context.guild.id,
-          voiceId: voiceChannel.id,
-          textId: context.channel.id,
-          deaf: true,
-        });
-      } else {
-        player.setVoiceChannel(voiceChannel.id);
-      }
-
+      const player = StarryAudioEngine.getOrCreatePlayer(client, context.guild.id, voiceChannel, context.channel);
+      await player.connect();
       return context.reply({ content: `🎧 Joined voice channel: **${voiceChannel.name}**` });
     } catch (err) {
       return context.reply({ content: `❌ Could not join voice channel: ${err.message}`, ephemeral: true });

@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
+const { StarryAudioEngine } = require("../../utils/nativeAudioEngine");
 
 module.exports = {
   name: "skip",
@@ -9,13 +10,21 @@ module.exports = {
   data: new SlashCommandBuilder().setName("skip").setDescription("Skip the current song."),
 
   async execute(context, args, client) {
-    const player = client.manager?.getPlayer(context.guild.id);
-    if (!player || (!player.playing && !player.queue.current)) {
-      return context.reply({ content: "❌ Nothing is currently playing.", ephemeral: true });
+    const kPlayer = client.manager?.getPlayer(context.guild.id);
+    const nPlayer = StarryAudioEngine.getPlayer(context.guild.id);
+
+    if (kPlayer && (kPlayer.playing || kPlayer.queue.current)) {
+      const currentTitle = kPlayer.queue.current?.title || "Track";
+      kPlayer.skip();
+      return context.reply({ content: `⏭️ **Skipped:** \`${currentTitle}\`` });
     }
 
-    const currentTitle = player.queue.current?.title || "Track";
-    player.skip();
-    return context.reply({ content: `⏭️ **Skipped:** \`${currentTitle}\`` });
+    if (nPlayer && (nPlayer.isPlaying || nPlayer.currentTrack)) {
+      const currentTitle = nPlayer.currentTrack?.title || "Track";
+      nPlayer.skip();
+      return context.reply({ content: `⏭️ **Skipped:** \`${currentTitle}\`` });
+    }
+
+    return context.reply({ content: "❌ Nothing is currently playing in this server.", ephemeral: true });
   },
 };

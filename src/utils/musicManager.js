@@ -483,157 +483,250 @@ function createMusicManager(client) {
 async function handleMusicInteraction(interaction, client) {
   const customId = interaction.customId;
   const guildId = interaction.guildId;
-  const player = client.manager?.getPlayer(guildId);
+  const memberVoice = interaction.member?.voice?.channel;
 
-  if (!player) {
+  // Voice channel locks can be executed if member is in voice channel
+  if (customId === "dj_lock") {
+    if (!memberVoice) {
+      return interaction.reply({ content: "❌ You must be connected to a voice channel to use lock controls.", ephemeral: true });
+    }
+    await memberVoice.permissionOverwrites.edit(interaction.guild.roles.everyone, { Connect: false }).catch(() => {});
     return interaction.reply({
-      content: "❌ No active music session found for this server.",
+      content: `🔒 **Locked voice channel:** <#${memberVoice.id}>\n*Only existing members and moderators can join.*`,
       ephemeral: true,
     });
   }
 
-  const memberVoice = interaction.member?.voice?.channel;
-  if (!memberVoice || memberVoice.id !== player.voiceId) {
+  if (customId === "dj_unlock") {
+    if (!memberVoice) {
+      return interaction.reply({ content: "❌ You must be connected to a voice channel to use lock controls.", ephemeral: true });
+    }
+    await memberVoice.permissionOverwrites.edit(interaction.guild.roles.everyone, { Connect: null }).catch(() => {});
     return interaction.reply({
-      content: "❌ You must be in the same voice channel as the bot to use music controls!",
+      content: `🔓 **Unlocked voice channel:** <#${memberVoice.id}>\n*Channel is now open.*`,
+      ephemeral: true,
+    });
+  }
+
+  const { StarryAudioEngine } = require("./nativeAudioEngine");
+  const kPlayer = client.manager?.getPlayer(guildId);
+  const nPlayer = StarryAudioEngine.getPlayer(guildId, client);
+
+  if (!kPlayer && !nPlayer) {
+    return interaction.reply({
+      content: "❌ No active audio playback in this server.",
       ephemeral: true,
     });
   }
 
   // 1. PAUSE / RESUME
-  if (customId === "music_pause") {
-    const newState = !player.paused;
-    player.pause(newState);
-    const loopMode = player.loop || "none";
-    const isAutoplay = Boolean(player.data.get("autoplay") || player.autoplay);
-    await interaction.update({
-      components: buildNowPlayingComponents(isAutoplay, newState, loopMode),
-    }).catch(() => {});
-    return interaction.followUp({
-      content: newState ? "⏸️ **Paused the music.**" : "▶️ **Resumed playback.**",
-      ephemeral: true,
-    }).catch(() => {});
+  if (customId === "music_pause" || customId === "dj_pause") {
+    if (kPlayer) {
+      const newState = !kPlayer.paused;
+      kPlayer.pause(newState);
+      const loopMode = kPlayer.loop || "none";
+      const isAutoplay = Boolean(kPlayer.data?.get("autoplay") || kPlayer.autoplay);
+      await interaction.update({
+        components: buildNowPlayingComponents(isAutoplay, newState, loopMode),
+      }).catch(() => {});
+      return interaction.followUp({
+        content: newState ? "⏸️ **Paused the music.**" : "▶️ **Resumed playback.**",
+        ephemeral: true,
+      }).catch(() => {});
+    }
+    if (nPlayer) {
+      const isPaused = nPlayer.pause();
+      if (nPlayer.currentTrack) {
+        await nPlayer.sendNowPlayingPanel(nPlayer.currentTrack, true).catch(() => {});
+      }
+      return interaction.reply({
+        content: isPaused ? "⏸️ **Paused the music.**" : "▶️ **Resumed playback.**",
+        ephemeral: true,
+      }).catch(() => {});
+    }
   }
 
   // 2. SKIP
-  if (customId === "music_skip") {
-    const current = player.queue.current?.title || "Current Track";
-    player.skip();
-    return interaction.reply({
-      content: `⏭️ **Skipped:** \`${current}\``,
-      ephemeral: true,
-    }).catch(() => {});
+  if (customId === "music_skip" || customId === "dj_skip") {
+    if (kPlayer) {
+      const current = kPlayer.queue.current?.title || "Current Track";
+      kPlayer.skip();
+      return interaction.reply({ content: `⏭️ **Skipped:** \`${current}\``, ephemeral: true });
+    }
+    if (nPlayer) {
+      const current = nPlayer.currentTrack?.title || "Current Track";
+      nPlayer.skip();
+      return interaction.reply({ content: `⏭️ **Skipped:** \`${current}\``, ephemeral: true });
+    }
   }
 
   // 3. STOP
-  if (customId === "music_stop") {
-    player.destroy();
+  if (customId === "music_stop" || customId === "dj_stop") {
+    if (kPlayer) kPlayer.destroy();
+    if (nPlayer) nPlayer.stop();
     return interaction.reply({
       content: "⏹️ **Audio playback stopped and bot disconnected.**",
-    }).catch(() => {});
+      ephemeral: true,
+    });
   }
 
   // 4. LOOP
-  if (customId === "music_loop") {
-    const currentLoop = player.loop || "none";
-    let nextLoop = "none";
-    if (currentLoop === "none") nextLoop = "track";
-    else if (currentLoop === "track") nextLoop = "queue";
-    else nextLoop = "none";
-
-    player.setLoop(nextLoop);
-    const isAutoplay = Boolean(player.data.get("autoplay") || player.autoplay);
-    await interaction.update({
-      components: buildNowPlayingComponents(isAutoplay, player.paused, nextLoop),
-    }).catch(() => {});
-    return interaction.followUp({
-      content: `🔁 **Loop mode set to:** \`${nextLoop.toUpperCase()}\``,
-      ephemeral: true,
-    }).catch(() => {});
+  if (customId === "music_loop" || customId === "dj_loop") {
+    if (kPlayer) {
+      const currentLoop = kPlayer.loop || "none";
+      let nextLoop = currentLoop === "none" ? "track" : currentLoop === "track" ? "queue" : "none";
+      kPlayer.setLoop(nextLoop);
+      const isAutoplay = Boolean(kPlayer.data?.get("autoplay") || kPlayer.autoplay);
+      await interaction.update({
+        components: buildNowPlayingComponents(isAutoplay, kPlayer.paused, nextLoop),
+      }).catch(() => {});
+      return interaction.followUp({
+        content: `🔁 **Loop mode set to:** \`${nextLoop.toUpperCase()}\``,
+        ephemeral: true,
+      }).catch(() => {});
+    }
+    if (nPlayer) {
+      nPlayer.loop = nPlayer.loop === "none" ? "track" : nPlayer.loop === "track" ? "queue" : "none";
+      if (nPlayer.currentTrack) {
+        await nPlayer.sendNowPlayingPanel(nPlayer.currentTrack, true).catch(() => {});
+      }
+      return interaction.reply({
+        content: `🔁 **Loop mode set to:** \`${nPlayer.loop.toUpperCase()}\``,
+        ephemeral: true,
+      });
+    }
   }
 
   // 5. VOLUME CONTROLS
   if (customId === "dj_vol_down") {
-    const newVol = Math.max((player.volume || 100) - 10, 10);
-    player.setVolume(newVol);
-    return interaction.reply({
-      content: `🔉 **Volume reduced to ${newVol}%**`,
-      ephemeral: true,
-    }).catch(() => {});
+    if (kPlayer) {
+      const newVol = Math.max((kPlayer.volume || 100) - 10, 10);
+      kPlayer.setVolume(newVol);
+      return interaction.reply({ content: `🔉 **Volume reduced to ${newVol}%**`, ephemeral: true });
+    }
+    if (nPlayer) {
+      const newVol = Math.max(nPlayer.volume - 10, 10);
+      nPlayer.setVolume(newVol);
+      if (nPlayer.currentTrack) await nPlayer.sendNowPlayingPanel(nPlayer.currentTrack, true).catch(() => {});
+      return interaction.reply({ content: `🔉 **Volume reduced to ${newVol}%**`, ephemeral: true });
+    }
   }
 
   if (customId === "dj_vol_up") {
-    const newVol = Math.min((player.volume || 100) + 10, 150);
-    player.setVolume(newVol);
-    return interaction.reply({
-      content: `🔊 **Volume increased to ${newVol}%**`,
-      ephemeral: true,
-    }).catch(() => {});
+    if (kPlayer) {
+      const newVol = Math.min((kPlayer.volume || 100) + 10, 150);
+      kPlayer.setVolume(newVol);
+      return interaction.reply({ content: `🔊 **Volume increased to ${newVol}%**`, ephemeral: true });
+    }
+    if (nPlayer) {
+      const newVol = Math.min(nPlayer.volume + 10, 150);
+      nPlayer.setVolume(newVol);
+      if (nPlayer.currentTrack) await nPlayer.sendNowPlayingPanel(nPlayer.currentTrack, true).catch(() => {});
+      return interaction.reply({ content: `🔊 **Volume increased to ${newVol}%**`, ephemeral: true });
+    }
   }
 
   // 6. SHUFFLE
-  if (customId === "music_shuffle") {
-    if (!player.queue || player.queue.length === 0) {
-      return interaction.reply({
-        content: "⚠️ Not enough songs in the queue to shuffle.",
-        ephemeral: true,
-      });
+  if (customId === "music_shuffle" || customId === "dj_shuffle") {
+    if (kPlayer) {
+      if (!kPlayer.queue || kPlayer.queue.length === 0) {
+        return interaction.reply({ content: "⚠️ Not enough songs in the queue to shuffle.", ephemeral: true });
+      }
+      kPlayer.queue.shuffle();
+      return interaction.reply({ content: `🔀 **Shuffled ${kPlayer.queue.length} songs in the queue!**`, ephemeral: true });
     }
-    player.queue.shuffle();
-    return interaction.reply({
-      content: `🔀 **Shuffled ${player.queue.length} songs in the queue!**`,
-      ephemeral: true,
-    }).catch(() => {});
+    if (nPlayer) {
+      nPlayer.shuffle();
+      return interaction.reply({ content: `🔀 **Shuffled ${nPlayer.queue.length} songs in the queue!**`, ephemeral: true });
+    }
   }
 
   // 7. QUEUE VIEW
   if (customId === "music_queue") {
-    const current = player.queue.current;
-    const tracks = player.queue.slice(0, 10);
-    const queueList =
-      tracks.length > 0
-        ? tracks.map((t, idx) => `\`${idx + 1}.\` [${t.title}](${t.uri}) - \`${formatTime(t.length)}\``).join("\n")
-        : "*No upcoming songs.*";
+    if (kPlayer) {
+      const current = kPlayer.queue.current;
+      const tracks = kPlayer.queue.slice(0, 10);
+      const queueList =
+        tracks.length > 0
+          ? tracks.map((t, idx) => `\`${idx + 1}.\` [${t.title}](${t.uri}) - \`${formatTime(t.length)}\``).join("\n")
+          : "*No upcoming songs.*";
 
-    const embed = new EmbedBuilder()
-      .setColor(config.theme.primary || 0x5865f2)
-      .setTitle(`📜 Queue for ${interaction.guild.name}`)
-      .setDescription(
-        `**Now Playing:**\n[${current ? current.title : "None"}](${current ? current.uri : ""}) - \`${formatTime(current ? current.length : 0)}\`\n\n` +
-          `**Up Next (${player.queue.length} songs):**\n${queueList}`
-      )
-      .setTimestamp();
+      const embed = new EmbedBuilder()
+        .setColor(config.theme.primary || 0x5865f2)
+        .setTitle(`📜 Queue for ${interaction.guild.name}`)
+        .setDescription(
+          `**Now Playing:**\n[${current ? current.title : "None"}](${current ? current.uri : ""}) - \`${formatTime(current ? current.length : 0)}\`\n\n` +
+            `**Up Next (${kPlayer.queue.length} songs):**\n${queueList}`
+        )
+        .setTimestamp();
 
-    return interaction.reply({ embeds: [embed], ephemeral: true }).catch(() => {});
+      return interaction.reply({ embeds: [embed], ephemeral: true }).catch(() => {});
+    }
+    if (nPlayer) {
+      const current = nPlayer.currentTrack;
+      const tracks = nPlayer.queue.slice(0, 10);
+      const queueList =
+        tracks.length > 0
+          ? tracks.map((t, idx) => `\`${idx + 1}.\` [${t.title}](${t.url}) - \`${formatTime(t.duration)}\``).join("\n")
+          : "*No upcoming songs.*";
+
+      const embed = new EmbedBuilder()
+        .setColor(config.theme.primary || 0x5865f2)
+        .setTitle(`📜 Queue for ${interaction.guild.name}`)
+        .setDescription(
+          `**Now Playing:**\n[${current ? current.title : "None"}](${current ? current.url : ""}) - \`${formatTime(current ? current.duration : 0)}\`\n\n` +
+            `**Up Next (${nPlayer.queue.length} songs):**\n${queueList}`
+        )
+        .setTimestamp();
+
+      return interaction.reply({ embeds: [embed], ephemeral: true }).catch(() => {});
+    }
   }
 
   // 8. AUTOPLAY TOGGLE
   if (customId === "music_autoplay") {
-    const cur = Boolean(player.data.get("autoplay") || player.autoplay);
-    const nextState = !cur;
-    player.data.set("autoplay", nextState);
-    player.autoplay = nextState;
+    if (kPlayer) {
+      const cur = Boolean(kPlayer.data.get("autoplay") || kPlayer.autoplay);
+      const nextState = !cur;
+      kPlayer.data.set("autoplay", nextState);
+      kPlayer.autoplay = nextState;
 
-    if (nextState) {
-      triggerAutoplayBuffer(player, player.queue.length === 0 && !player.playing).catch(() => {});
+      if (nextState) {
+        triggerAutoplayBuffer(kPlayer, kPlayer.queue.length === 0 && !kPlayer.playing).catch(() => {});
+      }
+
+      const loopMode = kPlayer.loop || "none";
+      await interaction.update({
+        components: buildNowPlayingComponents(nextState, kPlayer.paused, loopMode),
+      }).catch(() => {});
+
+      return interaction.followUp({
+        content: `📻 **Autoplay recommendation mode:** \`${nextState ? "ENABLED" : "DISABLED"}\``,
+        ephemeral: true,
+      }).catch(() => {});
     }
-
-    const loopMode = player.loop || "none";
-    await interaction.update({
-      components: buildNowPlayingComponents(nextState, player.paused, loopMode),
-    }).catch(() => {});
-
-    return interaction.followUp({
-      content: `📻 **Autoplay recommendation mode:** \`${nextState ? "ENABLED" : "DISABLED"}\``,
-      ephemeral: true,
-    }).catch(() => {});
+    if (nPlayer) {
+      nPlayer.autoplay = !nPlayer.autoplay;
+      if (nPlayer.currentTrack) {
+        await nPlayer.sendNowPlayingPanel(nPlayer.currentTrack, true).catch(() => {});
+      }
+      return interaction.reply({
+        content: `📻 **Autoplay recommendation mode:** \`${nPlayer.autoplay ? "ENABLED" : "DISABLED"}\``,
+        ephemeral: true,
+      });
+    }
   }
 
   // 9. DSP FILTER SELECT MENU
   if (customId === "music_filter" && interaction.isStringSelectMenu()) {
     const filterChoice = interaction.values[0];
-    player.data.set("activeFilter", filterChoice);
-    await applyKazagumoFilter(player, filterChoice);
+    if (kPlayer) {
+      kPlayer.data.set("activeFilter", filterChoice);
+      await applyKazagumoFilter(kPlayer, filterChoice);
+    }
+    if (nPlayer) {
+      await nPlayer.setFilter(filterChoice);
+    }
     return interaction.reply({
       content: `🎛️ **Applied Audio DSP Filter:** \`${filterChoice.toUpperCase()}\``,
       ephemeral: true,

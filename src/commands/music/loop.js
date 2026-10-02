@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
+const { StarryAudioEngine } = require("../../utils/nativeAudioEngine");
 
 module.exports = {
   name: "loop",
@@ -23,9 +24,10 @@ module.exports = {
 
   async execute(context, args, client) {
     const isSlash = typeof context.isChatInputCommand === "function" && context.isChatInputCommand();
-    const player = client.manager?.getPlayer(context.guild.id);
+    const kPlayer = client.manager?.getPlayer(context.guild.id);
+    const nPlayer = StarryAudioEngine.getPlayer(context.guild.id);
 
-    if (!player) {
+    if (!kPlayer && !nPlayer) {
       return context.reply({ content: "❌ Nothing is currently playing in this server.", ephemeral: true });
     }
 
@@ -36,11 +38,11 @@ module.exports = {
       mode = args && args[0] ? args[0].toLowerCase() : null;
     }
 
+    const currentMode = nPlayer ? (nPlayer.loop || "none") : (kPlayer.loop || "none");
+
     if (!mode) {
-      // Toggle
-      const current = player.loop || "none";
-      if (current === "none") mode = "track";
-      else if (current === "track") mode = "queue";
+      if (currentMode === "none") mode = "track";
+      else if (currentMode === "track") mode = "queue";
       else mode = "none";
     }
 
@@ -49,7 +51,12 @@ module.exports = {
     }
 
     const setMode = mode === "off" ? "none" : mode;
-    player.setLoop(setMode);
+    if (kPlayer) kPlayer.setLoop(setMode);
+    if (nPlayer) {
+      nPlayer.loop = setMode;
+      if (nPlayer.currentTrack) await nPlayer.sendNowPlayingPanel(nPlayer.currentTrack, true).catch(() => {});
+    }
+
     return context.reply({ content: `🔁 **Loop mode set to:** \`${setMode.toUpperCase()}\`` });
   },
 };
