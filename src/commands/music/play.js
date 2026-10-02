@@ -84,19 +84,120 @@ module.exports = {
     }
 
     try {
-      // 1. Primary High-Fidelity Native Audio Engine (100% Host-Anywhere • Termux Compatible)
+      // 1. Lavalink v4 Cluster Priority (Fastest <1s resolution & zero CPU overhead)
+      const manager = client.manager;
+      const hasLavalink = Boolean(
+        manager &&
+        manager.shoukaku &&
+        Array.from(manager.shoukaku.nodes.values()).some((n) => n.state === 1)
+      );
+
+      if (hasLavalink) {
+        try {
+          const res = await manager.search(query, { requester: user });
+          if (!res || !res.tracks || res.tracks.length === 0 || res.loadType === "empty" || res.loadType === "error") {
+            throw new Error(`Lavalink could not resolve "${query}". Falling back to Native Audio Engine.`);
+          }
+
+          let player = manager.getPlayer(guild.id);
+          if (!player) {
+            player = await manager.createPlayer({
+              guildId: guild.id,
+              voiceId: voiceChannel.id,
+              textId: context.channel.id,
+              deaf: true,
+            });
+          }
+
+          if (player.voiceId !== voiceChannel.id) {
+            player.setVoiceChannel(voiceChannel.id);
+          }
+
+          if (loadingMsg) {
+            loadingMsg.delete().catch(() => {});
+            loadingMsg = null;
+          }
+
+          if (res.loadType === "playlist") {
+            for (const track of res.tracks) {
+              player.queue.add(track);
+            }
+            if (!player.playing && !player.paused) player.play();
+
+            const totalDurationMs = res.tracks.reduce((acc, t) => acc + (t.length || 0), 0);
+            const totalDurationStr = formatTime(totalDurationMs);
+            const previewTracks = res.tracks.slice(0, 3).map((t, idx) => {
+              return `\`${idx + 1}.\` **[${(t.title || "Track").substring(0, 45)}](${t.uri || "https://discord.gg"})** • \`${t.author || "Artist"}\` (\`${formatTime(t.length)}\`)`;
+            }).join("\n");
+            const remainingCount = res.tracks.length > 3 ? `\n*... and **${res.tracks.length - 3}** more tracks*` : "";
+
+            const embed = new EmbedBuilder()
+              .setColor(config.theme.primary || 0x5865f2)
+              .setAuthor({
+                name: `📚 Playlist Enqueued • ${res.playlist?.name || "Online Stream"}`,
+                iconURL: user.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : undefined,
+              })
+              .setTitle(res.playlist?.name ? res.playlist.name.substring(0, 95) : "Loaded Playlist")
+              .setThumbnail(res.tracks[0]?.thumbnail || "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80")
+              .setDescription(
+                `✅ Added **${res.tracks.length}** tracks to the server queue!\n\n` +
+                `👤 **Curator / Artist:** \`${res.tracks[0]?.author || "Featured Artist"}\`\n` +
+                `🕒 **Total Estimated Playtime:** \`${totalDurationStr}\`\n` +
+                `🔠 **Queue Status:** Currently playing • \`${player.queue.length}\` songs in queue\n` +
+                `🔊 **Mastering:** \`Lavalink Studio Hi-Fi Active\`\n\n` +
+                `📝 **Upcoming Tracks Preview:**\n` +
+                `${previewTracks}${remainingCount}`
+              )
+              .setFooter({ text: `Requested by ${user.tag || user.username}` })
+              .setTimestamp();
+
+            return replyFunc({ embeds: [embed] });
+          } else {
+            const track = res.tracks[0];
+            if (!player.playing && !player.paused && !player.queue.current) {
+              player.queue.add(track);
+              player.play();
+              if (isSlash) {
+                return replyFunc({ content: `▶️ **Playing:** \`${track.title}\``, flags: [EPHEMERAL_FLAG] });
+              }
+            } else {
+              player.queue.add(track);
+              const embed = new EmbedBuilder()
+                .setColor(config.theme.primary || 0x5865f2)
+                .setAuthor({
+                  name: "Track Queued • Original Studio Hi-Fi Active",
+                  iconURL: user.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : undefined,
+                })
+                .setTitle(track.title ? track.title.substring(0, 90) : "Track")
+                .setURL(track.uri || "https://discord.gg")
+                .setThumbnail(track.thumbnail || "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80")
+                .setDescription(
+                  `👤 **Artist:** \`${track.author || "Artist"}\`\n` +
+                  `🕒 **Duration:** \`${formatTime(track.length)}\`\n` +
+                  `🔢 **Queue Position:** \`#${player.queue.length}\`\n` +
+                  `🌐 **Source:** \`${track.sourceName || "Lavalink Hi-Fi"}\`\n` +
+                  `🔊 **Sound Profile:** \`⭐ Studio Hi-Fi Master (Original Release)\``
+                )
+                .setFooter({ text: `Requested by ${user.tag || user.username}` })
+                .setTimestamp();
+
+              return replyFunc({ embeds: [embed] });
+            }
+            return;
+          }
+        } catch (kErr) {
+          console.warn("⚠️ [play.js Lavalink Fallback]:", kErr.message || kErr);
+        }
+      }
+
+      // 2. High-Fidelity Native Audio Engine (Bulletproof Termux / Host-Anywhere Fallback)
       const player = StarryAudioEngine.getOrCreatePlayer(client, guild.id, voiceChannel, context.channel);
       if (loadingMsg) player.loadingMessage = loadingMsg;
 
-      const connectPromise = player.connect().catch(() => {});
-      const searchPromise = StarryAudioEngine.search(query, user);
+      // ⚡ Asynchronously start voice connection in background without blocking search
+      player.connect().catch(() => {});
 
-      const [_, result] = await Promise.race([
-        Promise.all([connectPromise, searchPromise]),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Audio search or voice connect timed out")), 20000)
-        ),
-      ]);
+      const result = await StarryAudioEngine.search(query, user);
 
       if (!result || !result.tracks || result.tracks.length === 0) {
         if (loadingMsg) loadingMsg.delete().catch(() => {});
@@ -108,7 +209,7 @@ module.exports = {
           player.queue.push(track);
         }
         if (!player.currentTrack && !player.isPlaying) {
-          await player.playNext();
+          player.playNext().catch((e) => console.error("[playNext error]:", e));
         }
 
         if (loadingMsg) {
@@ -149,10 +250,10 @@ module.exports = {
         const track = result.tracks[0];
         if (!player.currentTrack && !player.isPlaying) {
           player.queue.push(track);
-          await player.playNext();
-          // sendNowPlayingPanel is called by player.playTrack() automatically
+          player.playNext().catch((err) => console.error("[playNext error]:", err));
+          // sendNowPlayingPanel is called by player.playTrack() automatically in <2s
           if (isSlash) {
-            return replyFunc({ content: `▶️ **Playing:** \`${track.title}\``, ephemeral: true });
+            return replyFunc({ content: `▶️ **Playing:** \`${track.title}\``, flags: [EPHEMERAL_FLAG] });
           }
         } else {
           player.queue.push(track);

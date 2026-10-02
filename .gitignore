@@ -12,3 +12,6 @@ npm-debug.log*
 src/data/*.json
 src/data/*.tmp
 logs/
+.audio_cache/
+__pycache__/
+*.pyc

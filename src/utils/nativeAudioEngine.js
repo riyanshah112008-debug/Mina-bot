@@ -103,14 +103,17 @@ FILTER_ARGS.mellow = FILTER_ARGS.soft;
 FILTER_ARGS.relax = FILTER_ARGS.soft;
 FILTER_ARGS.vintage = FILTER_ARGS.radio;
 
-let scClientId = null;
+let scClientId = 'dkevB9EsY4jIoSm8RfddPNUKyn6hurXF';
 let lastTokenRefresh = 0;
 
 async function refreshSoundCloudToken() {
     const now = Date.now();
     if (scClientId && (now - lastTokenRefresh < 3600000)) return;
     try {
-        const id = await play.getFreeClientID();
+        const id = await Promise.race([
+            play.getFreeClientID(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+        ]);
         if (id) {
             scClientId = id;
             await play.setToken({ soundcloud: { client_id: id } });
@@ -118,7 +121,8 @@ async function refreshSoundCloudToken() {
         }
     } catch (e) {}
 }
-refreshSoundCloudToken();
+play.setToken({ soundcloud: { client_id: scClientId } }).catch(() => {});
+refreshSoundCloudToken().catch(() => {});
 
 // ==========================================
 // 🟢 OFFICIAL SPOTIFY API ENGINE
@@ -550,9 +554,20 @@ class StarryGuildPlayer {
 
         try {
             if (isFile) {
+                const isUrl = typeof streamOrPath === 'string' && (streamOrPath.startsWith('http://') || streamOrPath.startsWith('https://'));
+                const inputArgs = isUrl 
+                    ? [
+                        '-reconnect', '1', 
+                        '-reconnect_streamed', '1', 
+                        '-reconnect_delay_max', '5', 
+                        '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        '-i', streamOrPath
+                      ]
+                    : ['-i', streamOrPath];
+
                 const ffmpeg = new prism.FFmpeg({
                     args: [
-                        '-i', streamOrPath,
+                        ...inputArgs,
                         ...activeFilter,
                         '-f', 's16le',
                         '-ar', '48000',
@@ -643,16 +658,20 @@ class StarryGuildPlayer {
                     }
 
                     let resolved = await streamResolver.resolve(query);
-                    if (!resolved || !resolved.file) {
+                    if (!resolved || (!resolved.file && !resolved.url)) {
                         resolved = await streamResolver.resolve(`${primaryArtist} ${track.title}`.trim());
                     }
-                    if (!resolved || !resolved.file) {
+                    if (!resolved || (!resolved.file && !resolved.url)) {
                         resolved = await streamResolver.resolve(`${track.title} Official Audio`.trim());
                     }
 
-                    if (resolved && resolved.file && fs.existsSync(resolved.file)) {
-                        track._resolvedFile = resolved.file;
-                        audioResource = this.createFilteredResource(resolved.file, true);
+                    if (resolved) {
+                        if (resolved.file && fs.existsSync(resolved.file)) {
+                            track._resolvedFile = resolved.file;
+                            audioResource = this.createFilteredResource(resolved.file, true);
+                        } else if (resolved.url) {
+                            audioResource = this.createFilteredResource(resolved.url, true);
+                        }
                     }
                 } catch (srErr) {}
             }
@@ -662,8 +681,8 @@ class StarryGuildPlayer {
                 try {
                     await refreshSoundCloudToken();
                     const primaryArtist = (track.author || '').split(',')[0].trim();
-                    const queryText = `${primaryArtist} ${track.title}`.trim();
-                    let scResults = await play.search(queryText, { source: { soundcloud: 'tracks' }, limit: 1 }).catch(() => []);
+                    const scSearchQuery = `${primaryArtist} ${track.title}`.trim() || track.title;
+                    let scResults = await play.search(scSearchQuery, { source: { soundcloud: 'tracks' }, limit: 1 }).catch(() => []);
                     if (!scResults || scResults.length === 0) {
                         scResults = await play.search(track.title, { source: { soundcloud: 'tracks' }, limit: 1 }).catch(() => []);
                     }
@@ -680,7 +699,7 @@ class StarryGuildPlayer {
                 }
             }
 
-            // 4. Secondary Cloud Streamer: YouTube Audio via play-dl or @distube/ytdl-core
+            // 4. Secondary Cloud Streamer: YouTube Audio via streamResolver, play-dl or @distube/ytdl-core
             if (!audioResource) {
                 try {
                     let ytUrl = targetUrl;
@@ -692,15 +711,23 @@ class StarryGuildPlayer {
                         if (ytSearch && ytSearch[0]) ytUrl = ytSearch[0].url;
                     }
                     if (ytUrl) {
-                        try {
-                            const stream = await play.stream(ytUrl, { quality: 2 });
-                            if (stream && stream.stream) {
-                                audioResource = this.createFilteredResource(stream.stream, false);
+                        if (streamResolver && !streamResolver.disabled) {
+                            const res = await streamResolver.resolve(ytUrl);
+                            if (res && res.url) {
+                                audioResource = this.createFilteredResource(res.url, true);
                             }
-                        } catch (pErr) {
-                            const ytdl = require('@distube/ytdl-core');
-                            const ytdlStream = ytdl(ytUrl, { filter: 'audioonly', quality: 'highestaudio', highWaterMark: 1 << 25 });
-                            audioResource = this.createFilteredResource(ytdlStream, false);
+                        }
+                        if (!audioResource) {
+                            try {
+                                const stream = await play.stream(ytUrl, { quality: 2 });
+                                if (stream && stream.stream) {
+                                    audioResource = this.createFilteredResource(stream.stream, false);
+                                }
+                            } catch (pErr) {
+                                const ytdl = require('@distube/ytdl-core');
+                                const ytdlStream = ytdl(ytUrl, { filter: 'audioonly', quality: 'highestaudio', highWaterMark: 1 << 25 });
+                                audioResource = this.createFilteredResource(ytdlStream, false);
+                            }
                         }
                     }
                 } catch (ytErr) {
@@ -1130,7 +1157,7 @@ class StarryAudioEngine {
 
     static async search(rawQuery, requester) {
         const tracks = [];
-        await refreshSoundCloudToken();
+        refreshSoundCloudToken().catch(() => {});
         let query = rawQuery.trim();
 
         // 0. Resolve shortlinks / redirects (youtu.be, on.soundcloud.com, spotify.link, deezer.page.link)

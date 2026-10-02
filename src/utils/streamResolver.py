@@ -32,13 +32,12 @@ except:
     pass
 
 ydl_track_opts = {
-    'format': 'ba/b',
+    'format': 'bestaudio/ba/b',
     'quiet': True,
     'no_warnings': True,
     'noplaylist': True,
     'default_search': 'ytsearch1',
-    'outtmpl': os.path.join(CACHE_DIR, '%(id)s.%(ext)s'),
-    'extractor_args': {'youtube': {'player_client': ['android']}},
+    'extractor_args': {'youtube': {'player_client': ['android', 'ios', 'web']}},
     'socket_timeout': 10
 }
 
@@ -114,30 +113,23 @@ for line in sys.stdin:
             else:
                 target = f'ytsearch1:{query}'
 
-            info = ydl_track.extract_info(target, download=True)
+            info = ydl_track.extract_info(target, download=False)
             if 'entries' in info:
-                entries = info['entries']
+                entries = info.get('entries') or []
                 video = entries[0] if entries else None
             else:
                 video = info
 
-            if video:
-                vid_id = video.get('id')
-                matching = glob.glob(os.path.join(CACHE_DIR, f'{vid_id}.*'))
-                filepath = matching[0] if matching else ydl_track.prepare_filename(video)
-
-                if os.path.exists(filepath) and os.path.getsize(filepath) > 10000:
-                    resp = {
-                        'id': req_id,
-                        'status': 'ok',
-                        'file': filepath,
-                        'title': video.get('title'),
-                        'duration': video.get('duration')
-                    }
-                else:
-                    resp = {'id': req_id, 'status': 'error', 'message': 'Audio file empty or missing'}
+            if video and video.get('url'):
+                resp = {
+                    'id': req_id,
+                    'status': 'ok',
+                    'url': video.get('url'),
+                    'title': video.get('title'),
+                    'duration': video.get('duration')
+                }
             else:
-                resp = {'id': req_id, 'status': 'error', 'message': 'No audio format found'}
+                resp = {'id': req_id, 'status': 'error', 'message': 'No playable audio stream found'}
     except Exception as e:
         resp = {'id': req_id, 'status': 'error', 'message': str(e)}
 

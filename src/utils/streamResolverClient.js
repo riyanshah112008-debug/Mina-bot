@@ -73,8 +73,12 @@ class StreamResolverClient {
         if (!query) return null;
         const cacheKey = query.trim().toLowerCase();
         const cached = this.cache.get(cacheKey);
-        if (cached && cached.file && fs.existsSync(cached.file) && (Date.now() - cached.timestamp < 86400000)) {
-            return cached;
+        if (cached) {
+            const isValidFile = cached.file && fs.existsSync(cached.file) && (Date.now() - cached.timestamp < 86400000);
+            const isValidUrl = cached.url && (Date.now() - cached.timestamp < 3600000);
+            if (isValidFile || isValidUrl) {
+                return cached;
+            }
         }
 
         const id = ++this.reqId;
@@ -104,10 +108,17 @@ class StreamResolverClient {
                 resolve(null);
             }
         }).then((res) => {
-            if (res && res.status === 'ok' && res.file && fs.existsSync(res.file)) {
-                const item = { file: res.file, title: res.title, duration: res.duration, timestamp: Date.now() };
-                this.cache.set(cacheKey, item);
-                return item;
+            if (res && res.status === 'ok') {
+                if (res.file && fs.existsSync(res.file)) {
+                    const item = { file: res.file, title: res.title, duration: res.duration, timestamp: Date.now() };
+                    this.cache.set(cacheKey, item);
+                    return item;
+                }
+                if (res.url) {
+                    const item = { url: res.url, title: res.title, duration: res.duration, timestamp: Date.now() };
+                    this.cache.set(cacheKey, item);
+                    return item;
+                }
             }
             return null;
         });
