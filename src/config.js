@@ -2,27 +2,28 @@ require("dotenv").config({ override: true });
 
 /**
  * Robustly sanitizes bot tokens by stripping surrounding quotes,
- * accidental "Bot " prefixes, trailing/leading whitespace, and newlines/CRLF.
+ * accidental "Bot " prefixes, all whitespace (including internal spaces and line-wraps),
+ * zero-width / control characters, and extracting the clean Discord token pattern.
  */
 function sanitizeToken(token) {
   if (!token || typeof token !== "string") return "";
   let clean = token.trim();
-  // Strip enclosing single or double quotes
-  if ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
-    clean = clean.slice(1, -1).trim();
-  }
+  // Strip all quotes (single, double, backticks)
+  clean = clean.replace(/['"`]/g, "");
   // Strip redundant "Bot " prefix if someone added it in env
-  if (clean.toLowerCase().startsWith("bot ")) {
-    clean = clean.slice(4).trim();
+  clean = clean.replace(/^bot\s*/i, "");
+  // Remove all whitespace including spaces, tabs, newlines, and non-breaking spaces
+  clean = clean.replace(/\s+/g, "");
+  // Remove zero-width spaces, BOM, and other invisible control characters
+  clean = clean.replace(/[\u200B-\u200D\uFEFF\u0000-\u001F\u007F-\u009F\u00A0]/g, "");
+  // Extract standard Discord bot token pattern if embedded in formatting or extra text
+  const match = clean.match(/[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{20,}/);
+  if (match) {
+    clean = match[0];
   }
-  // Strip enclosing quotes again if nested
-  if ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
-    clean = clean.slice(1, -1).trim();
-  }
-  // Remove any carriage returns, newlines, or tabs
-  clean = clean.replace(/[\r\n\t]/g, "").trim();
   return clean;
 }
+
 
 const DEFAULT_CLIENT_ID = "1537694522426007582";
 const DEFAULT_OWNER_IDS = ["1465049039153135639", "1233116813831962737"];

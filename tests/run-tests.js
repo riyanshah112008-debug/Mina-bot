@@ -47,10 +47,13 @@ async function runAll() {
 
     // Token sanitization tests
     const sanitize = config.sanitizeToken;
+    const sampleToken = "DUMMY_TOKEN_ID_26_CHARS_AAA.XYZ123.synthetic_hmac_sample_token_38_chars_long";
     assert.strictEqual(sanitize('  "TOKEN_123" \r\n'), "TOKEN_123", "Must strip quotes, spaces, and CRLF");
     assert.strictEqual(sanitize("'TOKEN_ABC'\n"), "TOKEN_ABC", "Must strip single quotes and newline");
     assert.strictEqual(sanitize("Bot TOKEN_XYZ"), "TOKEN_XYZ", "Must strip accidental Bot prefix");
-    assert.strictEqual(sanitize("  'Bot TOKEN_XYZ' \n"), "TOKEN_XYZ", "Must strip nested quotes and Bot prefix");
+    assert.strictEqual(sanitize("  'Bot " + sampleToken + "' \n"), sampleToken, "Must strip nested quotes and Bot prefix");
+    assert.strictEqual(sanitize("DUMMY_TOKEN_ID_26_CHARS_AAA. XYZ123. synthetic_hmac_sample_token_38_chars_long"), sampleToken, "Must remove internal whitespace/spaces");
+    assert.strictEqual(sanitize("DUMMY_TOKEN_ID_26_CHARS_AAA\u200B.XYZ123.\uFEFFsynthetic_hmac_sample_token_38_chars_long"), sampleToken, "Must strip zero-width characters");
     assert.strictEqual(sanitize(null), "", "Null token returns empty string");
     assert.strictEqual(sanitize(""), "", "Empty token returns empty string");
   });
