@@ -7,7 +7,7 @@
     "start": "node src/boot.js",
     "dev": "node --watch src/index.js",
     "test": "node tests/run-tests.js",
-    "check": "node -e \"const fs=require('fs'); const path=require('path'); const { spawnSync } = require('child_process'); let failed=false; function walk(dir){ if (!fs.existsSync(dir)) return; for (const entry of fs.readdirSync(dir,{withFileTypes:true})) { const p=path.join(dir, entry.name); if (entry.isDirectory()) walk(p); else if (entry.isFile() && p.endsWith('.js')) { const res = spawnSync(process.execPath, ['--check', p], { stdio: 'inherit' }); if (res.status !== 0) failed = true; } } } walk('src'); walk('tests'); process.exit(failed ? 1 : 0);\""
+    "check": "node -e \"const fs=require('fs'),path=require('path'),vm=require('vm');let c=0,e=0;function walk(d){for(const ent of fs.readdirSync(d,{withFileTypes:true})){const p=path.join(d,ent.name);if(ent.isDirectory()&&ent.name!=='node_modules'&&!ent.name.startsWith('.'))walk(p);else if(ent.isFile()&&p.endsWith('.js')){c++;try{new vm.Script(fs.readFileSync(p,'utf8'),{filename:p});}catch(err){console.error('Syntax error:',p,err.message);e++;}}}}walk('src');walk('tests');console.log('Checked '+c+' files, errors: '+e);process.exit(e>0?1:0);\""
   },
   "keywords": [
     "mina-bot",

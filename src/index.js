@@ -44,6 +44,13 @@ loadEvents(client);
 
 // Connect to Discord
 client.login(config.token).catch((err) => {
-  console.error("[Friendbase Login Failed]:", err.message);
+  console.error("[Mina Bot Login Failed]:", err.message);
+  if (config.token && typeof config.token === "string") {
+    const masked = `${config.token.slice(0, 6)}...${config.token.slice(-4)} (length: ${config.token.length})`;
+    console.error(`[Mina Bot Auth Diagnostics] Token format: ${masked}`);
+  } else {
+    console.error("[Mina Bot Auth Diagnostics] No Discord token was provided in environment variables!");
+  }
   process.exit(1);
 });
+

@@ -44,6 +44,15 @@ async function runAll() {
     assert.strictEqual(config.isOwner("1465049039153135639"), true, "Owner 1 must be authorized");
     assert.strictEqual(config.isOwner("1233116813831962737"), true, "Owner 2 must be authorized");
     assert.strictEqual(config.isOwner("999999999999999999"), false, "Non-owner must be rejected");
+
+    // Token sanitization tests
+    const sanitize = config.sanitizeToken;
+    assert.strictEqual(sanitize('  "TOKEN_123" \r\n'), "TOKEN_123", "Must strip quotes, spaces, and CRLF");
+    assert.strictEqual(sanitize("'TOKEN_ABC'\n"), "TOKEN_ABC", "Must strip single quotes and newline");
+    assert.strictEqual(sanitize("Bot TOKEN_XYZ"), "TOKEN_XYZ", "Must strip accidental Bot prefix");
+    assert.strictEqual(sanitize("  'Bot TOKEN_XYZ' \n"), "TOKEN_XYZ", "Must strip nested quotes and Bot prefix");
+    assert.strictEqual(sanitize(null), "", "Null token returns empty string");
+    assert.strictEqual(sanitize(""), "", "Empty token returns empty string");
   });
 
   // Test 2: Time Parser Utility
