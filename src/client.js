@@ -13,6 +13,10 @@ const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.DirectMessages,
   ],
+  presence: {
+    status: "online",
+    activities: [{ name: "?help | Mina Bot 🌸", type: 0 }],
+  },
   partials: [
     Partials.Channel,
     Partials.GuildMember,

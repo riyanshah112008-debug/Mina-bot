@@ -1,10 +1,11 @@
+const { Events } = require("discord.js");
 const config = require("../config");
 const { loadSlashCommands } = require("../handlers/slashCommandLoader");
 const { startPresenceRotator } = require("../modules/presence/statusManager");
 const { createMusicManager } = require("../utils/musicManager");
 
 module.exports = {
-  name: "ready",
+  name: Events.ClientReady || "ready",
   once: true,
   async execute(...args) {
     const client = args[args.length - 1];
@@ -12,6 +13,10 @@ module.exports = {
 
     console.log(`[Mina Bot] 🌸 Logged in as ${client.user.tag} (${client.user.id})`);
     console.log(`[Mina Bot] 📦 Loaded ${client.commands.size} commands across Moderation, Utility, Music, Tickets, & Verification`);
+
+    try {
+      client.user.setStatus("online");
+    } catch (e) {}
 
     // Initialize Music Engine (Lavalink v4 Cluster)
     try {
