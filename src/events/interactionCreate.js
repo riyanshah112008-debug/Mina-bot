@@ -30,6 +30,12 @@ module.exports = {
         return await handleDevInteraction(interaction, client);
       }
 
+      // 0.3 BOT SERVER PROFILE BUTTON INTERACTIONS
+      if (interaction.customId && interaction.customId.startsWith("botprofile_")) {
+        const { handleBotProfileInteraction } = require("../commands/utility/botprofile");
+        return await handleBotProfileInteraction(interaction, client);
+      }
+
       // 1. TICKET INTERACTIONS
       if (
         (interaction.customId && interaction.customId.startsWith("ticket_")) ||

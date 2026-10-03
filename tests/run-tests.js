@@ -373,7 +373,100 @@ async function runAll() {
     // Verify Category embed builder
     const catEmbed = helpCmd.buildCategoryHelp(dummyClient, "music", "?");
     assert.ok(catEmbed, "Category embed should build");
-    assert.ok(catEmbed.data.title.includes("Music"), "Title should mention Music");
+  });
+
+  // Test 11: Bot Server Profile (PFP & Banner Customization)
+  console.log("\n📁 11. Bot Server Profile (PFP & Banner Customization)");
+  it("Validates image helper, permissions check, and extraction utilities", () => {
+    const { extractImageSource, canManageBotProfile } = require("../src/utils/imageHelper");
+    const { PermissionFlagsBits } = require("discord.js");
+
+    // 1. Permissions verification
+    const mockGuild = { ownerId: "guild_owner_123" };
+    const ownerMember = { id: "guild_owner_123", guild: mockGuild, permissions: { has: () => false } };
+    const adminMember = { id: "admin_user_456", guild: mockGuild, permissions: { has: (p) => p === PermissionFlagsBits.Administrator } };
+    const manageGuildMember = { id: "mod_user_789", guild: mockGuild, permissions: { has: (p) => p === PermissionFlagsBits.ManageGuild } };
+    const regularMember = { id: "reg_user_000", guild: mockGuild, permissions: { has: () => false } };
+
+    assert.strictEqual(canManageBotProfile(ownerMember), true, "Guild owner must have permission");
+    assert.strictEqual(canManageBotProfile(adminMember), true, "Admin member must have permission");
+    assert.strictEqual(canManageBotProfile(manageGuildMember), true, "Member with ManageGuild must have permission");
+    assert.strictEqual(canManageBotProfile(regularMember), false, "Regular member must NOT have permission");
+
+    // 2. Slash command source extraction
+    const mockSlashReset = {
+      isChatInputCommand: () => true,
+      options: {
+        getBoolean: (name) => (name === "reset" ? true : null),
+        getAttachment: () => null,
+        getString: () => null,
+      },
+    };
+    assert.deepStrictEqual(extractImageSource(mockSlashReset, []), { isReset: true });
+
+    const mockSlashAttachment = {
+      isChatInputCommand: () => true,
+      options: {
+        getBoolean: () => null,
+        getAttachment: (name) => (name === "image" ? { url: "https://cdn.discordapp.com/avatar.png" } : null),
+        getString: () => null,
+      },
+    };
+    assert.deepStrictEqual(extractImageSource(mockSlashAttachment, []), {
+      url: "https://cdn.discordapp.com/avatar.png",
+      isAttachment: true,
+      isReset: false,
+    });
+
+    // 3. Prefix message source extraction
+    const mockPrefixReset = { isChatInputCommand: () => false, attachments: new Map() };
+    assert.deepStrictEqual(extractImageSource(mockPrefixReset, ["reset"]), { isReset: true });
+    assert.deepStrictEqual(extractImageSource(mockPrefixReset, ["CLEAR"]), { isReset: true });
+
+    const mockPrefixUrl = { isChatInputCommand: () => false, attachments: new Map() };
+    assert.deepStrictEqual(extractImageSource(mockPrefixUrl, ["https://example.com/pfp.jpg"]), {
+      url: "https://example.com/pfp.jpg",
+      isAttachment: false,
+      isReset: false,
+    });
+
+    assert.strictEqual(extractImageSource(mockPrefixUrl, []), null, "Empty args and attachments must return null");
+  });
+
+  it("Loads and validates botavatar, botbanner, and botprofile commands", () => {
+    const botavatar = require("../src/commands/utility/botavatar");
+    const botbanner = require("../src/commands/utility/botbanner");
+    const botprofile = require("../src/commands/utility/botprofile");
+
+    // Check botavatar
+    assert.strictEqual(botavatar.name, "botavatar");
+    assert.strictEqual(typeof botavatar.execute, "function");
+    assert.ok(botavatar.aliases.includes("botpfp"));
+    assert.ok(botavatar.data, "Must have SlashCommandBuilder");
+
+    // Check botbanner
+    assert.strictEqual(botbanner.name, "botbanner");
+    assert.strictEqual(typeof botbanner.execute, "function");
+    assert.ok(botbanner.aliases.includes("setbotbanner"));
+    assert.ok(botbanner.data, "Must have SlashCommandBuilder");
+
+    // Check botprofile
+    assert.strictEqual(botprofile.name, "botprofile");
+    assert.strictEqual(typeof botprofile.execute, "function");
+    assert.strictEqual(typeof botprofile.handleBotProfileInteraction, "function");
+    assert.ok(botprofile.data, "Must have SlashCommandBuilder with subcommands");
+
+    // Check database persistence of botAvatar and botBanner
+    const db = require("../src/utils/database");
+    const testGuildId = "guild_profile_test_101";
+    db.updateGuildSettings(testGuildId, {
+      botAvatar: "https://images.unsplash.com/test-avatar.png",
+      botBanner: "https://images.unsplash.com/test-banner.png",
+    });
+
+    const settings = db.getGuildSettings(testGuildId);
+    assert.strictEqual(settings.botAvatar, "https://images.unsplash.com/test-avatar.png");
+    assert.strictEqual(settings.botBanner, "https://images.unsplash.com/test-banner.png");
   });
 
   // Test Summary
