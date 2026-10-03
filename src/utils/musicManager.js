@@ -476,6 +476,19 @@ function createMusicManager(client) {
   });
 
   client.manager = manager;
+
+  // If client is already ready, Shoukaku's connector.listen() missed the 'clientReady' event.
+  // Manually trigger connector.ready(Nodes) so Lavalink connects immediately!
+  if (client.isReady?.() || client.user?.id) {
+    try {
+      if (typeof manager.shoukaku?.connector?.ready === "function") {
+        manager.shoukaku.connector.ready(Nodes);
+      }
+    } catch (e) {
+      console.warn("[MusicManager] Error triggering manual connector ready:", e.message);
+    }
+  }
+
   return manager;
 }
 

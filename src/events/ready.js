@@ -2,7 +2,7 @@ const { Events } = require("discord.js");
 const config = require("../config");
 const { loadSlashCommands } = require("../handlers/slashCommandLoader");
 const { startPresenceRotator } = require("../modules/presence/statusManager");
-const { createMusicManager } = require("../utils/musicManager");
+const { createMusicManager, Nodes } = require("../utils/musicManager");
 
 module.exports = {
   name: Events.ClientReady || "ready",
@@ -20,7 +20,10 @@ module.exports = {
 
     // Initialize Music Engine (Lavalink v4 Cluster)
     try {
-      createMusicManager(client);
+      const manager = createMusicManager(client);
+      if (manager?.shoukaku?.connector && (!manager.shoukaku.nodes.size || Array.from(manager.shoukaku.nodes.values()).every((n) => n.state !== 1))) {
+        manager.shoukaku.connector.ready(Nodes);
+      }
     } catch (e) {
       console.warn("[Mina Bot] Music manager init warning:", e.message);
     }

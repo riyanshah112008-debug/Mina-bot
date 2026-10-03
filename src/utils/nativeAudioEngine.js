@@ -761,7 +761,11 @@ class StarryGuildPlayer {
                 this.loadingMessage = null;
             }
 
-            await this.sendNowPlayingPanel(track);
+            if (this.nowPlayingMessage) {
+                await this.sendNowPlayingPanel(track, true);
+            } else {
+                await this.sendNowPlayingPanel(track);
+            }
             try { require('../modules/musicController').update(this.guildId, this.client); } catch (e) {}
 
         } catch (err) {

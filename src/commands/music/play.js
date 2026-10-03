@@ -250,8 +250,14 @@ module.exports = {
         const track = result.tracks[0];
         if (!player.currentTrack && !player.isPlaying) {
           player.queue.push(track);
+          if (loadingMsg) {
+            loadingMsg.delete().catch(() => {});
+            loadingMsg = null;
+            player.loadingMessage = null;
+          }
+          // Fast embed dispatch: render Now Playing embed immediately (<2 seconds)
+          await player.sendNowPlayingPanel(track).catch(() => {});
           player.playNext().catch((err) => console.error("[playNext error]:", err));
-          // sendNowPlayingPanel is called by player.playTrack() automatically in <2s
           if (isSlash) {
             return replyFunc({ content: `▶️ **Playing:** \`${track.title}\``, flags: [EPHEMERAL_FLAG] });
           }

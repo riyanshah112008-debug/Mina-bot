@@ -4,6 +4,7 @@ const config = require("./config");
 const { loadCommands } = require("./handlers/commandLoader");
 const { loadEvents } = require("./handlers/eventLoader");
 const { initializeDatabase } = require("./utils/database");
+const { createMusicManager } = require("./utils/musicManager");
 
 // Validate configuration
 if (!config.validate()) {
@@ -41,6 +42,7 @@ process.on("SIGTERM", async () => {
 initializeDatabase();
 loadCommands();
 loadEvents(client);
+createMusicManager(client);
 
 // Connect to Discord
 client.login(config.token).catch((err) => {
