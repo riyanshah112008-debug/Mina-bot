@@ -2,6 +2,8 @@ const db = require("../utils/database");
 const config = require("../config");
 const { handleAutomod } = require("../modules/automod/automodEngine");
 const { formatDuration } = require("../utils/timeParser");
+const { handleMusicRequestMessage } = require("../modules/music/musicRequestManager");
+const { handleStickyMessage } = require("../modules/sticky/stickyManager");
 
 module.exports = {
   name: "messageCreate",
@@ -14,6 +16,15 @@ module.exports = {
 
     const guildId = message.guild.id;
     const authorId = message.author.id;
+
+    // 1.1 Dedicated Music Request Channel (Zero-prefix instant play)
+    const musicDesk = db.getMusicRequestChannel(guildId);
+    if (musicDesk && musicDesk.channelId === message.channel.id) {
+      return handleMusicRequestMessage(message, client);
+    }
+
+    // 1.2 Sticky Message Reposition
+    handleStickyMessage(message, client).catch(() => {});
 
     // 2. AFK Handling
     // Check if the author is returning from AFK

@@ -35,6 +35,22 @@ module.exports = {
       console.warn("[Mina Bot] Could not initiate presence rotator:", e.message);
     }
 
+    // Initialize Reminders background scheduler
+    try {
+      const { initReminders } = require("../modules/reminders/reminderManager");
+      initReminders(client);
+    } catch (e) {
+      console.warn("[Mina Bot] Could not initiate reminders scheduler:", e.message);
+    }
+
+    // Initialize Giveaways auto-conclusion scheduler
+    try {
+      const { initGiveaways } = require("../modules/giveaways/giveawayManager");
+      initGiveaways(client);
+    } catch (e) {
+      console.warn("[Mina Bot] Could not initiate giveaways scheduler:", e.message);
+    }
+
     // Register slash commands
     try {
       await loadSlashCommands(client, config);

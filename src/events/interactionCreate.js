@@ -36,6 +36,24 @@ module.exports = {
         return await handleBotProfileInteraction(interaction, client);
       }
 
+      // 0.4 SOCIAL / ANIME ACTION BUTTON INTERACTIONS
+      if (interaction.customId && interaction.customId.startsWith("social_action_")) {
+        const { handleSocialInteraction } = require("../commands/utility/social");
+        return await handleSocialInteraction(interaction, client);
+      }
+
+      // 0.5 RPS MINI-GAME BUTTON INTERACTIONS
+      if (interaction.customId && interaction.customId.startsWith("rps_play_")) {
+        const { handleRpsInteraction } = require("../commands/utility/rps");
+        return await handleRpsInteraction(interaction, client);
+      }
+
+      // 0.6 GIVEAWAY BUTTON INTERACTIONS
+      if (interaction.customId && interaction.customId.startsWith("giveaway_")) {
+        const { handleGiveawayInteraction } = require("../modules/giveaways/giveawayManager");
+        return await handleGiveawayInteraction(interaction, client);
+      }
+
       // 1. TICKET INTERACTIONS
       if (
         (interaction.customId && interaction.customId.startsWith("ticket_")) ||

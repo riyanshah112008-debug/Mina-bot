@@ -469,6 +469,190 @@ async function runAll() {
     assert.strictEqual(settings.botBanner, "https://images.unsplash.com/test-banner.png");
   });
 
+  // Test 12: Snipe & EditSnipe System
+  console.log("\n📁 12. Snipe & EditSnipe Engine");
+  it("Records and retrieves deleted and edited messages", () => {
+    const snipeManager = require("../src/utils/snipeManager");
+    const testChannel = "chan_snipe_999";
+
+    // Test Delete Snipe
+    snipeManager.recordDelete({
+      channel: { id: testChannel },
+      author: { tag: "Tester#0001", id: "user_test_1" },
+      content: "Secret deleted message",
+      attachments: new Map(),
+      createdTimestamp: Date.now() - 5000,
+    });
+
+    const deleted = snipeManager.getDelete(testChannel);
+    assert.ok(deleted, "Must retrieve deleted snipe");
+    assert.strictEqual(deleted.content, "Secret deleted message");
+    assert.strictEqual(deleted.author.tag, "Tester#0001");
+
+    // Test Edit Snipe
+    snipeManager.recordEdit(
+      {
+        channel: { id: testChannel },
+        author: { tag: "Tester#0001", id: "user_test_1" },
+        content: "Before edit text",
+        createdTimestamp: Date.now() - 10000,
+      },
+      {
+        channel: { id: testChannel },
+        author: { tag: "Tester#0001", id: "user_test_1" },
+        content: "After edit text",
+        editedTimestamp: Date.now(),
+      }
+    );
+
+    const edited = snipeManager.getEdit(testChannel);
+    assert.ok(edited, "Must retrieve edited snipe");
+    assert.strictEqual(edited.oldContent, "Before edit text");
+    assert.strictEqual(edited.newContent, "After edit text");
+  });
+
+  // Test 13: Welcome, Goodbye & Autoroles
+  console.log("\n📁 13. Welcome, Goodbye & Autorole Configuration");
+  it("Persists and updates welcome, goodbye, and autorole settings", () => {
+    const db = require("../src/utils/database");
+    const testGuild = "guild_welcome_test_1";
+
+    // Welcome
+    db.setWelcomeConfig(testGuild, {
+      enabled: true,
+      channelId: "welcome_chan_1",
+      message: "Hello {user} to {server}!",
+    });
+    const welcome = db.getWelcomeConfig(testGuild);
+    assert.strictEqual(welcome.enabled, true);
+    assert.strictEqual(welcome.channelId, "welcome_chan_1");
+
+    // Goodbye
+    db.setGoodbyeConfig(testGuild, {
+      enabled: true,
+      channelId: "bye_chan_1",
+      message: "Farewell {user}!",
+    });
+    const goodbye = db.getGoodbyeConfig(testGuild);
+    assert.strictEqual(goodbye.enabled, true);
+    assert.strictEqual(goodbye.channelId, "bye_chan_1");
+
+    // Autorole
+    db.setAutoroleConfig(testGuild, {
+      enabled: true,
+      memberRoles: ["role_member_1"],
+      botRoles: ["role_bot_1"],
+    });
+    const autorole = db.getAutoroleConfig(testGuild);
+    assert.strictEqual(autorole.enabled, true);
+    assert.deepStrictEqual(autorole.memberRoles, ["role_member_1"]);
+    assert.deepStrictEqual(autorole.botRoles, ["role_bot_1"]);
+  });
+
+  // Test 14: Social Actions & Stats
+  console.log("\n📁 14. Social Actions & Shared Stats");
+  it("Tracks interaction counters between user pairs", () => {
+    const db = require("../src/utils/database");
+    const count1 = db.incrementSocialStat("userA", "userB", "hug");
+    const count2 = db.incrementSocialStat("userB", "userA", "hug");
+    assert.strictEqual(count2, count1 + 1, "User pair counter must increment symmetrically");
+
+    const stats = db.getSocialStats("userA", "userB");
+    assert.strictEqual(stats.hug, count2);
+  });
+
+  // Test 15: Mini-Games & Utility Commands Load Check
+  console.log("\n📁 15. Mini-Games & Utility Commands Integrity");
+  it("Loads and validates all interactive games and utility tools", () => {
+    const games = ["8ball", "coinflip", "dice", "rps", "slots", "calculator", "say", "embed", "remind"];
+    for (const name of games) {
+      const cmd = require(`../src/commands/utility/${name}`);
+      assert.strictEqual(cmd.name, name, `${name} must have valid name`);
+      assert.strictEqual(typeof cmd.execute, "function", `${name} must have execute function`);
+      assert.ok(cmd.data, `${name} must have slash command builder`);
+      assert.ok(Array.isArray(cmd.aliases), `${name} must have aliases array`);
+    }
+  });
+
+  // Test 16: Sticky Message System
+  console.log("\n📁 16. Sticky Messages System");
+  it("Stores, retrieves, and deletes sticky message definitions", () => {
+    const db = require("../src/utils/database");
+    const testChannel = "chan_sticky_test_1";
+
+    db.setStickyMessage(testChannel, {
+      content: "Rule #1: Be respectful.",
+      enabled: true,
+      lastMessageId: "msg_sticky_1",
+    });
+
+    const sticky = db.getStickyMessage(testChannel);
+    assert.ok(sticky);
+    assert.strictEqual(sticky.content, "Rule #1: Be respectful.");
+
+    db.deleteStickyMessage(testChannel);
+    assert.strictEqual(db.getStickyMessage(testChannel), null);
+  });
+
+  // Test 17: Giveaways Engine
+  console.log("\n📁 17. Giveaways Engine");
+  it("Builds giveaway embeds and manages participant entries", () => {
+    const db = require("../src/utils/database");
+    const {
+      buildGiveawayEmbed,
+      buildGiveawayComponents,
+    } = require("../src/modules/giveaways/giveawayManager");
+
+    const gData = {
+      messageId: "giveaway_msg_100",
+      guildId: "guild_g_1",
+      channelId: "chan_g_1",
+      hostId: "user_host_1",
+      prize: "Discord Nitro 1 Month",
+      winnerCount: 1,
+      endTime: Date.now() + 60000,
+      status: "active",
+      entries: ["user_ent_1", "user_ent_2"],
+      winners: [],
+    };
+
+    db.setGiveaway("giveaway_msg_100", gData);
+    const retrieved = db.getGiveaway("giveaway_msg_100");
+    assert.strictEqual(retrieved.prize, "Discord Nitro 1 Month");
+    assert.strictEqual(retrieved.entries.length, 2);
+
+    const embed = buildGiveawayEmbed(gData);
+    assert.ok(embed.data.title.includes("Discord Nitro 1 Month"));
+
+    const components = buildGiveawayComponents("giveaway_msg_100", false, 2);
+    assert.strictEqual(components.length, 1);
+    assert.strictEqual(components[0].components[0].data.label, "Enter (2)");
+  });
+
+  // Test 18: Music Request Desk
+  console.log("\n📁 18. Music Request Desk & Setup");
+  it("Validates music request configuration and embed construction", () => {
+    const db = require("../src/utils/database");
+    const { buildMusicDeskEmbed } = require("../src/modules/music/musicRequestManager");
+    const musicsetup = require("../src/commands/music/musicsetup");
+
+    assert.strictEqual(musicsetup.name, "musicsetup");
+    assert.ok(musicsetup.aliases.includes("setup"));
+
+    const testGuildId = "guild_music_desk_1";
+    db.setMusicRequestChannel(testGuildId, {
+      channelId: "chan_music_req_1",
+      messageId: "msg_music_desk_1",
+    });
+
+    const conf = db.getMusicRequestChannel(testGuildId);
+    assert.strictEqual(conf.channelId, "chan_music_req_1");
+
+    const mockGuild = { id: testGuildId, name: "Music Guild" };
+    const embed = buildMusicDeskEmbed(mockGuild, { manager: null });
+    assert.ok(embed.data.title.includes("Mina Hi-Fi Music Desk"));
+  });
+
   // Test Summary
   console.log("\n=========================================");
   console.log(`🌸 Test Suite Finished: ${passed} Passed, ${failed} Failed`);

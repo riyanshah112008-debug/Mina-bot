@@ -1,9 +1,14 @@
 const { handleAutomod } = require("../modules/automod/automodEngine");
+const { setEditSnipe } = require("../utils/snipeManager");
 
 module.exports = {
   name: "messageUpdate",
   async execute(oldMessage, newMessage, client) {
     if (!newMessage || !newMessage.guild || !newMessage.author || newMessage.author.bot) return;
+
+    if (oldMessage && oldMessage.content && oldMessage.content !== newMessage.content) {
+      setEditSnipe(oldMessage, newMessage);
+    }
 
     try {
       await handleAutomod(newMessage, client);

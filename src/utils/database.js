@@ -21,6 +21,14 @@ const defaultStore = {
   video_verifications: {},
   moderation_logs: [],
   afk: {},
+  welcome_config: {},
+  goodbye_config: {},
+  autorole_config: {},
+  giveaways: {},
+  reminders: [],
+  sticky_messages: {},
+  social_stats: {},
+  music_request_channels: {},
 };
 
 let store = { ...defaultStore };
@@ -345,6 +353,165 @@ function removeUserAfk(guildId, userId) {
   return false;
 }
 
+// ================= Welcome & Goodbye =================
+function getWelcomeConfig(guildId) {
+  if (!store.welcome_config[guildId]) {
+    store.welcome_config[guildId] = {
+      enabled: false,
+      channelId: null,
+      message: "Welcome to {server}, {user}! You are our {memberCount}th member! 🌸",
+      useEmbed: true,
+      embedColor: "#5865F2",
+    };
+  }
+  return store.welcome_config[guildId];
+}
+
+function setWelcomeConfig(guildId, data) {
+  const current = getWelcomeConfig(guildId);
+  store.welcome_config[guildId] = { ...current, ...data };
+  scheduleSave();
+  return store.welcome_config[guildId];
+}
+
+function getGoodbyeConfig(guildId) {
+  if (!store.goodbye_config[guildId]) {
+    store.goodbye_config[guildId] = {
+      enabled: false,
+      channelId: null,
+      message: "Goodbye {user}! We're sad to see you leave {server} (Member #{memberCount}). 🥀",
+      useEmbed: true,
+      embedColor: "#ED4245",
+    };
+  }
+  return store.goodbye_config[guildId];
+}
+
+function setGoodbyeConfig(guildId, data) {
+  const current = getGoodbyeConfig(guildId);
+  store.goodbye_config[guildId] = { ...current, ...data };
+  scheduleSave();
+  return store.goodbye_config[guildId];
+}
+
+// ================= Autorole =================
+function getAutoroleConfig(guildId) {
+  if (!store.autorole_config[guildId]) {
+    store.autorole_config[guildId] = {
+      enabled: false,
+      memberRoles: [],
+      botRoles: [],
+    };
+  }
+  return store.autorole_config[guildId];
+}
+
+function setAutoroleConfig(guildId, data) {
+  const current = getAutoroleConfig(guildId);
+  store.autorole_config[guildId] = { ...current, ...data };
+  scheduleSave();
+  return store.autorole_config[guildId];
+}
+
+// ================= Giveaways =================
+function getGiveaway(messageId) {
+  return store.giveaways[messageId] || null;
+}
+
+function setGiveaway(messageId, data) {
+  store.giveaways[messageId] = { ...data, messageId };
+  scheduleSave();
+  return store.giveaways[messageId];
+}
+
+function getAllGiveaways() {
+  return store.giveaways;
+}
+
+function deleteGiveaway(messageId) {
+  if (store.giveaways[messageId]) {
+    delete store.giveaways[messageId];
+    scheduleSave();
+    return true;
+  }
+  return false;
+}
+
+// ================= Reminders =================
+function getReminders() {
+  if (!Array.isArray(store.reminders)) store.reminders = [];
+  return store.reminders;
+}
+
+function addReminder(data) {
+  if (!Array.isArray(store.reminders)) store.reminders = [];
+  const reminder = {
+    id: `rem_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+    ...data,
+  };
+  store.reminders.push(reminder);
+  scheduleSave();
+  return reminder;
+}
+
+function removeReminder(id) {
+  if (!Array.isArray(store.reminders)) store.reminders = [];
+  const index = store.reminders.findIndex((r) => r.id === id);
+  if (index !== -1) {
+    store.reminders.splice(index, 1);
+    scheduleSave();
+    return true;
+  }
+  return false;
+}
+
+// ================= Sticky Messages =================
+function getStickyMessage(channelId) {
+  return store.sticky_messages[channelId] || null;
+}
+
+function setStickyMessage(channelId, data) {
+  store.sticky_messages[channelId] = { ...data, channelId };
+  scheduleSave();
+  return store.sticky_messages[channelId];
+}
+
+function deleteStickyMessage(channelId) {
+  if (store.sticky_messages[channelId]) {
+    delete store.sticky_messages[channelId];
+    scheduleSave();
+    return true;
+  }
+  return false;
+}
+
+// ================= Social Action Stats =================
+function getSocialStats(userA, userB) {
+  const pairKey = [userA, userB].sort().join("_");
+  return store.social_stats[pairKey] || {};
+}
+
+function incrementSocialStat(userA, userB, action) {
+  const pairKey = [userA, userB].sort().join("_");
+  if (!store.social_stats[pairKey]) {
+    store.social_stats[pairKey] = {};
+  }
+  store.social_stats[pairKey][action] = (store.social_stats[pairKey][action] || 0) + 1;
+  scheduleSave();
+  return store.social_stats[pairKey][action];
+}
+
+// ================= Music Request Channel =================
+function getMusicRequestChannel(guildId) {
+  return store.music_request_channels[guildId] || null;
+}
+
+function setMusicRequestChannel(guildId, data) {
+  store.music_request_channels[guildId] = data;
+  scheduleSave();
+  return store.music_request_channels[guildId];
+}
+
 module.exports = {
   initializeDatabase,
   getGuildSettings,
@@ -371,4 +538,24 @@ module.exports = {
   getUserAfk,
   setUserAfk,
   removeUserAfk,
+  getWelcomeConfig,
+  setWelcomeConfig,
+  getGoodbyeConfig,
+  setGoodbyeConfig,
+  getAutoroleConfig,
+  setAutoroleConfig,
+  getGiveaway,
+  setGiveaway,
+  getAllGiveaways,
+  deleteGiveaway,
+  getReminders,
+  addReminder,
+  removeReminder,
+  getStickyMessage,
+  setStickyMessage,
+  deleteStickyMessage,
+  getSocialStats,
+  incrementSocialStat,
+  getMusicRequestChannel,
+  setMusicRequestChannel,
 };

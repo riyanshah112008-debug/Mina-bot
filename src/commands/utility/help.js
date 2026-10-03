@@ -10,6 +10,7 @@ const db = require("../../utils/database");
 const categoryMeta = {
   Moderation: { emoji: "🛡️", desc: "Administrative moderation and automod controls" },
   Utility: { emoji: "⚙️", desc: "General server and user utility tools" },
+  Fun: { emoji: "🎉", desc: "Mini-games, social interactions, anime actions & fun" },
   Music: { emoji: "🎵", desc: "Hi-Fi audio playback, search, queue & voice controls" },
   Tickets: { emoji: "🎫", desc: "Support ticket management & transcript portal" },
   Verification: { emoji: "✅", desc: "Normal and Voice Video Verification systems" },
