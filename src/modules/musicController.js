@@ -16,10 +16,13 @@ const {
 } = require('discord.js');
 const path = require('path');
 const fs = require('fs');
+const mongoose = require('mongoose');
+const db = require('../utils/database');
 const MusicController = require('../models/MusicController');
 const { StarryAudioEngine, formatTime } = require('../utils/nativeAudioEngine');
 const { getGuildLanguageSync, t } = require('../utils/i18n');
 
+const isDbConnected = () => Boolean(mongoose.connection && mongoose.connection.readyState === 1);
 const EPHEMERAL_FLAG = (MessageFlags && MessageFlags.Ephemeral) ? MessageFlags.Ephemeral : 64;
 const BANNER_PATH = path.join(__dirname, '../assets/mascot/starry_music_banner.jpg');
 
@@ -32,20 +35,47 @@ class MusicControllerEngine {
 
     async init(client) {
         if (this.initialized) return;
+
+        // 1. Immediately populate from local persistent store (zero network wait)
         try {
-            const configs = await MusicController.find({}).lean();
-            for (const cfg of configs) {
-                this.cache.set(cfg.guildId, {
-                    channelId: cfg.channelId,
-                    messageId: cfg.messageId,
-                    bannerUrl: cfg.bannerUrl || ''
-                });
+            const localConfigs = db.getAllMusicRequestChannels ? db.getAllMusicRequestChannels() : {};
+            for (const [gid, cfg] of Object.entries(localConfigs)) {
+                if (cfg && cfg.channelId) {
+                    this.cache.set(gid, {
+                        channelId: cfg.channelId,
+                        messageId: cfg.messageId,
+                        bannerUrl: cfg.bannerUrl || ''
+                    });
+                }
             }
-            this.initialized = true;
-            console.log(`🎵 [Music Controller] Loaded ${this.cache.size} dedicated request channels into RAM cache.`);
-        } catch (err) {
-            console.warn('⚠️ [Music Controller Init Notice]:', err.message || err);
+        } catch (_) {}
+
+        // 2. Synchronize from MongoDB if connected, or when connection opens
+        const syncFromMongo = async () => {
+            if (!isDbConnected()) return;
+            try {
+                const configs = await MusicController.find({}).lean();
+                for (const cfg of configs) {
+                    const entry = {
+                        channelId: cfg.channelId,
+                        messageId: cfg.messageId,
+                        bannerUrl: cfg.bannerUrl || ''
+                    };
+                    this.cache.set(cfg.guildId, entry);
+                    if (db.setMusicRequestChannel) db.setMusicRequestChannel(cfg.guildId, entry);
+                }
+                console.log(`🎵 [Music Controller] Synchronized ${this.cache.size} dedicated request channels.`);
+            } catch (_) {}
+        };
+
+        if (isDbConnected()) {
+            await syncFromMongo();
+        } else {
+            mongoose.connection.once('open', syncFromMongo);
+            mongoose.connection.on('reconnected', syncFromMongo);
         }
+
+        this.initialized = true;
     }
 
     isRequestChannel(guildId, channelId) {
@@ -343,7 +373,8 @@ class MusicControllerEngine {
                     if (newMsg) {
                         config.messageId = newMsg.id;
                         this.cache.set(guildId, config);
-                        await MusicController.updateOne({ guildId }, { messageId: newMsg.id }).catch(() => {});
+                        if (db.setMusicRequestChannel) db.setMusicRequestChannel(guildId, config);
+                        if (isDbConnected()) await MusicController.updateOne({ guildId }, { messageId: newMsg.id }).catch(() => {});
                     }
                 });
             } else {
@@ -366,7 +397,8 @@ class MusicControllerEngine {
                 if (newMsg) {
                     config.messageId = newMsg.id;
                     this.cache.set(guildId, config);
-                    await MusicController.updateOne({ guildId }, { messageId: newMsg.id }).catch(() => {});
+                    if (db.setMusicRequestChannel) db.setMusicRequestChannel(guildId, config);
+                    if (isDbConnected()) await MusicController.updateOne({ guildId }, { messageId: newMsg.id }).catch(() => {});
                 }
             }
         } catch (err) {
@@ -459,13 +491,17 @@ class MusicControllerEngine {
             bannerUrl: ''
         };
 
-        await MusicController.findOneAndUpdate(
-            { guildId: guild.id },
-            newConfig,
-            { upsert: true, new: true }
-        );
-
         this.cache.set(guild.id, newConfig);
+        if (db.setMusicRequestChannel) db.setMusicRequestChannel(guild.id, newConfig);
+
+        if (isDbConnected()) {
+            await MusicController.findOneAndUpdate(
+                { guildId: guild.id },
+                newConfig,
+                { upsert: true, new: true }
+            ).catch(() => {});
+        }
+
         return { channel, message: controllerMessage };
     }
 
@@ -491,7 +527,7 @@ class MusicControllerEngine {
         }
 
         // Check if track/artist is blocked in this server
-        const dbConfig = await MusicController.findOne({ guildId: message.guild.id }).lean().catch(() => null);
+        const dbConfig = isDbConnected() ? await MusicController.findOne({ guildId: message.guild.id }).lean().catch(() => null) : null;
         if (dbConfig && dbConfig.blockedTracks && dbConfig.blockedTracks.length > 0) {
             const lower = content.toLowerCase();
             const isBlocked = dbConfig.blockedTracks.some(b => lower.includes(b.query.toLowerCase()));
@@ -951,10 +987,12 @@ class MusicControllerEngine {
                     .setDescription(`👤 **Artist:** \`${track.author || 'Artist'}\`\n🕒 **Duration:** \`${formatTime(track.duration)}\`\n🌐 **Server:** \`${interaction.guild.name}\``)
                     .setThumbnail(track.thumbnail || null);
                 await interaction.user.send({ embeds: [embed] }).catch(() => {});
-                await MusicController.updateOne(
-                    { guildId },
-                    { $push: { likedTracks: { title: track.title, author: track.author, url: track.url, addedBy: interaction.user.id } } }
-                ).catch(() => {});
+                if (isDbConnected()) {
+                    await MusicController.updateOne(
+                        { guildId },
+                        { $push: { likedTracks: { title: track.title, author: track.author, url: track.url, addedBy: interaction.user.id } } }
+                    ).catch(() => {});
+                }
                 return interaction.reply({ content: `❤️ **Saved "${track.title}" to your Liked Songs and DMs!**`, flags: [EPHEMERAL_FLAG] }).catch(() => {});
             } catch (e) {
                 return interaction.reply({ content: `❤️ Liked **${track.title}**!`, flags: [EPHEMERAL_FLAG] }).catch(() => {});
@@ -972,10 +1010,12 @@ class MusicControllerEngine {
         // 15. Block Track
         if (customId === 'ctrl_block') {
             const trackTitle = (isKazagumo ? player.queue.current?.title : player.currentTrack?.title) || 'Current Song';
-            await MusicController.updateOne(
-                { guildId },
-                { $push: { blockedTracks: { query: trackTitle, blockedBy: interaction.user.id } } }
-            ).catch(() => {});
+            if (isDbConnected()) {
+                await MusicController.updateOne(
+                    { guildId },
+                    { $push: { blockedTracks: { query: trackTitle, blockedBy: interaction.user.id } } }
+                ).catch(() => {});
+            }
             player.skip();
             await this.update(guildId, client);
             return interaction.reply({ content: `🚫 **Blocked "${trackTitle}" from playing on this server.**`, flags: [EPHEMERAL_FLAG] }).catch(() => {});

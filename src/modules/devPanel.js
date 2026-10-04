@@ -199,7 +199,7 @@ module.exports = (client) => {
                 await interaction.deferUpdate().catch(() => {});
                 const { buildGlobalTelemetryEmbed } = require('./telemetryEngine');
                 const GuildTelemetry = require('../models/GuildTelemetry');
-                const allData = await GuildTelemetry.find({});
+                const allData = (mongoose.connection && mongoose.connection.readyState === 1) ? await GuildTelemetry.find({}).catch(() => []) : [];
                 const embed = buildGlobalTelemetryEmbed(client, allData);
                 await interaction.followUp({ embeds: [embed], flags: [64] }).catch(() => {});
                 return;

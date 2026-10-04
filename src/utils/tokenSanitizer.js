@@ -87,8 +87,58 @@ async function verifyDiscordToken(token) {
     }
 }
 
+/**
+ * Robustly sanitizes MongoDB connection strings, removing variable prefixes,
+ * straight and smart quotes, zero-width spaces, escaped characters, and whitespace.
+ * @param {string} raw - The raw URI string
+ * @returns {string} - The cleaned MongoDB URI
+ */
+function cleanMongoUri(raw) {
+    if (!raw || typeof raw !== 'string') return '';
+    let uri = raw.trim();
+
+    // 1. Remove prefixes like "MONGO_URI=" or "MONGODB_URI="
+    if (uri.includes('=')) {
+        const parts = uri.split('=');
+        if (parts[0].includes('MONGO') || parts[0].includes('DATABASE') || parts[0].includes('URI') || parts[0].includes('URL')) {
+            uri = parts.slice(1).join('=').trim();
+        }
+    }
+
+    // 2. Strip Unicode zero-width characters, non-breaking spaces, and variation selectors
+    uri = uri.replace(/[\u200B-\u200D\uFEFF\u00A0\uFE0E\uFE0F]/g, '');
+
+    // 3. Strip escaped newlines, tabs, carriage returns
+    uri = uri.replace(/\\r|\\n|\\t/g, '');
+    uri = uri.replace(/[\r\n\t]/g, '').trim();
+
+    // 4. Strip straight quotes, escaped quotes, and smart quotes
+    uri = uri.replace(/\\"/g, '"').replace(/\\'/g, "'");
+    uri = uri.replace(/^["'`\u201C\u201D\u2018\u2019]+|["'`\u201C\u201D\u2018\u2019]+$/g, '').trim();
+
+    // 5. Strip all internal whitespace
+    uri = uri.replace(/\s+/g, '');
+
+    return uri;
+}
+
+/**
+ * Returns a masked preview of the MongoDB URI for secure logging.
+ * Replaces credentials with asterisks.
+ */
+function maskMongoUri(uri) {
+    if (!uri || typeof uri !== 'string') return '(empty)';
+    try {
+        return uri.replace(/:([^:@]+)@/, ':****@');
+    } catch (_) {
+        return 'mongodb+srv://****@cluster...';
+    }
+}
+
 module.exports = {
     cleanToken,
     maskToken,
-    verifyDiscordToken
+    verifyDiscordToken,
+    cleanMongoUri,
+    maskMongoUri
 };

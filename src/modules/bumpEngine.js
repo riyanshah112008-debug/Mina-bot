@@ -12,6 +12,8 @@ const {
     Events
 } = require('discord.js');
 const mongoose = require('mongoose');
+const db = require('../utils/database');
+const isDbConnected = () => Boolean(mongoose.connection && mongoose.connection.readyState === 1);
 
 const STARRY_WEB_URL = 'https://stately-fox-454bb4.netlify.app';
 
@@ -108,21 +110,27 @@ function setupWebDirectoryAPI(app) {
     app.get('/api/v1/servers/recently-bumped', async (req, res) => {
         try {
             const limit = parseInt(req.query.limit) || 6;
-            const servers = await ServerListing.find({ isListed: true })
-                .sort({ lastBump: -1, bumps: -1 })
-                .limit(limit);
+            let servers = [];
+
+            if (isDbConnected()) {
+                servers = await ServerListing.find({ isListed: true })
+                    .sort({ lastBump: -1, bumps: -1 })
+                    .limit(limit);
+            } else {
+                servers = (db.getAllServerListings ? db.getAllServerListings() : []).slice(0, limit);
+            }
 
             const formatted = servers.map(s => ({
                 id: s.guildId,
                 name: s.name,
                 icon: s.iconUrl || 'https://cdn.discordapp.com/embed/avatars/0.png',
-                onlineCount: Math.floor(s.memberCount * 0.35) || 12,
+                onlineCount: Math.floor((s.memberCount || 0) * 0.35) || 12,
                 bumpedTime: s.lastBump ? getTimeAgo(s.lastBump) : 'recently',
                 rating: 5.0,
                 reviewCount: s.bumps || 1,
-                description: s.description,
-                tags: s.tags,
-                inviteUrl: s.inviteLink
+                description: s.description || "A vibrant community on Starryboard!",
+                tags: s.tags || ['community', 'discord'],
+                inviteUrl: s.inviteLink || "Not generated yet"
             }));
 
             res.json({ success: true, data: formatted });
@@ -134,37 +142,45 @@ function setupWebDirectoryAPI(app) {
     app.get('/api/v1/servers', async (req, res) => {
         try {
             const { q, sort = 'bumped', page = 1, limit = 12, nsfw = 0 } = req.query;
-            const query = { isListed: true };
+            let total = 0;
+            let list = [];
 
-            if (nsfw === '0') query.isNsfw = false;
-            if (q) {
-                query.$or = [
-                    { name: { $regex: q, $options: 'i' } },
-                    { tags: { $in: [q.toLowerCase()] } },
-                    { description: { $regex: q, $options: 'i' } }
-                ];
+            if (isDbConnected()) {
+                const query = { isListed: true };
+                if (nsfw === '0') query.isNsfw = false;
+                if (q) {
+                    query.$or = [
+                        { name: { $regex: q, $options: 'i' } },
+                        { tags: { $in: [q.toLowerCase()] } },
+                        { description: { $regex: q, $options: 'i' } }
+                    ];
+                }
+
+                let sortOption = { lastBump: -1 };
+                if (sort === 'members') sortOption = { memberCount: -1 };
+                if (sort === 'newest') sortOption = { _id: -1 };
+
+                const skip = (parseInt(page) - 1) * parseInt(limit);
+                total = await ServerListing.countDocuments(query);
+                const rawList = await ServerListing.find(query).sort(sortOption).skip(skip).limit(parseInt(limit));
+
+                list = rawList.map(s => ({
+                    id: s.guildId,
+                    name: s.name,
+                    icon: s.iconUrl || 'https://cdn.discordapp.com/embed/avatars/0.png',
+                    onlineCount: Math.floor((s.memberCount || 0) * 0.35) || 10,
+                    bumpedTime: s.lastBump ? getTimeAgo(s.lastBump) : 'recently',
+                    rating: 5.0,
+                    reviewCount: s.bumps || 1,
+                    description: s.description,
+                    tags: s.tags,
+                    inviteUrl: s.inviteLink
+                }));
+            } else {
+                const localList = db.getAllServerListings ? db.getAllServerListings() : [];
+                total = localList.length;
+                list = localList.slice(0, parseInt(limit));
             }
-
-            let sortOption = { lastBump: -1 };
-            if (sort === 'members') sortOption = { memberCount: -1 };
-            if (sort === 'newest') sortOption = { _id: -1 };
-
-            const skip = (parseInt(page) - 1) * parseInt(limit);
-            const total = await ServerListing.countDocuments(query);
-            const rawList = await ServerListing.find(query).sort(sortOption).skip(skip).limit(parseInt(limit));
-
-            const list = rawList.map(s => ({
-                id: s.guildId,
-                name: s.name,
-                icon: s.iconUrl || 'https://cdn.discordapp.com/embed/avatars/0.png',
-                onlineCount: Math.floor(s.memberCount * 0.35) || 10,
-                bumpedTime: s.lastBump ? getTimeAgo(s.lastBump) : 'recently',
-                rating: 5.0,
-                reviewCount: s.bumps || 1,
-                description: s.description,
-                tags: s.tags,
-                inviteUrl: s.inviteLink
-            }));
 
             res.json({ success: true, data: { total, list } });
         } catch (err) {
@@ -174,10 +190,15 @@ function setupWebDirectoryAPI(app) {
 
     app.get('/api/servers', async (req, res) => {
         try {
-            const servers = await ServerListing.find({ isListed: true }).sort({ lastBump: -1 }).limit(50);
-            res.json(servers);
+            if (isDbConnected()) {
+                const servers = await ServerListing.find({ isListed: true }).sort({ lastBump: -1 }).limit(50);
+                return res.json(servers);
+            }
+            const localServers = db.getAllServerListings ? db.getAllServerListings() : [];
+            res.json(localServers);
         } catch (err) {
-            res.status(500).json({ error: err.message });
+            const localServers = db.getAllServerListings ? db.getAllServerListings() : [];
+            res.json(localServers);
         }
     });
 }
@@ -220,31 +241,47 @@ const bumpEngineModule = (client, expressApp) => {
                 }
             }
 
-            await ServerListing.findOneAndUpdate(
-                { guildId: guild.id },
-                {
-                    guildId: guild.id,
-                    name: guild.name,
-                    iconUrl: guild.iconURL({ extension: 'png', size: 256 }) || null,
-                    memberCount: guild.memberCount,
-                    ownerId: owner ? owner.id : null,
-                    $setOnInsert: {
-                        inviteLink: inviteUrl,
-                        description: "A vibrant community on Starryboard!",
-                        tags: ['community', 'discord']
-                    }
-                },
-                { upsert: true, new: true }
-            );
+            const listingData = {
+                guildId: guild.id,
+                name: guild.name,
+                iconUrl: guild.iconURL({ extension: 'png', size: 256 }) || null,
+                memberCount: guild.memberCount,
+                ownerId: owner ? owner.id : null,
+                inviteLink: inviteUrl,
+                description: "A vibrant community on Starryboard!",
+                tags: ['community', 'discord'],
+                isListed: true
+            };
+
+            if (db.setServerListing) db.setServerListing(guild.id, listingData);
+
+            if (isDbConnected()) {
+                await ServerListing.findOneAndUpdate(
+                    { guildId: guild.id },
+                    {
+                        guildId: guild.id,
+                        name: guild.name,
+                        iconUrl: guild.iconURL({ extension: 'png', size: 256 }) || null,
+                        memberCount: guild.memberCount,
+                        ownerId: owner ? owner.id : null,
+                        $setOnInsert: {
+                            inviteLink: inviteUrl,
+                            description: "A vibrant community on Starryboard!",
+                            tags: ['community', 'discord']
+                        }
+                    },
+                    { upsert: true, new: true }
+                ).catch(() => {});
+            }
         } catch (e) {
-            console.error(`[Directory Sync Error] Failed to sync ${guild.name}:`, e);
+            // Silently ignore transient sync errors
         }
     }
 
     // --- ⏰ AUTONOMOUS 24/7 AUTO-BUMPER & REMINDER WORKER LOOP ---
     function startAutoBumpWorker() {
         setInterval(async () => {
-            if (!client.isReady()) return;
+            if (!client.isReady() || !isDbConnected()) return;
             try {
                 const now = new Date();
                 const pendingBumps = await BumpSystem.find({ nextBump: { $lte: now } });

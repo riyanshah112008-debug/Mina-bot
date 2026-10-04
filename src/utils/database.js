@@ -29,6 +29,8 @@ const defaultStore = {
   sticky_messages: {},
   social_stats: {},
   music_request_channels: {},
+  counting_config: {},
+  server_listings: {},
 };
 
 let store = { ...defaultStore };
@@ -512,6 +514,43 @@ function setMusicRequestChannel(guildId, data) {
   return store.music_request_channels[guildId];
 }
 
+function getAllMusicRequestChannels() {
+  return store.music_request_channels || {};
+}
+
+// ================= Counting Config =================
+function getCountingConfig(guildId) {
+  return store.counting_config ? store.counting_config[guildId] || null : null;
+}
+
+function setCountingConfig(guildId, data) {
+  if (!store.counting_config) store.counting_config = {};
+  store.counting_config[guildId] = data;
+  scheduleSave();
+  return store.counting_config[guildId];
+}
+
+function getAllCountingConfigs() {
+  return store.counting_config || {};
+}
+
+// ================= Server Listings =================
+function getServerListing(guildId) {
+  return store.server_listings ? store.server_listings[guildId] || null : null;
+}
+
+function setServerListing(guildId, data) {
+  if (!store.server_listings) store.server_listings = {};
+  store.server_listings[guildId] = { ...(store.server_listings[guildId] || {}), ...data };
+  scheduleSave();
+  return store.server_listings[guildId];
+}
+
+function getAllServerListings() {
+  if (!store.server_listings) return [];
+  return Object.values(store.server_listings);
+}
+
 module.exports = {
   initializeDatabase,
   getGuildSettings,
@@ -558,4 +597,11 @@ module.exports = {
   incrementSocialStat,
   getMusicRequestChannel,
   setMusicRequestChannel,
+  getAllMusicRequestChannels,
+  getCountingConfig,
+  setCountingConfig,
+  getAllCountingConfigs,
+  getServerListing,
+  setServerListing,
+  getAllServerListings,
 };

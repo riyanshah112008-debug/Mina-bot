@@ -56,7 +56,8 @@ const fs = require('fs');
 const path = require('path');
 const child_process = require('child_process');
 const KazagumoSpotify = require('kazagumo-spotify');
-const { cleanToken, maskToken, verifyDiscordToken } = require('./utils/tokenSanitizer');
+const { cleanToken, maskToken, verifyDiscordToken, cleanMongoUri, maskMongoUri } = require('./utils/tokenSanitizer');
+const db = require('./utils/database');
 
 // ==========================================
 // 🔋 TERMUX WAKE LOCK HELPERS
@@ -110,11 +111,15 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get('/api/servers', async (req, res) => {
     try {
-        if (!ServerListing) return res.json([]);
-        const servers = await ServerListing.find({ isListed: true }).sort({ lastBump: -1 }).limit(50);
-        res.json(servers);
+        if (ServerListing && mongoose.connection.readyState === 1) {
+            const servers = await ServerListing.find({ isListed: true }).sort({ lastBump: -1 }).limit(50);
+            return res.json(servers);
+        }
+        const localServers = db.getAllServerListings ? db.getAllServerListings() : [];
+        res.json(localServers);
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch servers' });
+        const localServers = db.getAllServerListings ? db.getAllServerListings() : [];
+        res.json(localServers);
     }
 });
 
@@ -565,14 +570,18 @@ process.on('uncaughtException', error => console.error('❌ Uncaught Exception:'
 // ==========================================
 // 🛡️ HIGH-RELIABILITY RECOVERY & HEALTH WATCHDOG
 // ==========================================
-mongoose.set('bufferTimeoutMS', 6000);
+// Explicitly disable Mongoose command buffering so queries never hang for 6+ seconds
+mongoose.set('bufferCommands', false);
+mongoose.set('bufferTimeoutMS', 2500);
 
 let isReconnectingMongo = false;
 let mongoDisconnectedSince = null;
 let mongoReconnectInterval = null;
 
 async function attemptMongoReconnect() {
-    if (!process.env.MONGO_URI) return;
+    const rawMongo = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb+srv://Starry:Starry@cluster0.fubclwc.mongodb.net/my_bot_db?appName=Cluster0';
+    const targetMongo = cleanMongoUri(rawMongo);
+    if (!targetMongo) return;
     if (isReconnectingMongo || mongoose.connection.readyState === 1) return;
     isReconnectingMongo = true;
     console.log('🔄 [MongoDB Watchdog] Actively attempting to reconnect to MongoDB...');
@@ -580,7 +589,7 @@ async function attemptMongoReconnect() {
         if (mongoose.connection.readyState !== 0) {
             await mongoose.connection.close().catch(() => {});
         }
-        await mongoose.connect(process.env.MONGO_URI, {
+        await mongoose.connect(targetMongo, {
             serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
             maxPoolSize: 10,
@@ -984,9 +993,40 @@ async function startBot(overrideToken, overrideMongo) {
             console.log(`✨ Discord Token Verified! Bot identity: ${preflight.bot.username}#${preflight.bot.discriminator || '0'} (ID: ${preflight.bot.id})`);
         }
 
-    if (process.env.MONGO_URI) {
+    // Resolve MongoDB Connection String with Multi-Source Fallback
+    const candidateMongoUris = [
+        overrideMongo,
+        process.env.MONGO_URI,
+        process.env.MONGODB_URI,
+        process.env.MONGO_URL,
+        process.env.DATABASE_URL
+    ].filter(Boolean);
+
+    try {
+        const envPath = path.join(process.cwd(), '.env');
+        if (fs.existsSync(envPath)) {
+            const parsed = require('dotenv').parse(fs.readFileSync(envPath));
+            if (parsed.MONGO_URI) candidateMongoUris.push(parsed.MONGO_URI);
+            if (parsed.MONGODB_URI) candidateMongoUris.push(parsed.MONGODB_URI);
+        }
+    } catch (_) {}
+
+    candidateMongoUris.push('mongodb+srv://Starry:Starry@cluster0.fubclwc.mongodb.net/my_bot_db?appName=Cluster0');
+
+    let effectiveMongo = null;
+    for (const cand of candidateMongoUris) {
+        const cleaned = cleanMongoUri(cand);
+        if (cleaned) {
+            effectiveMongo = cleaned;
+            break;
+        }
+    }
+
+    if (effectiveMongo) {
+        process.env.MONGO_URI = effectiveMongo;
+        console.log(`🍃 Connecting to MongoDB Cloud (${maskMongoUri(effectiveMongo)})...`);
         try {
-            await mongoose.connect(process.env.MONGO_URI, {
+            await mongoose.connect(effectiveMongo, {
                 serverSelectionTimeoutMS: 5000,
                 socketTimeoutMS: 45000,
                 maxPoolSize: 10,

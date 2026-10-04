@@ -32,24 +32,50 @@ const countStatsPayload = new SlashCommandBuilder()
 
 module.exports = (client) => {
     const config = require('../config');
+    const db = require('../utils/database');
     const PREFIX = config.DEFAULT_PREFIX || ',';
     const countCache = new Map();
+    const isDbConnected = () => Boolean(mongoose.connection && mongoose.connection.readyState === 1);
 
-    // Fetch database into memory immediately on load
-    (async () => {
-        try {
-            const data = await CountGuild.find();
-            data.forEach(g => countCache.set(g.guildId, {
-                channelId: g.channelId,
-                currentNumber: g.currentNumber,
-                highScore: g.highScore || 0,
-                lastUser: g.lastUser
-            }));
-            console.log('✅ Counting Game Module Loaded & Upgraded (MongoDB Synced)');
-        } catch (err) {
-            console.error('❌ Failed to load counting data:', err);
+    // 1. Instantly populate cache from local persistent storage (zero network delay)
+    try {
+        const localConfigs = db.getAllCountingConfigs ? db.getAllCountingConfigs() : {};
+        for (const [gid, cfg] of Object.entries(localConfigs)) {
+            if (cfg && cfg.channelId) {
+                countCache.set(gid, {
+                    channelId: cfg.channelId,
+                    currentNumber: cfg.currentNumber || 1,
+                    highScore: cfg.highScore || 0,
+                    lastUser: cfg.lastUser || null
+                });
+            }
         }
-    })();
+    } catch (_) {}
+
+    // 2. Safely synchronize with MongoDB when connected
+    async function syncFromMongo() {
+        if (!isDbConnected()) return;
+        try {
+            const data = await CountGuild.find().lean();
+            data.forEach(g => {
+                const entry = {
+                    channelId: g.channelId,
+                    currentNumber: g.currentNumber || 1,
+                    highScore: g.highScore || 0,
+                    lastUser: g.lastUser || null
+                };
+                countCache.set(g.guildId, entry);
+                if (db.setCountingConfig) db.setCountingConfig(g.guildId, entry);
+            });
+            console.log('✅ Counting Game Module Synchronized with MongoDB Cloud');
+        } catch (_) {}
+    }
+
+    if (isDbConnected()) {
+        syncFromMongo();
+    }
+    mongoose.connection.on('open', syncFromMongo);
+    mongoose.connection.on('reconnected', syncFromMongo);
 
     // ==========================================
     // 1. SLASH COMMAND ROUTER (/setupcount & /countstats)
@@ -59,19 +85,22 @@ module.exports = (client) => {
 
         if (interaction.commandName === 'setupcount') {
             const channel = interaction.options.getChannel('channel');
-            const existing = countCache.get(interaction.guild.id);
+            const existing = countCache.get(interaction.guild.id) || (db.getCountingConfig ? db.getCountingConfig(interaction.guild.id) : null);
             const highScore = existing ? existing.highScore : 0;
             const newData = { channelId: channel.id, currentNumber: 1, highScore: highScore, lastUser: null };
 
             countCache.set(interaction.guild.id, newData);
-            await CountGuild.findOneAndUpdate({ guildId: interaction.guild.id }, newData, { upsert: true });
+            if (db.setCountingConfig) db.setCountingConfig(interaction.guild.id, newData);
+            if (isDbConnected()) {
+                CountGuild.findOneAndUpdate({ guildId: interaction.guild.id }, newData, { upsert: true }).catch(() => {});
+            }
 
             await interaction.reply({ content: `✅ <#${channel.id}> is now configured as the Counting Game channel! Start by typing \`1\`.`, ephemeral: true }).catch(() => {});
             await channel.send('🔢 **Counting Game Started!** The next number is **1**.');
         }
 
         if (interaction.commandName === 'countstats') {
-            const guildData = countCache.get(interaction.guild.id);
+            const guildData = countCache.get(interaction.guild.id) || (db.getCountingConfig ? db.getCountingConfig(interaction.guild.id) : null);
             if (!guildData) {
                 return interaction.reply({ content: '❌ The counting game has not been set up in this server yet! Use `/setupcount`.', ephemeral: true }).catch(() => {});
             }
@@ -103,12 +132,15 @@ module.exports = (client) => {
             if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
 
             const channel = message.mentions.channels.first() || message.channel;
-            const existing = countCache.get(message.guild.id);
+            const existing = countCache.get(message.guild.id) || (db.getCountingConfig ? db.getCountingConfig(message.guild.id) : null);
             const highScore = existing ? existing.highScore : 0;
             const newData = { channelId: channel.id, currentNumber: 1, highScore: highScore, lastUser: null };
 
             countCache.set(message.guild.id, newData);
-            await CountGuild.findOneAndUpdate({ guildId: message.guild.id }, newData, { upsert: true });
+            if (db.setCountingConfig) db.setCountingConfig(message.guild.id, newData);
+            if (isDbConnected()) {
+                await CountGuild.findOneAndUpdate({ guildId: message.guild.id }, newData, { upsert: true }).catch(() => {});
+            }
 
             await message.reply(`✅ <#${channel.id}> is now the Counting Game channel! Start by typing \`1\`.`).catch(() => {});
 
@@ -118,7 +150,7 @@ module.exports = (client) => {
             return;
         }
 
-        const guildData = countCache.get(message.guild.id);
+        const guildData = countCache.get(message.guild.id) || (db.getCountingConfig ? db.getCountingConfig(message.guild.id) : null);
         if (!guildData || message.channel.id !== guildData.channelId) return;
         if (message.content.startsWith(PREFIX) || message.content.startsWith('/')) return;
 
@@ -155,12 +187,15 @@ module.exports = (client) => {
             }
 
             countCache.set(message.guild.id, guildData);
+            if (db.setCountingConfig) db.setCountingConfig(message.guild.id, guildData);
 
             // Background DB Sync
-            CountGuild.updateOne(
-                { guildId: message.guild.id }, 
-                { currentNumber: guildData.currentNumber, highScore: guildData.highScore, lastUser: guildData.lastUser }
-            ).catch(() => {});
+            if (isDbConnected()) {
+                CountGuild.updateOne(
+                    { guildId: message.guild.id }, 
+                    { currentNumber: guildData.currentNumber, highScore: guildData.highScore, lastUser: guildData.lastUser }
+                ).catch(() => {});
+            }
 
         } else {
             // ❌ WRONG NUMBER OR SAME USER TWICE
@@ -186,11 +221,14 @@ module.exports = (client) => {
             guildData.currentNumber = 1;
             guildData.lastUser = null;
             countCache.set(message.guild.id, guildData);
+            if (db.setCountingConfig) db.setCountingConfig(message.guild.id, guildData);
 
-            CountGuild.updateOne(
-                { guildId: message.guild.id }, 
-                { currentNumber: 1, lastUser: null }
-            ).catch(() => {});
+            if (isDbConnected()) {
+                CountGuild.updateOne(
+                    { guildId: message.guild.id }, 
+                    { currentNumber: 1, lastUser: null }
+                ).catch(() => {});
+            }
         }
     });
 };

@@ -653,6 +653,66 @@ async function runAll() {
     assert.ok(embed.data.title.includes("Mina Hi-Fi Music Desk"));
   });
 
+  // Test 19: Counting & Server Listings Storage Engine
+  console.log("\n📁 19. Resilient Counting & Server Listings Engine");
+  it("Persists and updates counting game and server listing configs", () => {
+    const db = require("../src/utils/database");
+    const testGuild = "guild_count_test_1";
+
+    // Counting config
+    db.setCountingConfig(testGuild, {
+      channelId: "chan_count_1",
+      currentNumber: 42,
+      highScore: 100,
+      lastUser: "user_counter_1"
+    });
+    const countCfg = db.getCountingConfig(testGuild);
+    assert.ok(countCfg);
+    assert.strictEqual(countCfg.currentNumber, 42);
+    assert.strictEqual(countCfg.highScore, 100);
+
+    const allCounts = db.getAllCountingConfigs();
+    assert.ok(allCounts[testGuild]);
+
+    // Server listings
+    db.setServerListing(testGuild, {
+      guildId: testGuild,
+      name: "Starryboard Test Server",
+      memberCount: 50,
+      isListed: true
+    });
+    const listing = db.getServerListing(testGuild);
+    assert.ok(listing);
+    assert.strictEqual(listing.name, "Starryboard Test Server");
+
+    const allListings = db.getAllServerListings();
+    assert.ok(Array.isArray(allListings));
+    assert.ok(allListings.some(l => l.guildId === testGuild));
+  });
+
+  // Test 20: Token & MongoDB URI Sanitizers
+  console.log("\n📁 20. Token & MongoDB URI Sanitizers");
+  it("Sanitizes mobile keyboard whitespace, quotes, and variable labels", () => {
+    const { cleanToken, cleanMongoUri, maskMongoUri } = require("../src/utils/tokenSanitizer");
+
+    // Test mobile copy-paste with spaces
+    const mobileToken = ['samplePartOne123456789012', 'partTwo', 'samplePartThreeHMACSignatureString12345'].join('. ');
+    const cleanedToken = cleanToken(mobileToken);
+    assert.strictEqual(cleanedToken.includes(" "), false);
+
+    // Test MongoDB URI with mobile quotes and prefix
+    const rawMongo = ' MONGO_URI="mongodb+srv://mockUser:dummyPass123@mockcluster.net/my_db" \r\n';
+    const cleanedMongo = cleanMongoUri(rawMongo);
+    assert.strictEqual(cleanedMongo.startsWith("mongodb+srv://"), true);
+    assert.strictEqual(cleanedMongo.includes('"'), false);
+    assert.strictEqual(cleanedMongo.includes(" "), false);
+
+    // Test mask
+    const masked = maskMongoUri(cleanedMongo);
+    assert.strictEqual(masked.includes("dummyPass123"), false);
+    assert.strictEqual(masked.includes("****"), true);
+  });
+
   // Test Summary
   console.log("\n=========================================");
   console.log(`🌸 Test Suite Finished: ${passed} Passed, ${failed} Failed`);

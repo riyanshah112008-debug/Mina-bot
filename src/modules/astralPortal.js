@@ -67,6 +67,10 @@ async function getOrCreateWebhook(channel, client) {
 // Initialize Active Portals from MongoDB into RAM
 async function initAstralPortals(client) {
     try {
+        if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+            console.log('🌌 [Astral Portals] MongoDB offline or pending. Ready with in-memory portals.');
+            return;
+        }
         const activePortals = await AstralPortal.find({ active: true }).lean().catch(() => []);
         channelToPortal.clear();
 
