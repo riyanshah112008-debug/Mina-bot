@@ -1,25 +1,21 @@
-const { SlashCommandBuilder } = require("discord.js");
-const { StarryAudioEngine } = require("../../utils/nativeAudioEngine");
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+const { StarryAudioEngine } = require('../../utils/nativeAudioEngine');
+
+const EPHEMERAL_FLAG = (MessageFlags && MessageFlags.Ephemeral) ? MessageFlags.Ephemeral : 64;
 
 module.exports = {
-  name: "stop",
-  aliases: ["leave", "disconnect", "dc"],
-  category: "Music",
-  description: "Stop playback, clear queue, and leave the voice channel.",
-  usage: "stop",
-  data: new SlashCommandBuilder().setName("stop").setDescription("Stop playback and disconnect."),
+    data: new SlashCommandBuilder()
+        .setName('stop')
+        .setDescription('⏹️ Stops playback, clears queue, and disconnects'),
+        
+    async execute(interaction, client) {
+        const player = StarryAudioEngine.getPlayer(interaction.guild.id) || (client.manager ? client.manager.getPlayer(interaction.guild.id) : null);
+        
+        if (!player) {
+            return interaction.reply({ content: '❌ No active audio session in this server.', flags: [EPHEMERAL_FLAG] });
+        }
 
-  async execute(context, args, client) {
-    const kPlayer = client.manager?.getPlayer(context.guild.id);
-    const nPlayer = StarryAudioEngine.getPlayer(context.guild.id);
-
-    if (kPlayer) kPlayer.destroy();
-    if (nPlayer) nPlayer.stop();
-
-    if (!kPlayer && !nPlayer) {
-      return context.reply({ content: "❌ No active audio session in this server.", ephemeral: true });
+        player.destroy();
+        return interaction.reply('⏹️ **Audio playback stopped and queue cleared.**');
     }
-
-    return context.reply({ content: "⏹️ **Audio playback stopped, queue cleared, and bot disconnected.**" });
-  },
 };

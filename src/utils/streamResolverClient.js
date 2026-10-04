@@ -90,7 +90,7 @@ class StreamResolverClient {
                     this.pending.delete(id);
                     resolve(null);
                 }
-            }, 18000);
+            }, 12000);
 
             this.pending.set(id, { resolve, timer });
 
@@ -110,12 +110,12 @@ class StreamResolverClient {
         }).then((res) => {
             if (res && res.status === 'ok') {
                 if (res.file && fs.existsSync(res.file)) {
-                    const item = { file: res.file, title: res.title, duration: res.duration, timestamp: Date.now() };
+                    const item = { file: res.file, title: res.title, duration: res.duration, headers: res.headers || {}, timestamp: Date.now() };
                     this.cache.set(cacheKey, item);
                     return item;
                 }
                 if (res.url) {
-                    const item = { url: res.url, title: res.title, duration: res.duration, timestamp: Date.now() };
+                    const item = { url: res.url, title: res.title, duration: res.duration, headers: res.headers || {}, timestamp: Date.now() };
                     this.cache.set(cacheKey, item);
                     return item;
                 }

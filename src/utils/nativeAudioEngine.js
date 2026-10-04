@@ -103,17 +103,14 @@ FILTER_ARGS.mellow = FILTER_ARGS.soft;
 FILTER_ARGS.relax = FILTER_ARGS.soft;
 FILTER_ARGS.vintage = FILTER_ARGS.radio;
 
-let scClientId = 'dkevB9EsY4jIoSm8RfddPNUKyn6hurXF';
+let scClientId = null;
 let lastTokenRefresh = 0;
 
 async function refreshSoundCloudToken() {
     const now = Date.now();
     if (scClientId && (now - lastTokenRefresh < 3600000)) return;
     try {
-        const id = await Promise.race([
-            play.getFreeClientID(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
-        ]);
+        const id = await play.getFreeClientID();
         if (id) {
             scClientId = id;
             await play.setToken({ soundcloud: { client_id: id } });
@@ -121,8 +118,7 @@ async function refreshSoundCloudToken() {
         }
     } catch (e) {}
 }
-play.setToken({ soundcloud: { client_id: scClientId } }).catch(() => {});
-refreshSoundCloudToken().catch(() => {});
+refreshSoundCloudToken();
 
 // ==========================================
 // 🟢 OFFICIAL SPOTIFY API ENGINE
@@ -415,16 +411,18 @@ class StarryGuildPlayer {
             if (this.isPlaying) {
                 this.isPlaying = false;
                 this.handleTrackEnd();
+            } else if (this.currentTrack) {
+                // If stream died immediately without playing (e.g. 0-byte stream / 403 / network drop)
+                console.warn(`⚠️ [Audio Stream Failover] Track "${this.currentTrack.title}" ended before playing. Advancing...`);
+                this.handleTrackEnd();
             }
         });
 
         this.player.on('error', (error) => {
             console.warn(`⚠️ [Audio Stream Engine Status in ${this.guildId}]:`, error.message || error);
             if (this.destroyed) return;
-            if (this.isPlaying) {
-                this.isPlaying = false;
-                this.handleTrackEnd();
-            }
+            this.isPlaying = false;
+            this.handleTrackEnd();
         });
     }
 
@@ -450,8 +448,7 @@ class StarryGuildPlayer {
                 adapterCreator: adapterCreator,
                 selfDeaf: true,
                 selfMute: false,
-                group: botGroup,
-                daveEncryption: false
+                group: botGroup
             });
 
             this.connection.on('stateChange', (oldState, newState) => {
@@ -547,7 +544,7 @@ class StarryGuildPlayer {
         return this.playTrack();
     }
 
-    createFilteredResource(streamOrPath, isFile = false) {
+    createFilteredResource(streamOrPath, isFile = false, customHeaders = null) {
         const activeFilter = (this.filter && FILTER_ARGS[this.filter]) 
             ? FILTER_ARGS[this.filter] 
             : FILTER_ARGS.empowering;
@@ -555,15 +552,19 @@ class StarryGuildPlayer {
         try {
             if (isFile) {
                 const isUrl = typeof streamOrPath === 'string' && (streamOrPath.startsWith('http://') || streamOrPath.startsWith('https://'));
-                const inputArgs = isUrl 
-                    ? [
-                        '-reconnect', '1', 
-                        '-reconnect_streamed', '1', 
-                        '-reconnect_delay_max', '5', 
-                        '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        '-i', streamOrPath
-                      ]
-                    : ['-i', streamOrPath];
+                let inputArgs = [];
+                if (isUrl) {
+                    inputArgs.push('-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5');
+                    if (customHeaders && typeof customHeaders === 'object' && Object.keys(customHeaders).length > 0) {
+                        const headerStr = Object.entries(customHeaders).map(([k, v]) => `${k}: ${v}`).join('\r\n') + '\r\n';
+                        inputArgs.push('-headers', headerStr);
+                    } else {
+                        inputArgs.push('-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+                    }
+                    inputArgs.push('-i', streamOrPath);
+                } else {
+                    inputArgs.push('-i', streamOrPath);
+                }
 
                 const ffmpeg = new prism.FFmpeg({
                     args: [
@@ -652,25 +653,18 @@ class StarryGuildPlayer {
             if (!audioResource && streamResolver && !streamResolver.disabled) {
                 try {
                     const primaryArtist = (track.author || '').split(',')[0].trim();
-                    let query = `${primaryArtist} ${track.title} Official Audio`.trim();
-                    if (targetUrl && (targetUrl.includes('youtube.com/') || targetUrl.includes('youtu.be/'))) {
+                    let query = `${primaryArtist} ${track.title}`.trim();
+                    if (targetUrl && (targetUrl.includes('youtube.com/') || targetUrl.includes('youtu.be/') || targetUrl.includes('soundcloud.com/'))) {
                         query = targetUrl;
                     }
 
-                    let resolved = await streamResolver.resolve(query);
-                    if (!resolved || (!resolved.file && !resolved.url)) {
-                        resolved = await streamResolver.resolve(`${primaryArtist} ${track.title}`.trim());
-                    }
-                    if (!resolved || (!resolved.file && !resolved.url)) {
-                        resolved = await streamResolver.resolve(`${track.title} Official Audio`.trim());
-                    }
-
+                    const resolved = await streamResolver.resolve(query);
                     if (resolved) {
                         if (resolved.file && fs.existsSync(resolved.file)) {
                             track._resolvedFile = resolved.file;
                             audioResource = this.createFilteredResource(resolved.file, true);
                         } else if (resolved.url) {
-                            audioResource = this.createFilteredResource(resolved.url, true);
+                            audioResource = this.createFilteredResource(resolved.url, true, resolved.headers);
                         }
                     }
                 } catch (srErr) {}
@@ -689,7 +683,7 @@ class StarryGuildPlayer {
                     const targetSc = scResults?.[0];
                     const scUrl = targetSc?.permalink || targetSc?.url;
                     if (scUrl) {
-                        const stream = await play.stream(scUrl, { quality: 2 });
+                        const stream = await play.stream(scUrl, { quality: 2 }).catch(() => null);
                         if (stream && stream.stream) {
                             audioResource = this.createFilteredResource(stream.stream, false);
                         }
@@ -714,7 +708,7 @@ class StarryGuildPlayer {
                         if (streamResolver && !streamResolver.disabled) {
                             const res = await streamResolver.resolve(ytUrl);
                             if (res && res.url) {
-                                audioResource = this.createFilteredResource(res.url, true);
+                                audioResource = this.createFilteredResource(res.url, true, res.headers);
                             }
                         }
                         if (!audioResource) {
@@ -751,6 +745,10 @@ class StarryGuildPlayer {
                 this.audioResource.volume.setVolume(this.volume / 100);
             }
 
+            if (this.connection) {
+                this.connection.subscribe(this.player);
+            }
+
             this.player.play(this.audioResource);
             this.paused = false;
             this.playbackStartTime = Date.now();
@@ -761,11 +759,7 @@ class StarryGuildPlayer {
                 this.loadingMessage = null;
             }
 
-            if (this.nowPlayingMessage) {
-                await this.sendNowPlayingPanel(track, true);
-            } else {
-                await this.sendNowPlayingPanel(track);
-            }
+            await this.sendNowPlayingPanel(track, true);
             try { require('../modules/musicController').update(this.guildId, this.client); } catch (e) {}
 
         } catch (err) {
@@ -790,17 +784,8 @@ class StarryGuildPlayer {
         this.playNext();
     }
 
-    async sendNowPlayingPanel(track, updateOnly = false) {
-        if (!this.textChannel) return;
-
-        try {
-            const musicController = require('../modules/musicController');
-            if (musicController.isRequestChannel(this.guildId, this.textChannel.id)) {
-                await musicController.update(this.guildId, this.client).catch(() => {});
-                return;
-            }
-        } catch (ctrlErr) {}
-
+    buildNowPlayingPayload(track) {
+        if (!track) return null;
         const fallbackThumb = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80';
         const trackThumb = (track.thumbnail && !track.thumbnail.includes('imgur.com')) 
             ? track.thumbnail 
@@ -813,7 +798,7 @@ class StarryGuildPlayer {
         const embed = new EmbedBuilder()
             .setColor('#5865F2')
             .setAuthor({ 
-                name: `Now Playing • ${this.client.user?.username || 'Mina Audio'}`, 
+                name: `Now Playing • ${this.client.user?.username || 'Starry Audio'}`, 
                 iconURL: 'https://cdn.discordapp.com/emojis/1049283733054177301.webp?size=96' 
             })
             .setTitle(track.title ? track.title.substring(0, 95) : 'Audio Track')
@@ -830,7 +815,7 @@ class StarryGuildPlayer {
                 `⚙️ **Playback & Empowering DSP (1-Year Response Lifetime)**\n` +
                 `Use the interactive controls below to manage your audio session.`
             )
-            .setFooter({ text: `Mina Music Engine • Bot: ${this.client.user ? this.client.user.tag : 'Mina bot'}`, iconURL: this.client.user ? this.client.user.displayAvatarURL() : undefined });
+            .setFooter({ text: `Starry Music Engine • Bot: ${this.client.user ? this.client.user.tag : 'Starry'}`, iconURL: this.client.user ? this.client.user.displayAvatarURL() : undefined });
 
         // Row 1: 4 buttons (No mobile wrapping)
         const row1 = new ActionRowBuilder().addComponents(
@@ -886,10 +871,25 @@ class StarryGuildPlayer {
         );
 
         const lang = this.guildId ? getGuildLanguageSync(this.guildId) : 'en';
-        const panelPayload = localizePayload({
+        return localizePayload({
             embeds: [embed],
             components: [row1, row2, row3, filterRow]
         }, lang);
+    }
+
+    async sendNowPlayingPanel(track, updateOnly = false) {
+        if (!this.textChannel) return;
+
+        try {
+            const musicController = require('../modules/musicController');
+            if (musicController.isRequestChannel(this.guildId, this.textChannel.id)) {
+                await musicController.update(this.guildId, this.client).catch(() => {});
+                return;
+            }
+        } catch (ctrlErr) {}
+
+        const panelPayload = this.buildNowPlayingPayload(track);
+        if (!panelPayload) return;
 
         if (updateOnly && this.nowPlayingMessage) {
             try {
@@ -1161,7 +1161,7 @@ class StarryAudioEngine {
 
     static async search(rawQuery, requester) {
         const tracks = [];
-        refreshSoundCloudToken().catch(() => {});
+        await refreshSoundCloudToken();
         let query = rawQuery.trim();
 
         // 0. Resolve shortlinks / redirects (youtu.be, on.soundcloud.com, spotify.link, deezer.page.link)

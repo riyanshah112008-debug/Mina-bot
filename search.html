@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results - Starryboard</title>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="search.css">
+</head>
+<body>
+
+<!-- Header Section -->
+<header>
+    <nav class="sb-nav">
+        <div class="sb-nav-top">
+            <a href="index.html" class="sb-logo">
+                <i class="fa-solid fa-compass sb-logo-icon"></i>
+                <span>STARRYBOARD</span>
+            </a>
+
+            <!-- 右侧认证区域 (与 index.html 保持一致) -->
+            <div class="sb-nav-right" style="display: flex; align-items: center; gap: 15px;">
+                <!-- 1. 未登录时显示 -->
+                <button class="sb-btn-login js-login-btn" id="loginBtn">
+                    <i class="fa-brands fa-discord"></i>
+                    <span>Login with Discord</span>
+                </button>
+
+                <!-- 2. 已登录时显示 (默认隐藏) -->
+                <div class="sb-user-profile" id="userProfile" style="display: none; position: relative;">
+                    <div class="sb-user-info" id="userMenuToggle" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <img id="userAvatar" src="" alt="User Avatar" class="sb-user-avatar" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #5865F2;">
+                        <span id="userName" style="color: #fff; font-weight: 600; font-size: 14px;">Username</span>
+                        <i class="fa-solid fa-chevron-down" style="color: #8a8f9d; font-size: 12px;"></i>
+                    </div>
+
+                    <div class="sb-user-dropdown" id="userDropdown" style="display: none; position: absolute; right: 0; top: 120%; background: #1a1d26; border: 1px solid #2a2e3d; border-radius: 8px; padding: 8px 0; min-width: 140px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 100;">
+                        <a href="dashboard.html" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; color: #fff; text-decoration: none; font-size: 14px;">
+                            <i class="fa-solid fa-gauge"></i> Dashboard
+                        </a>
+                        <a href="javascript:void(0);" id="logoutBtn" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; color: #ff4d4f; text-decoration: none; font-size: 14px;">
+                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </nav>
+</header>
+
+<!-- Main Search Layout -->
+<main class="sb-search-container">
+
+    <!-- Breadcrumb & Page Info -->
+    <div class="sb-breadcrumb">
+        <a href="index.html">Home</a>
+        <i class="fa-solid fa-chevron-right"></i>
+        <span>Search</span>
+    </div>
+
+    <!-- Top Hero Search Bar -->
+    <section class="sb-search-hero">
+        <h1 class="sb-search-heading">Results for <span class="sb-highlight" id="searchHighlight">""</span></h1>
+
+        <div class="sb-search-box">
+            <label for="searchInput"></label>
+            <input type="text" value="" placeholder="Search servers, tags, topics..." class="sb-search-input" id="searchInput" autocomplete="off">
+            <button type="button" class="sb-search-clear" id="clearSearchBtn"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" class="sb-search-btn" id="searchBtn"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+
+        <!-- Dynamic Related Tag Cloud -->
+        <div class="sb-related-tags">
+            <span class="sb-related-title"><i class="fa-solid fa-tags"></i> Recommend:</span>
+            <div id="recommendTagsContainer" style="display: inline-flex; gap: 8px; flex-wrap: wrap;"></div>
+        </div>
+    </section>
+
+    <!-- Filters Bar -->
+    <div class="sb-filter-bar">
+        <div class="sb-filter-group">
+            <div class="sb-dropdown">
+                <i class="fa-solid fa-arrow-down-wide-short sb-dropdown-icon"></i>
+                <label for="sortSelect"></label>
+                <select class="sb-dropdown-select" id="sortSelect">
+                    <option value="bumped" selected>Bumped Recently</option>
+                    <option value="newest">Recently Added</option>
+                    <option value="members">Most Members</option>
+                </select>
+                <i class="fa-solid fa-chevron-down sb-dropdown-arrow"></i>
+            </div>
+        </div>
+
+        <!-- Safe Filter Switch (NSFW) -->
+        <div class="sb-toggle-group">
+            <label class="sb-switch">
+                <input type="checkbox" id="nsfwToggle">
+                <span class="sb-slider"></span>
+            </label>
+            <span class="sb-toggle-label"><i class="fa-solid fa-shield-halved"></i> Allow NSFW</span>
+        </div>
+    </div>
+
+    <!-- Results Meta Header -->
+    <div class="sb-results-meta">
+        <span>Found <strong id="totalServerCount">0</strong> servers active right now</span>
+    </div>
+
+    <!-- Server Grid -->
+    <div class="sb-grid" id="serverGrid">
+        <!-- 卡片数据由 JS 动态生成 -->
+    </div>
+
+    <!-- Pagination -->
+    <div class="sb-pagination" id="paginationContainer">
+        <!-- 页码按钮由 JS 自动渲染 -->
+    </div>
+
+</main>
+
+<!-- Footer -->
+<footer class="sb-footer">
+    <p>© 2026 Starryboard. Built for Discord Communities. Independent & Unaffiliated.</p>
+</footer>
+
+<!-- 通用认证脚本（负责控制 Header 登录状态显示/隐藏） -->
+<script src="script.js"></script>
+<script src="search.js"></script>
+</body>
+</html>

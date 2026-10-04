@@ -1,0 +1,325 @@
+/* Search Page Specific Styles */
+
+.sb-search-container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 30px 20px 60px 20px;
+    width: 100%;
+    flex-grow: 1;
+}
+
+/* Breadcrumb */
+.sb-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+.sb-breadcrumb a:hover {
+    color: var(--accent-cyan);
+}
+
+.sb-breadcrumb i {
+    font-size: 0.65rem;
+    opacity: 0.6;
+}
+
+.sb-breadcrumb .active {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Search Hero */
+.sb-search-hero {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.sb-search-heading {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 20px;
+}
+
+.sb-highlight {
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.sb-search-clear {
+    position: absolute;
+    right: 58px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.sb-search-clear:hover {
+    color: var(--text-primary);
+}
+
+/* Related Tags Cloud */
+.sb-related-tags {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.sb-related-title {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.sb-tag-pill {
+    background-color: rgba(12, 16, 26, 0.7);
+    border: 1px solid var(--border-color);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
+}
+
+.sb-tag-pill:hover, .sb-tag-pill.active {
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+    background-color: rgba(0, 242, 254, 0.1);
+    box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+}
+
+/* Filter Bar Container */
+.sb-filter-bar {
+    background-color: rgba(12, 16, 26, 0.85);
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(12px);
+    border-radius: 12px;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.sb-filter-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.sb-dropdown-btn {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.sb-dropdown-btn:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sb-dropdown-btn i {
+    color: var(--accent-cyan);
+}
+
+/* Switch Toggle (NSFW 开关) */
+.sb-toggle-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sb-toggle-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sb-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.sb-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.sb-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(255, 255, 255, 0.15);
+    transition: .3s;
+    border-radius: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.sb-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+input:checked + .sb-slider {
+    background-color: #ff4757;
+    border-color: #ff4757;
+}
+
+input:checked + .sb-slider:before {
+    transform: translateX(20px);
+}
+
+/* Meta info */
+.sb-results-meta {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    padding-left: 4px;
+}
+
+.sb-results-meta strong {
+    color: var(--text-primary);
+}
+
+/* Pagination */
+.sb-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 50px;
+}
+
+.sb-page-btn {
+    background-color: rgba(12, 16, 26, 0.8);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.sb-page-btn:hover:not(.disabled):not(.active) {
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+}
+
+.sb-page-btn.active {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+    color: #000;
+    border-color: transparent;
+}
+
+.sb-page-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.sb-page-dots {
+    color: var(--text-secondary);
+    padding: 0 4px;
+}
+
+/* 自定义下拉菜单容器 */
+.sb-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* 左侧图标定位 */
+.sb-dropdown-icon {
+    position: absolute;
+    left: 12px;
+    color: var(--accent-cyan, #00f2fe);
+    font-size: 0.85rem;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* 右侧箭头定位 */
+.sb-dropdown-arrow {
+    position: absolute;
+    right: 12px;
+    color: var(--text-secondary, #8a8f9d);
+    font-size: 0.75rem;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* 下拉菜单本体样式 */
+.sb-dropdown-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    color: var(--text-primary, #ffffff);
+    padding: 8px 32px 8px 34px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
+}
+
+.sb-dropdown-select:hover,
+.sb-dropdown-select:focus {
+    border-color: rgba(255, 255, 255, 0.3);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sb-dropdown-select option {
+    background-color: #0c101a;
+    color: #ffffff;
+}

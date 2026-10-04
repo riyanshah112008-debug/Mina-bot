@@ -6,10 +6,12 @@ const telemetrySchema = new mongoose.Schema({
     
     // Member Velocity Metrics
     joinsThisHour: { type: Number, default: 0 },
+    joinsToday: { type: Number, default: 0 },
     lastHourJoinsRecord: { type: Number, default: 0 },
     
-    // Voice Engagement (in seconds)
+    // Voice & Chat Engagement
     totalVcSeconds: { type: Number, default: 0 },
+    messagesTotal: { type: Number, default: 0 },
     
     // Security & Moderation Telemetry
     modStats: {
@@ -19,7 +21,16 @@ const telemetrySchema = new mongoose.Schema({
         automodTriggers: { type: Number, default: 0 }
     },
 
+    // Automated Scheduled Telemetry Preferences
+    autoSchedule: {
+        enabled: { type: Boolean, default: false },
+        intervalHours: { type: Number, default: 6 }, // 6h by default when enabled
+        target: { type: String, enum: ['dm', 'channel'], default: 'dm' },
+        channelId: { type: String, default: '' },
+        lastSent: { type: Date, default: null }
+    },
+
     updatedAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('GuildTelemetry', telemetrySchema);
+module.exports = mongoose.models.GuildTelemetry || mongoose.model('GuildTelemetry', telemetrySchema);

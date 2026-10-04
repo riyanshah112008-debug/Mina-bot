@@ -1,0 +1,2298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Starry.gg — Next-Gen Discord Security, Music & Community Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0a0b10;
+            --bg-surface: #11131c;
+            --bg-card: rgba(22, 25, 38, 0.75);
+            --bg-card-hover: rgba(30, 34, 52, 0.9);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(120, 119, 198, 0.4);
+            --primary: #5865F2;
+            --primary-glow: rgba(88, 101, 242, 0.4);
+            --secondary: #9B59B6;
+            --cyan: #00f2fe;
+            --gold: #F59E0B;
+            --gold-glow: rgba(245, 158, 11, 0.4);
+            --danger: #EF4444;
+            --success: #10B981;
+            --text-main: #FFFFFF;
+            --text-muted: #94A3B8;
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(88, 101, 242, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 85% 30%, rgba(245, 158, 11, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 50% 85%, rgba(0, 242, 254, 0.08) 0%, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* HEADER / NAVBAR */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: rgba(10, 11, 16, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .brand-logo {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #5865F2, #9B59B6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .brand-text h1 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .brand-domain {
+            font-size: 0.8rem;
+            background: linear-gradient(135deg, var(--gold), #EF4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        .brand-text p {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 4px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+        }
+
+        .nav-tab {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-tab:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-tab.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* BUTTONS */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #5865F2, #4752C4);
+            color: #fff;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px var(--primary-glow);
+        }
+
+        .btn-premium {
+            background: linear-gradient(135deg, var(--gold), #D97706);
+            color: #000;
+            font-weight: 800;
+            box-shadow: 0 4px 20px var(--gold-glow);
+        }
+        .btn-premium:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--gold-glow);
+        }
+
+        .btn-outline {
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            border: 1px solid var(--border);
+        }
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--border-hover);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #EF4444, #DC2626);
+            color: #fff;
+        }
+
+        /* CONTAINER & VIEWS */
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 26px 20px;
+            flex: 1;
+        }
+
+        .tab-pane {
+            display: none;
+            animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tab-pane.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* HERO BANNER */
+        .hero-banner {
+            background: linear-gradient(135deg, rgba(88, 101, 242, 0.15), rgba(155, 89, 182, 0.1));
+            border: 1px solid var(--border-hover);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 30px;
+            background: rgba(88, 101, 242, 0.2);
+            border: 1px solid rgba(88, 101, 242, 0.4);
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: #A5B4FC;
+            margin-bottom: 16px;
+        }
+
+        .hero-banner h2 {
+            font-size: 2.3rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+
+        .hero-banner p {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            max-width: 800px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        /* STATS GRID */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-3px);
+        }
+
+        .stat-card h3 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .stat-card p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* DASHBOARD LAYOUT */
+        .workspace-layout {
+            display: grid;
+            grid-template-columns: 290px 1fr;
+            gap: 24px;
+        }
+
+        .sidebar {
+            background: var(--bg-card);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            height: fit-content;
+        }
+
+        .server-select-box {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .server-select-box label {
+            display: block;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .select-input, .input-text, .textarea-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: #fff;
+            font-size: 0.88rem;
+            font-weight: 600;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .select-input:focus, .input-text:focus, .textarea-input:focus {
+            border-color: var(--primary);
+        }
+
+        .side-link {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+
+        .side-link:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .side-link.active {
+            background: rgba(88, 101, 242, 0.18);
+            color: #A5B4FC;
+            border: 1px solid rgba(88, 101, 242, 0.3);
+        }
+
+        /* WORKSPACE CONTENT */
+        .workspace-content {
+            background: var(--bg-card);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 28px;
+            min-height: 600px;
+        }
+
+        .section-title {
+            font-size: 1.35rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        .setting-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .setting-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .setting-header h4 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 3px;
+        }
+
+        .setting-header p {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            line-height: 1.4;
+        }
+
+        /* TOGGLE SWITCH */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.15);
+            transition: .3s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* EMBED STUDIO */
+        .embed-builder-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .discord-preview-card {
+            background: #2B2D31;
+            border-left: 4px solid var(--primary);
+            border-radius: 4px;
+            padding: 16px;
+            font-size: 0.9rem;
+        }
+
+        .dp-author { font-weight: 700; color: #fff; margin-bottom: 4px; font-size: 0.85rem; }
+        .dp-title { font-weight: 800; font-size: 1.05rem; color: #fff; margin-bottom: 8px; }
+        .dp-desc { color: #DBDEE1; line-height: 1.5; font-size: 0.9rem; white-space: pre-wrap; margin-bottom: 12px; }
+        .dp-footer { color: #949BA4; font-size: 0.75rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px; }
+
+        /* PRICING & STORE */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 36px;
+        }
+
+        .price-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .price-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-4px);
+        }
+
+        .price-card.featured {
+            border-color: rgba(88, 101, 242, 0.6);
+            background: linear-gradient(180deg, rgba(88, 101, 242, 0.12) 0%, rgba(22, 25, 38, 0.85) 100%);
+            box-shadow: 0 0 35px rgba(88, 101, 242, 0.2);
+        }
+
+        .price-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--primary);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        .price-card h3 {
+            font-size: 1.35rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .price-val {
+            font-size: 2.6rem;
+            font-weight: 800;
+            color: #fff;
+            margin: 14px 0;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .price-val span {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin-bottom: 28px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .feature-list li {
+            color: #E2E8F0;
+            font-size: 0.88rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            line-height: 1.4;
+        }
+
+        .redeem-box {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        /* TOAST NOTIFICATION */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #10B981;
+            color: #fff;
+            padding: 12px 22px;
+            border-radius: 12px;
+            font-weight: 700;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10000;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 24px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: auto;
+        }
+
+        /* MOBILE RESPONSIVENESS */
+        @media (max-width: 900px) {
+            .workspace-layout { grid-template-columns: 1fr; }
+            .embed-builder-layout { grid-template-columns: 1fr; }
+            .hero-banner { padding: 24px 16px; }
+            .hero-banner h2 { font-size: 1.6rem; }
+            .redeem-box { flex-direction: column; align-items: stretch; }
+        /* MULTI-GATEWAY CHECKOUT STYLES */
+        .crypto-pill-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .crypto-coin-pill {
+            padding: 8px 14px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .crypto-coin-pill:hover {
+            border-color: var(--cyan);
+            color: #fff;
+            background: rgba(0, 242, 254, 0.1);
+        }
+        .crypto-coin-pill.active {
+            border-color: var(--cyan);
+            color: #fff;
+            background: rgba(0, 242, 254, 0.2);
+            box-shadow: 0 0 14px rgba(0, 242, 254, 0.35);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="cloudSetupBanner" style="display:none; background: linear-gradient(90deg, #f59e0b, #ef4444); color: #fff; padding: 10px 20px; text-align: center; font-size: 0.9rem; font-weight: 700; z-index: 10001; position: relative;">
+        ⚡ Starry Bot is waiting for Discord Token on Render. 
+        <a href="/setup" style="color: #fff; text-decoration: underline; margin-left: 8px; font-weight: 800;">Click here to Activate & Connect to Discord &rarr;</a>
+    </div>
+    <script>
+        fetch('/api/status').then(r => r.json()).then(data => {
+            if (data.status !== 'online') {
+                const b = document.getElementById('cloudSetupBanner');
+                if (b) b.style.display = 'block';
+            }
+        }).catch(() => {});
+    </script>
+
+    <!-- HEADER / NAVBAR -->
+    <header>
+        <a href="/" class="brand">
+            <div class="brand-logo">⭐</div>
+            <div class="brand-text">
+                <h1>Starry<span class="brand-domain">.gg</span></h1>
+                <p>Enterprise Multi-Bot Infrastructure</p>
+            </div>
+        </a>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchNav('overview')">🏠 Overview</button>
+            <button class="nav-tab" onclick="switchNav('setup')">🛡️ Server Setup & Studio</button>
+            <button class="nav-tab" onclick="switchNav('premium')">💎 Premium & Store</button>
+            <button class="nav-tab" onclick="switchNav('directory')">🚀 Starryboard Directory</button>
+        </div>
+
+        <div class="nav-actions">
+            <a href="https://discord.com/oauth2/authorize?client_id=1513589513648345368&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary">➕ Add Starry</a>
+            <button class="btn btn-premium" onclick="switchNav('premium')">⭐ Upgrade VIP</button>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- TAB 1: OVERVIEW -->
+        <section id="tab-overview" class="tab-pane active">
+            <div class="hero-banner">
+                <div class="hero-badge">⚡ STARRY.GG MULTI-BOT CLUSTER ONLINE • 165+ COMMANDS</div>
+                <h2>Next-Generation Discord Infrastructure & Security Suite</h2>
+                <p>Complete Enterprise Server Defense, 3-Room Multi-Bot Music Suite, 24/7 Loot Chests, Visual Embed Studio, and Cross-Platform Mobile & PC Support.</p>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="switchNav('setup')">⚙️ Open Server Setup & Command Studio</button>
+                    <button class="btn btn-outline" onclick="switchNav('premium')">💎 Explore Premium Perks</button>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card"><h3>165+</h3><p>Active Base Commands</p></div>
+                <div class="stat-card"><h3>3 Nodes</h3><p>Online Multi-Bot Workers</p></div>
+                <div class="stat-card"><h3>320 kbps</h3><p>Studio Audio Streams</p></div>
+                <div class="stat-card"><h3>1 Year</h3><p>Interactive Button Lifetime</p></div>
+            </div>
+        </section>
+
+        <!-- TAB 2: SERVER SETUP & ALL 150+ FEATURES DASHBOARD -->
+        <section id="tab-setup" class="tab-pane">
+            <div class="workspace-layout">
+                <!-- SIDEBAR NAVIGATION -->
+                <aside class="sidebar">
+                    <div class="server-select-box">
+                        <label>Select Server</label>
+                        <select id="guild-selector" class="select-input" onchange="loadGuildData(this.value)">
+                            <option value="">Loading Servers...</option>
+                        </select>
+                    </div>
+
+                    <button class="side-link active" onclick="switchModule('antinuke')">🛡️ Anti-Nuke & Guard</button>
+                    <button class="side-link" onclick="switchModule('verification')">👑 Gatekeeper & Captcha</button>
+                    <button class="side-link" onclick="switchModule('automod')">🤖 AutoMod Pro Matrix</button>
+                    <button class="side-link" onclick="switchModule('music')">🎵 Hi-Fi Music & DSP Studio</button>
+                    <button class="side-link" onclick="switchModule('moderation')">👥 Member Moderation Hub</button>
+                    <button class="side-link" onclick="switchModule('channels')">🧹 Channel Controls & Purge</button>
+                    <button class="side-link" onclick="switchModule('tickets')">🎫 Support Tickets Desk</button>
+                    <button class="side-link" onclick="switchModule('giveaways')">🎉 Giveaways & Drops</button>
+                    <button class="side-link" onclick="switchModule('autorole')">🏷️ AutoRoles & Sticky</button>
+                    <button class="side-link" onclick="switchModule('logging')">📜 Audit & Telemetry</button>
+                    <button class="side-link" onclick="switchModule('embed')">🎨 Visual Embed Studio</button>
+                    <button class="side-link" onclick="switchModule('backups')">💾 Server Snapshots</button>
+                    <button class="side-link" onclick="switchModule('console')" style="color: var(--cyan); font-weight: 800;">⚡ 150+ Command Console</button>
+                </aside>
+
+                <!-- WORKSPACE CONTENT -->
+                <main class="workspace-content">
+                    
+                    <!-- MODULE 1: ANTI-NUKE -->
+                    <div id="mod-antinuke" class="module-pane">
+                        <h3 class="section-title">🛡️ Starry Anti-Nuke & Security Guard Shield</h3>
+                        <p class="section-desc">Real-time detection and automated quarantine for unauthorized admin actions and raids.</p>
+
+                        <div class="settings-grid">
+                            <div class="setting-box">
+                                <div class="setting-header">
+                                    <div><h4>Anti-Nuke Protection</h4><p>Master switch for anti-nuke limiters.</p></div>
+                                    <label class="switch"><input type="checkbox" id="set-antinuke-master" checked><span class="slider"></span></label>
+                                </div>
+                            </div>
+
+                            <div class="setting-box">
+                                <div class="setting-header">
+                                    <div><h4>Block Unauthorized Bots</h4><p>Instantly kicks unapproved bots invited to server.</p></div>
+                                    <label class="switch"><input type="checkbox" id="set-block-bots" checked><span class="slider"></span></label>
+                                </div>
+                            </div>
+
+                            <div class="setting-box">
+                                <div class="setting-header">
+                                    <div><h4>Block Webhook Creation</h4><p>Prevents creation of spam/raid webhooks.</p></div>
+                                    <label class="switch"><input type="checkbox" id="set-block-webhooks" checked><span class="slider"></span></label>
+                                </div>
+                            </div>
+
+                            <div class="setting-box">
+                                <div class="setting-header">
+                                    <div><h4>Emergency Lockdown</h4><p>Locks all channels against @everyone.</p></div>
+                                    <label class="switch"><input type="checkbox" id="set-panic"><span class="slider"></span></label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                            <div class="form-group">
+                                <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Quarantine Role</label>
+                                <select id="set-quarantine-role" class="select-input"></select>
+                            </div>
+                            <div class="form-group">
+                                <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Punishment Action</label>
+                                <select id="set-antinuke-action" class="select-input">
+                                    <option value="quarantine">Quarantine (Strip Roles)</option>
+                                    <option value="timeout">Timeout for 28 Days</option>
+                                    <option value="kick">Kick from Server</option>
+                                    <option value="ban">Ban from Server</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="saveAntiNuke()">💾 Save Anti-Nuke Settings</button>
+                    </div>
+
+                    <!-- MODULE 2: VERIFICATION -->
+                    <div id="mod-verification" class="module-pane" style="display: none;">
+                        <h3 class="section-title">👑 Starry Gatekeeper & Captcha Verification</h3>
+                        <p class="section-desc">Protect your server from self-bots and user raids with web captcha validation.</p>
+
+                        <div class="settings-grid">
+                            <div class="setting-box">
+                                <div class="setting-header">
+                                    <div><h4>Enable Verification Gateway</h4><p>Forces new members to verify before gaining access.</p></div>
+                                    <label class="switch"><input type="checkbox" id="set-verify-enabled"><span class="slider"></span></label>
+                                </div>
+                            </div>
+
+                            <div class="setting-box">
+                                <div class="setting-header">
+                                    <div><h4>Verification Method</h4><p>Select verification style.</p></div>
+                                </div>
+                                <select id="set-verify-type" class="select-input">
+                                    <option value="web">Web Captcha Portal (High Security)</option>
+                                    <option value="button">1-Click Discord Button</option>
+                                    <option value="math">Math Challenge</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                            <div class="form-group">
+                                <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Verified Role</label>
+                                <select id="set-verify-role" class="select-input"></select>
+                            </div>
+                            <div class="form-group">
+                                <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Unverified Role</label>
+                                <select id="set-unverify-role" class="select-input"></select>
+                            </div>
+                            <div class="form-group">
+                                <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Min Account Age (Days)</label>
+                                <input type="number" id="set-verify-age" class="input-text" value="3" min="0">
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="saveVerification()">💾 Save Verification Settings</button>
+                    </div>
+
+                    <!-- MODULE 3: AUTOMOD -->
+                    <div id="mod-automod" class="module-pane" style="display: none;">
+                        <h3 class="section-title">🤖 Starry AutoMod Pro Matrix</h3>
+                        <p class="section-desc">Automated heuristics for spam, discord invites, scams, and ghost pings.</p>
+
+                        <div class="settings-grid">
+                            <div class="setting-box">
+                                <div class="setting-header">
+                                    <div><h4>Anti-Spam Filter</h4><p>Deletes spam messages exceeding 5 msgs/5s.</p></div>
+                                    <label class="switch"><input type="checkbox" id="set-antispam" checked><span class="slider"></span></label>
+                                </div>
+                            </div>
+                            <div class="setting-box">
+                                <div class="setting-header">
+                                    <div><h4>Anti-Mass Ping</h4><p>Blocks messages with 5+ user/role mentions.</p></div>
+                                    <label class="switch"><input type="checkbox" id="set-antiping" checked><span class="slider"></span></label>
+                                </div>
+                            </div>
+                            <div class="setting-box">
+                                <div class="setting-header">
+                                    <div><h4>Anti-Invite Links</h4><p>Deletes unauthorized discord.gg server invites.</p></div>
+                                    <label class="switch"><input type="checkbox" id="set-antiinvite" checked><span class="slider"></span></label>
+                                </div>
+                            </div>
+                            <div class="setting-box">
+                                <div class="setting-header">
+                                    <div><h4>Anti-Scam Phishing</h4><p>Blocks nitro gift scams and phishing domains.</p></div>
+                                    <label class="switch"><input type="checkbox" id="set-antiscam" checked><span class="slider"></span></label>
+                                </div>
+                            </div>
+                            <div class="setting-box">
+                                <div class="setting-header">
+                                    <div><h4>Ghost Ping Detector</h4><p>Exposes deleted messages that pinged users.</p></div>
+                                    <label class="switch"><input type="checkbox" id="set-ghostping" checked><span class="slider"></span></label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="saveAutoMod()">💾 Save AutoMod Settings</button>
+                    </div>
+
+                    <!-- MODULE 4: MUSIC & STUDIO -->
+                    <div id="mod-music" class="module-pane" style="display: none;">
+                        <h3 class="section-title">🎵 Starry Hi-Fi Music & DSP Studio</h3>
+                        <p class="section-desc">Search, play, queue, and control 320kbps audio across all voice channels from the web.</p>
+
+                        <!-- REMOTE SEARCH & PLAY BAR -->
+                        <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px;">
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">Play Track in Voice Channel</label>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <input type="text" id="web-music-query" class="input-text" style="flex: 1; min-width: 250px;" placeholder="Enter song title, artist, or YouTube/Spotify URL...">
+                                <button class="btn btn-primary" onclick="playWebTrack()">▶️ Play Track</button>
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <div>
+                                    <h4 id="player-title" style="font-size: 1.15rem; font-weight: 800; color: #fff;">No Track Currently Playing</h4>
+                                    <p id="player-author" style="color: var(--text-muted); font-size: 0.85rem;">Use the search bar above or ,play &lt;song&gt; in Discord</p>
+                                </div>
+                                <span style="background: rgba(16, 185, 129, 0.2); color: #10B981; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 0.75rem;">320 KBPS HI-FI</span>
+                            </div>
+
+                            <!-- LIVE CONTROLS -->
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
+                                <button class="btn btn-primary" onclick="controlMusic('pause')">⏯️ Pause / Resume</button>
+                                <button class="btn btn-outline" onclick="controlMusic('skip')">⏭️ Skip Track</button>
+                                <button class="btn btn-outline" onclick="controlMusic('shuffle')">🔀 Shuffle Queue</button>
+                                <button class="btn btn-outline" onclick="controlMusic('toggle247')">📻 Toggle 24/7 Voice</button>
+                                <button class="btn btn-outline" style="color: var(--danger);" onclick="controlMusic('stop')">⏹️ Stop & Clear</button>
+                            </div>
+
+                            <!-- DSP FILTERS -->
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">Live DSP Audio Presets</label>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'clear')">🚫 Clear</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'bass')">🔊 Bass</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', '8d')">🌀 8D Audio</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'nightcore')">✨ Nightcore</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'daycore')">🌅 Daycore</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'vaporwave')">🪩 Vaporwave</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'lofi')">☕ Lo-Fi</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'reverb')">🌌 Reverb</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'karaoke')">🎤 Karaoke</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'surround')">🎧 3D Surround</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'electronic')">⚡ EDM / Club</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'soft')">🍃 Soft Chill</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'radio')">📻 Radio</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'treble')">💎 Treble</button>
+                                <button class="btn btn-outline" onclick="controlMusic('filter', 'pop')">🎙️ Pop Clarity</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODULE 5: MEMBER MODERATION -->
+                    <div id="mod-moderation" class="module-pane" style="display: none;">
+                        <h3 class="section-title">👥 Starry Member Moderation Hub</h3>
+                        <p class="section-desc">Execute direct administrative actions on any member instantly from the web.</p>
+                        
+                        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Target User ID</label>
+                                    <input type="text" id="mod-target-id" class="input-text" placeholder="1513589513648345368">
+                                </div>
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Action</label>
+                                    <select id="mod-action-type" class="select-input">
+                                        <option value="timeout">⏳ Timeout / Mute</option>
+                                        <option value="kick">👢 Kick Member</option>
+                                        <option value="ban">🔨 Ban Member</option>
+                                        <option value="unban">🔓 Unban User ID</option>
+                                        <option value="role_add">➕ Add Role</option>
+                                        <option value="role_remove">➖ Remove Role</option>
+                                        <option value="nickname">✏️ Change Nickname</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Reason (Audit Log)</label>
+                                    <input type="text" id="mod-reason" class="input-text" placeholder="Breaking server rules">
+                                </div>
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Duration (Minutes for Timeout) / Role</label>
+                                    <input type="number" id="mod-duration" class="input-text" placeholder="60">
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary" onclick="executeModAction()">⚡ Execute Moderation Action</button>
+                        </div>
+                    </div>
+
+                    <!-- MODULE 6: CHANNEL CONTROLS & PURGE -->
+                    <div id="mod-channels" class="module-pane" style="display: none;">
+                        <h3 class="section-title">🧹 Channel Controls & Message Purge</h3>
+                        <p class="section-desc">Bulk purge messages, lock/unlock channels, and set slowmodes from the web.</p>
+                        
+                        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Target Channel</label>
+                                    <select id="ctrl-channel-select" class="select-input"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Purge Amount (1-100)</label>
+                                    <input type="number" id="ctrl-purge-count" class="input-text" value="10" min="1" max="100">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn btn-danger" onclick="purgeChannel()">🧹 Purge Messages</button>
+                                <button class="btn btn-outline" onclick="toggleChannelLock('lock')">🔒 Lock Channel</button>
+                                <button class="btn btn-outline" onclick="toggleChannelLock('unlock')">🔓 Unlock Channel</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODULE 7: SUPPORT TICKETS -->
+                    <div id="mod-tickets" class="module-pane" style="display: none;">
+                        <h3 class="section-title">🎫 Support Tickets Desk</h3>
+                        <p class="section-desc">Deploy interactive ticket creator panels to any channel.</p>
+                        
+                        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px;">
+                            <div class="form-group" style="margin-bottom: 14px;">
+                                <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Destination Channel</label>
+                                <select id="ticket-channel-select" class="select-input"></select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 14px;">
+                                <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Panel Title</label>
+                                <input type="text" id="ticket-title" class="input-text" value="🎫 Starry Support Desk">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 18px;">
+                                <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Description</label>
+                                <textarea id="ticket-desc" class="textarea-input" style="height: 80px;">Click the button below to open a private ticket with our staff team.</textarea>
+                            </div>
+                            <button class="btn btn-primary" onclick="dispatchTicketPanel()">🚀 Deploy Ticket Panel</button>
+                        </div>
+                    </div>
+
+                    <!-- MODULE 8: GIVEAWAYS & DROPS -->
+                    <div id="mod-giveaways" class="module-pane" style="display: none;">
+                        <h3 class="section-title">🎉 Giveaways & Drops Studio</h3>
+                        <p class="section-desc">Launch Discord giveaways and timed loot chest drops directly from the web.</p>
+                        
+                        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Giveaway Channel</label>
+                                    <select id="giveaway-channel-select" class="select-input"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Prize</label>
+                                    <input type="text" id="giveaway-prize" class="input-text" value="Discord Nitro Monthly">
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px;">
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Duration (Minutes)</label>
+                                    <input type="number" id="giveaway-duration" class="input-text" value="60">
+                                </div>
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Winners Count</label>
+                                    <input type="number" id="giveaway-winners" class="input-text" value="1" min="1">
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="launchGiveaway()">🎉 Launch Giveaway in Discord</button>
+                        </div>
+                    </div>
+
+                    <!-- MODULE 9: AUTOROLE -->
+                    <div id="mod-autorole" class="module-pane" style="display: none;">
+                        <h3 class="section-title">🏷️ Starry AutoRoles & Sticky Roles</h3>
+                        <p class="section-desc">Assign roles automatically when humans or bots join, and persist roles on rejoin.</p>
+                        <div class="form-group" style="max-width: 450px; margin-bottom: 16px;">
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Default Member Role</label>
+                            <select id="set-autorole-member" class="select-input"></select>
+                        </div>
+                        <div class="form-group" style="max-width: 450px; margin-bottom: 16px;">
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Default Bot Role</label>
+                            <select id="set-autorole-bot" class="select-input"></select>
+                        </div>
+                        <div class="setting-box" style="max-width: 450px; margin-bottom: 20px;">
+                            <div class="setting-header">
+                                <div><h4>Sticky Roles</h4><p>Restore previous roles when a member rejoins.</p></div>
+                                <label class="switch"><input type="checkbox" id="set-sticky"><span class="slider"></span></label>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveAutoRole()">💾 Save AutoRole Settings</button>
+                    </div>
+
+                    <!-- MODULE 10: AUDIT LOGGING -->
+                    <div id="mod-logging" class="module-pane" style="display: none;">
+                        <h3 class="section-title">📜 Starry Audit & Security Telemetry</h3>
+                        <p class="section-desc">Route all moderation actions, message edits, and voice events to log channels.</p>
+                        <div class="form-group" style="max-width: 450px; margin-bottom: 14px;">
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Moderation Audit Channel</label>
+                            <select id="set-log-mod" class="select-input"></select>
+                        </div>
+                        <div class="form-group" style="max-width: 450px; margin-bottom: 14px;">
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Message Edit / Delete Channel</label>
+                            <select id="set-log-msg" class="select-input"></select>
+                        </div>
+                        <div class="form-group" style="max-width: 450px; margin-bottom: 20px;">
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Voice States Log Channel</label>
+                            <select id="set-log-voice" class="select-input"></select>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn btn-primary" onclick="saveLogging()">💾 Save Logging Channels</button>
+                            <a id="btn-export-bans" href="#" class="btn btn-outline">📁 Export Server Ban File (.JSON)</a>
+                        </div>
+                    </div>
+
+                    <!-- MODULE 11: VISUAL EMBED STUDIO -->
+                    <div id="mod-embed" class="module-pane" style="display: none;">
+                        <h3 class="section-title">🎨 Visual Discord Embed Studio</h3>
+                        <p class="section-desc">Create high-quality Discord embeds with real-time preview and dispatch to any channel.</p>
+
+                        <div class="embed-builder-layout">
+                            <!-- FORM INPUTS -->
+                            <div>
+                                <div class="form-group" style="margin-bottom: 14px;">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Destination Channel</label>
+                                    <select id="embed-channel" class="select-input"></select>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 14px;">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Embed Title</label>
+                                    <input type="text" id="embed-title" class="input-text" placeholder="Welcome to our server!" oninput="updateEmbedPreview()">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 14px;">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Description (Markdown Supported)</label>
+                                    <textarea id="embed-desc" class="textarea-input" placeholder="Rules: No spamming, respect staff..." oninput="updateEmbedPreview()" style="height: 100px;"></textarea>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 18px;">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Border Color</label>
+                                    <input type="color" id="embed-color" value="#5865F2" style="width: 100%; height: 38px; border-radius: 8px; cursor: pointer;" oninput="updateEmbedPreview()">
+                                </div>
+                                <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="sendEmbed()">🚀 Send Embed to Discord</button>
+                            </div>
+
+                            <!-- LIVE PREVIEW -->
+                            <div>
+                                <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Live Discord Preview</label>
+                                <div class="discord-preview-card" id="dp-card">
+                                    <div class="dp-author" id="dp-author-text">Starry System</div>
+                                    <div class="dp-title" id="dp-title-text">Welcome to our server!</div>
+                                    <div class="dp-desc" id="dp-desc-text">Rules: No spamming, respect staff...</div>
+                                    <div class="dp-footer">Today at 12:00 PM • Starry Embed Studio</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODULE 12: SERVER BACKUPS -->
+                    <div id="mod-backups" class="module-pane" style="display: none;">
+                        <h3 class="section-title">💾 Cloud Server Snapshots & Backups</h3>
+                        <p class="section-desc">Create 1-click snapshot backups of channels, categories, roles, and permissions.</p>
+                        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 14px; padding: 20px;">
+                            <h4 style="font-size: 1.05rem; margin-bottom: 6px;">Snapshot Protection Active</h4>
+                            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 14px;">Automated cloud backups preserve your complete server hierarchy and role configurations.</p>
+                            <button class="btn btn-primary" onclick="showToast('💾 Server Snapshot Created Successfully!')">📸 Create Instant Snapshot</button>
+                        </div>
+                    </div>
+
+                    <!-- MODULE 13: 150+ UNIVERSAL COMMAND CONSOLE -->
+                    <div id="mod-console" class="module-pane" style="display: none;">
+                        <h3 class="section-title">⚡ 150+ Universal Command Runner Console</h3>
+                        <p class="section-desc">Execute any of Starry's 165+ commands remotely on your server directly from the web.</p>
+                        
+                        <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px;">
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Select Command Category</label>
+                                    <select id="console-category-select" class="select-input" onchange="populateConsoleCommands(this.value)">
+                                        <option value="moderation">🛡️ Moderation (40+ Commands)</option>
+                                        <option value="music">🎵 Music & Audio (25+ Commands)</option>
+                                        <option value="utility">🔧 Utility & Info (25+ Commands)</option>
+                                        <option value="economy">💰 Economy & Games (25+ Commands)</option>
+                                        <option value="social">🌸 Social & Anime (25+ Commands)</option>
+                                        <option value="system">⚙️ System & VIP (15+ Commands)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Select Command</label>
+                                    <select id="console-command-select" class="select-input"></select>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px;">
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Arguments / Input</label>
+                                    <input type="text" id="console-args-input" class="input-text" placeholder="e.g. @user 10m or song title">
+                                </div>
+                                <div class="form-group">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Execute in Channel</label>
+                                    <select id="console-channel-select" class="select-input"></select>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary" onclick="runRemoteConsoleCommand()">⚡ Run Command Remotely</button>
+
+                            <div id="console-output-box" style="display: none; margin-top: 20px; background: #000; border: 1px solid var(--border); border-radius: 10px; padding: 14px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: #10B981;"></div>
+                        </div>
+                    </div>
+
+                </main>
+            </div>
+        </section>
+
+        <!-- TAB 3: PREMIUM & CHECKOUT -->
+        <section id="tab-premium" class="tab-pane">
+            <div class="hero-banner" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(88, 101, 242, 0.12)); border-color: rgba(245, 158, 11, 0.4);">
+                <div class="hero-badge" style="color: var(--gold); border-color: var(--gold);">⭐ STARRY.GG VIP CLUSTER</div>
+                <h2>Supercharge Your Discord Server with Starry Premium</h2>
+                <p>Unlock 24/7 Studio Quality Voice, Anti-Nuke God Mode, Custom White-Label Bot Branding, and Unlimited Cloud Backups.</p>
+            </div>
+
+            <div class="pricing-grid">
+                <!-- TIER 1 -->
+                <div class="price-card">
+                    <h3>Starry Shield Plus</h3>
+                    <p style="color: var(--text-muted); font-size: 0.88rem;">Essential security & 24/7 music</p>
+                    <div class="price-val">$4.99 <span>/ month (₹399)</span></div>
+                    <ul class="feature-list">
+                        <li>⚡ 24/7 Studio Quality Voice (320kbps, No-Disconnect)</li>
+                        <li>🛡️ Starry Anti-Nuke & Anti-Raid Shield</li>
+                        <li>👑 Web Captcha Verification Gateway</li>
+                        <li>💾 Daily Automated Cloud Backups (10 Snapshots)</li>
+                        <li>💰 2x Economy XP & Timed Loot Chest Boost</li>
+                        <li>📊 Full Audit Logs (Deletions, Voice States, Cases)</li>
+                    </ul>
+                    <button class="btn btn-outline" onclick="openCheckout('shield_plus', '$4.99')">🛒 Subscribe Shield Plus</button>
+                </div>
+
+                <!-- TIER 2 -->
+                <div class="price-card featured">
+                    <div class="price-badge">MOST POPULAR</div>
+                    <h3>Starry Pro Cluster</h3>
+                    <p style="color: var(--text-muted); font-size: 0.88rem;">Multi-guild power & custom branding</p>
+                    <div class="price-val">$12.99 <span>/ month (₹999)</span></div>
+                    <ul class="feature-list">
+                        <li>🌟 ALL Shield Plus features active across 3 Guilds</li>
+                        <li>🤖 White-Label Custom Bot Branding (Name & Avatar)</li>
+                        <li>🛡️ Anti-Nuke God Mode with 1-Click Snapshot Rollback</li>
+                        <li>🎵 3-Room Multi-Bot Music Suite (Starry 1, 2, 3)</li>
+                        <li>🔮 AI Smart Auto-Moderator (Powered by Gemini AI)</li>
+                        <li>🎫 Unlimited Support Ticket Panels with Web Transcripts</li>
+                        <li>👑 Priority Node Queue & 0ms Command Latency</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="openCheckout('pro_cluster', '$12.99')">⭐ Subscribe Pro Cluster</button>
+                </div>
+
+                <!-- TIER 3 -->
+                <div class="price-card">
+                    <div class="price-badge" style="background: var(--gold);">BEST VALUE</div>
+                    <h3>Starry Supreme Lifetime VIP</h3>
+                    <p style="color: var(--text-muted); font-size: 0.88rem;">Permanent lifetime server license</p>
+                    <div class="price-val">$39.99 <span>One-Time (₹3,299)</span></div>
+                    <ul class="feature-list">
+                        <li>♾️ Permanent Lifetime VIP Access (All Updates Included)</li>
+                        <li>🌐 Unlimited Guild Activations & Bot Clones</li>
+                        <li>💎 Golden Starry VIP Badge & Custom Profile Embed Title</li>
+                        <li>🚀 Dedicated High-Performance FLAC Lossless Audio Streamer</li>
+                        <li>🔒 Maximum Enterprise Anti-Nuke Protection</li>
+                        <li>👑 Direct Access to Private Beta & VIP Developer Support</li>
+                    </ul>
+                    <button class="btn btn-premium" onclick="openCheckout('lifetime', '$39.99')">👑 Buy Lifetime VIP</button>
+                </div>
+            </div>
+
+            <!-- REDEEM LICENSE PORTAL -->
+            <div class="redeem-box">
+                <div>
+                    <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--gold); margin-bottom: 4px;">🔑 Have a License Key?</h3>
+                    <p style="color: var(--text-muted); font-size: 0.88rem;">Enter your 16-character license key (e.g. STRY-PRO-XXXX-XXXX) to instantly activate premium.</p>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="redeem-key-input" class="input-text" style="width: 240px;" placeholder="STRY-PRO-ABCD-1234">
+                    <button class="btn btn-premium" onclick="redeemLicenseKey()">Activate</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: PUBLIC DIRECTORY -->
+        <section id="tab-directory" class="tab-pane">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <h2 class="section-title">🚀 Starryboard Public Server Directory</h2>
+                    <p style="color: var(--text-muted);">Explore top community servers or run <code>,bump</code> to promote yours.</p>
+                </div>
+                <input type="text" id="dir-search" class="input-text" style="max-width: 300px;" placeholder="🔍 Search servers..." oninput="filterDirectory()">
+            </div>
+            <div class="settings-grid" id="directory-container">
+                <p style="color: var(--text-muted);">Loading servers...</p>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- INTERACTIVE MULTI-STEP PAYMENT CHECKOUT MODAL -->
+    <div id="checkout-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(16px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: var(--bg-card); border: 1px solid var(--border-hover); border-radius: 20px; max-width: 540px; width: 100%; padding: 28px; box-shadow: 0 25px 60px rgba(0,0,0,0.8); position: relative; max-height: 92vh; overflow-y: auto;">
+            
+            <button onclick="closeCheckout()" style="position: absolute; top: 18px; right: 20px; background: transparent; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer;">✕</button>
+
+            <!-- MODAL HEADER -->
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--gold), #D97706); display: flex; align-items: center; justify-content: center; font-size: 22px;">💎</div>
+                <div>
+                    <h3 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #fff;">Starry VIP Checkout</h3>
+                    <p id="modal-tier-name" style="font-size: 0.82rem; color: var(--cyan); font-weight: 700; margin: 0;">Pro Cluster</p>
+                </div>
+            </div>
+
+            <!-- STEP 1: METHOD SELECTION -->
+            <div id="checkout-step-1">
+                <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="color: var(--text-muted); font-size: 0.88rem;">Selected Plan:</span>
+                        <span id="modal-tier-price" style="font-size: 1.35rem; font-weight: 800; color: var(--gold);">$12.99</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-muted);">
+                        <span>Target Server:</span>
+                        <span id="modal-target-guild" style="color: #fff; font-weight: 600;">Current Server</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Select Payment Gateway</label>
+                    <select id="checkout-method-select" class="select-input" onchange="onPaymentMethodChange()">
+                        <option value="crypto">🪙 Crypto Gateway (USDT TRC20, SOL, BTC, ETH, BEP20, LTC) - [Global]</option>
+                        <option value="paypal">🅿️ PayPal Express (Cards, Balance, Bank) - [Global USD / EUR]</option>
+                        <option value="upi">📱 UPI Instant QR (GooglePay, PhonePe, Paytm, BHIM) - [India ₹]</option>
+                        <option value="card">💳 Credit & Debit Card (Stripe Global Checkout)</option>
+                    </select>
+                </div>
+
+                <!-- CRYPTO DETAILS BLURB -->
+                <div id="method-crypto-info" style="display: block; background: rgba(0, 242, 254, 0.08); border: 1px solid rgba(0, 242, 254, 0.25); border-radius: 12px; padding: 14px; margin-bottom: 16px; font-size: 0.85rem;">
+                    <p style="font-weight: 700; color: var(--cyan); margin-bottom: 4px;">🪙 Global Multi-Network Crypto Accepted</p>
+                    <p style="color: var(--text-muted); margin-bottom: 4px;">• Pay with <strong>USDT (TRC-20 & BEP-20)</strong>, <strong>Solana (SOL)</strong>, <strong>Bitcoin (BTC)</strong>, <strong>Ethereum (ETH)</strong>, or <strong>Litecoin (LTC)</strong>.</p>
+                    <p style="color: var(--text-muted); margin: 0;">• Instant order registration with 1-confirmation blockchain TxHash.</p>
+                </div>
+
+                <!-- PAYPAL DETAILS BLURB -->
+                <div id="method-paypal-info" style="display: none; background: rgba(0, 112, 186, 0.1); border: 1px solid rgba(0, 112, 186, 0.3); border-radius: 12px; padding: 14px; margin-bottom: 16px; font-size: 0.85rem;">
+                    <p style="font-weight: 700; color: #38BDF8; margin-bottom: 4px;">🅿️ Instant PayPal Express Checkout</p>
+                    <p style="color: var(--text-muted); margin-bottom: 4px;">• Send payment directly via PayPal.Me link or email with 1-click.</p>
+                    <p style="color: var(--text-muted); margin: 0;">• Supports PayPal balance, linked bank accounts, and international debit/credit cards.</p>
+                </div>
+
+                <!-- UPI LIVE DETAILS BLURB -->
+                <div id="method-upi-info" style="display: none; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 14px; margin-bottom: 16px; font-size: 0.85rem;">
+                    <p style="font-weight: 700; color: #10B981; margin-bottom: 4px;">⚡ Instant UPI Dynamic QR & App Payments</p>
+                    <p style="color: var(--text-muted); margin-bottom: 4px;">• Zero extra gateway fees. Supported on all Indian UPI apps (GPay, PhonePe, Paytm).</p>
+                    <p style="color: var(--text-muted); margin: 0;">• Enter your 12-digit UPI UTR / Reference ID after paying to verify.</p>
+                </div>
+
+                <!-- CARD DETAILS BLURB -->
+                <div id="method-card-info" style="display: none; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 14px; margin-bottom: 16px; font-size: 0.85rem;">
+                    <p style="font-weight: 700; color: var(--gold); margin-bottom: 4px;">💳 International Card Gateway</p>
+                    <p style="color: var(--text-muted); margin: 0;">• Visa, MasterCard, American Express, and Apple Pay checkout.</p>
+                </div>
+
+                <button id="checkout-step1-btn" class="btn btn-premium" style="width: 100%; justify-content: center; padding: 12px; font-size: 0.95rem;" onclick="proceedToPayment()">💳 Proceed to Payment Details</button>
+            </div>
+
+            <!-- STEP 2: INTERACTIVE PAYMENT DISPLAY & PROOF SUBMISSION -->
+            <div id="checkout-step-2" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 16px;">
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Order Reference</div>
+                        <div id="step2-order-id" style="font-family: monospace; font-weight: 800; color: var(--cyan); font-size: 0.95rem;">ORD-XXXX-XXXX</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Amount Due</div>
+                        <div id="step2-order-amount" style="font-weight: 800; color: var(--gold); font-size: 1.15rem;">$12.99 USD</div>
+                    </div>
+                </div>
+
+                <!-- 🪙 1. CRYPTO CONTAINER -->
+                <div id="step2-crypto-container" style="display: none;">
+                    <label style="display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">Select Cryptocurrency / Network:</label>
+                    <div class="crypto-pill-container">
+                        <button class="crypto-coin-pill active" data-coin="usdt_trc20" onclick="selectCryptoCoin('usdt_trc20')">🟢 USDT (TRC-20)</button>
+                        <button class="crypto-coin-pill" data-coin="sol" onclick="selectCryptoCoin('sol')">🟣 Solana (SOL)</button>
+                        <button class="crypto-coin-pill" data-coin="btc" onclick="selectCryptoCoin('btc')">🟡 Bitcoin (BTC)</button>
+                        <button class="crypto-coin-pill" data-coin="eth" onclick="selectCryptoCoin('eth')">🔷 Ethereum (ETH)</button>
+                        <button class="crypto-coin-pill" data-coin="usdt_bep20" onclick="selectCryptoCoin('usdt_bep20')">🟡 USDT (BEP-20)</button>
+                        <button class="crypto-coin-pill" data-coin="ltc" onclick="selectCryptoCoin('ltc')">⚪ Litecoin (LTC)</button>
+                    </div>
+
+                    <div style="background: rgba(0, 242, 254, 0.05); border: 1px solid rgba(0, 242, 254, 0.2); border-radius: 12px; padding: 14px; margin-bottom: 14px; text-align: center;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.8rem;">
+                            <span id="step2-crypto-network-badge" style="color: var(--cyan); font-weight: 700;">TRON Network (TRC-20)</span>
+                            <span id="step2-crypto-amount-badge" style="color: var(--gold); font-weight: 800; font-size: 0.95rem;">$12.99 USDT</span>
+                        </div>
+
+                        <div style="display: inline-block; padding: 10px; background: #ffffff; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: 2px solid var(--cyan); margin-bottom: 12px;">
+                            <img id="step2-crypto-qr-img" src="" alt="Crypto Deposit QR" style="width: 170px; height: 170px; display: block;">
+                        </div>
+
+                        <div style="background: rgba(0,0,0,0.6); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                            <div style="overflow: hidden; text-align: left;">
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Deposit Address</div>
+                                <div id="step2-crypto-address-text" style="font-family: monospace; font-weight: 700; color: #fff; font-size: 0.85rem; word-break: break-all;">TF1n7dG7K8x9p2Ym3w4Q5r6T7u8V9w0X1Z</div>
+                            </div>
+                            <button class="btn btn-outline" onclick="copyCryptoAddress()" style="padding: 6px 12px; font-size: 0.75rem; white-space: nowrap;">📋 Copy</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🅿️ 2. PAYPAL CONTAINER -->
+                <div id="step2-paypal-container" style="display: none;">
+                    <div style="background: rgba(0, 112, 186, 0.08); border: 1px solid rgba(0, 112, 186, 0.3); border-radius: 14px; padding: 18px; margin-bottom: 14px; text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 6px;">🅿️</div>
+                        <h4 style="font-size: 1.15rem; font-weight: 800; color: #38BDF8; margin-bottom: 4px;">PayPal Express Checkout</h4>
+                        <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 14px;">Pay securely with your PayPal account or linked debit/credit card.</p>
+
+                        <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px;">Transfer Amount</div>
+                            <div id="step2-paypal-amount-badge" style="font-size: 1.4rem; font-weight: 800; color: var(--gold); margin-bottom: 8px;">$12.99 USD</div>
+                            <a id="step2-paypal-me-btn" href="#" target="_blank" class="btn btn-primary" style="width: 100%; justify-content: center; background: #0070BA; padding: 12px; font-size: 0.95rem; text-decoration: none; border-radius: 10px;">
+                                🅿️ Open PayPal to Complete Payment
+                            </a>
+                        </div>
+
+                        <div style="background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                            <div style="text-align: left; overflow: hidden;">
+                                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">PayPal Email Address</div>
+                                <div id="paypal-email-text" style="font-family: monospace; font-weight: 700; color: #fff; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis;">starrypayments@gmail.com</div>
+                            </div>
+                            <button class="btn btn-outline" onclick="copyPaypalEmail()" style="padding: 6px 12px; font-size: 0.75rem; white-space: nowrap;">📋 Copy Email</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 📱 3. UPI CONTAINER -->
+                <div id="step2-upi-container" style="display: none;">
+                    <div style="text-align: center; margin-bottom: 14px;">
+                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 8px;">Scan with GooglePay, PhonePe, Paytm, BHIM, or any UPI App:</div>
+                        <div style="display: inline-block; padding: 10px; background: #ffffff; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); border: 2px solid var(--gold);">
+                            <img id="step2-upi-qr-img" src="" alt="UPI QR Code" style="width: 180px; height: 180px; display: block;">
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="overflow: hidden;">
+                            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">UPI ID / VPA</div>
+                            <div id="step2-upi-id-text" style="font-family: monospace; font-weight: 700; color: #10B981; font-size: 0.9rem; text-overflow: ellipsis; overflow: hidden;">starrybot@upi</div>
+                        </div>
+                        <button class="btn btn-outline" onclick="copyUpiId()" style="padding: 6px 12px; font-size: 0.75rem; white-space: nowrap;">📋 Copy UPI</button>
+                    </div>
+
+                    <a id="step2-upi-intent-link" href="#" class="btn btn-primary" style="width: 100%; justify-content: center; margin-bottom: 14px; text-decoration: none; padding: 10px; font-size: 0.9rem;">
+                        📱 Tap to Pay in UPI App (Mobile)
+                    </a>
+                </div>
+
+                <!-- 💳 4. CARD CONTAINER -->
+                <div id="step2-card-container" style="display: none; background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 14px; text-align: center;">
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;">Click below to open the secure Stripe checkout gateway for international debit and credit cards.</p>
+                    <a id="step2-card-link" href="#" target="_blank" class="btn btn-primary" style="display: inline-block; padding: 10px 24px; text-decoration: none; font-size: 0.9rem;">💳 Open Card Checkout</a>
+                </div>
+
+                <!-- VERIFICATION PROOF INPUT BOX -->
+                <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+                    <label id="step2-proof-label" style="display: block; font-size: 0.8rem; font-weight: 700; color: #F59E0B; margin-bottom: 4px;">
+                        📝 Enter Payment Reference / TxID to Verify:
+                    </label>
+                    <p id="step2-proof-hint" style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 8px;">
+                        Paste your Blockchain TxHash, PayPal Transaction ID, or UPI UTR below.
+                    </p>
+                    <input type="text" id="checkout-utr-input" placeholder="e.g. TxHash / PayPal ID / UTR" maxlength="80" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.6); color: #fff; font-family: monospace; font-size: 0.95rem; text-align: center; letter-spacing: 1px; box-sizing: border-box;">
+                    <div id="checkout-utr-error" style="display: none; color: #EF4444; font-size: 0.78rem; margin-top: 6px; font-weight: 600;"></div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-outline" style="flex: 1; justify-content: center; font-size: 0.85rem;" onclick="backToStep1()">← Change</button>
+                    <button id="checkout-submit-proof-btn" class="btn btn-premium" style="flex: 2; justify-content: center; font-size: 0.9rem;" onclick="submitPaymentProof()">⚡ Confirm & Submit Verification</button>
+                </div>
+            </div>
+
+            <!-- STEP 3: VERIFICATION IN PROGRESS -->
+            <div id="checkout-step-3" style="display: none; text-align: center; padding: 10px 0;">
+                <div style="font-size: 48px; margin-bottom: 12px;">⏳</div>
+                <h3 style="font-size: 1.3rem; font-weight: 800; color: #F59E0B; margin-bottom: 6px;">Payment Under Verification</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 16px;">
+                    Your payment reference has been submitted to our automated settlement engine.
+                </p>
+
+                <div style="background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 18px; text-align: left;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.82rem;">
+                        <span style="color: var(--text-muted);">Order ID:</span>
+                        <span id="step3-order-id" style="font-family: monospace; font-weight: 700; color: var(--cyan);">ORD-XXXX</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.82rem;">
+                        <span style="color: var(--text-muted);">Method:</span>
+                        <span id="step3-method-text" style="font-weight: 700; color: #fff;">Crypto</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.82rem;">
+                        <span style="color: var(--text-muted);">Reference / Hash:</span>
+                        <span id="step3-utr-text" style="font-family: monospace; font-weight: 700; color: #fff; word-break: break-all; max-width: 60%;">TxHash...</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.82rem;">
+                        <span style="color: var(--text-muted);">Status:</span>
+                        <span style="color: #F59E0B; font-weight: 700;">🟡 Verifying Settlement...</span>
+                    </div>
+                </div>
+
+                <p style="font-size: 0.78rem; color: #6B7280; margin-bottom: 16px;">
+                    💡 Once confirmed by blockchain/gateway, your server will upgrade instantly and your 16-digit license key will be displayed here.
+                </p>
+
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button class="btn btn-outline" onclick="closeCheckout()">Close</button>
+                    <button id="step3-check-btn" class="btn btn-primary" onclick="checkCurrentOrderStatus(true)">🔄 Refresh Status</button>
+                </div>
+            </div>
+
+            <!-- STEP 4: SUCCESS RESULT -->
+            <div id="checkout-step-4" style="display: none; text-align: center; padding: 10px 0;">
+                <div style="font-size: 48px; margin-bottom: 10px;">🎉</div>
+                <h3 style="font-size: 1.35rem; font-weight: 800; color: #10B981; margin-bottom: 4px;">Payment Confirmed!</h3>
+                <p id="step4-success-desc" style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 16px; line-height: 1.4;">
+                    Your license key has been generated and your VIP privileges are active!
+                </p>
+
+                <div style="background: rgba(0,0,0,0.6); border: 2px dashed var(--gold); border-radius: 12px; padding: 14px; margin-bottom: 18px;">
+                    <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Your 16-Digit License Key</div>
+                    <div id="generated-key-display" style="font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; font-weight: 800; color: var(--gold); letter-spacing: 1px;">STRY-PRO-XXXX-XXXX</div>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button class="btn btn-outline" onclick="copyGeneratedKey()">📋 Copy Key</button>
+                    <button class="btn btn-primary" onclick="closeCheckout()">Done</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="toast">Settings Saved Successfully!</div>
+
+    <footer>
+        <p>© 2026 Starry.gg Network • Built for Cross-Platform High-Performance Operation (Phone & PC)</p>
+    </footer>
+
+    <script>
+        let currentGuildId = '';
+        let guildDataCache = {};
+
+        const COMMAND_GROUPS = {
+            moderation: ['ban', 'unban', 'kick', 'timeout', 'untimeout', 'warn', 'warnings', 'clearwarns', 'purge', 'lock', 'unlock', 'slowmode', 'nickname', 'addrole', 'removerole', 'quarantine', 'emergencylockdown', 'emergencysecure', 'emergencyunban'],
+            music: ['play', 'pause', 'resume', 'skip', 'stop', 'queue', 'volume', 'loop', 'shuffle', 'bass', '8d', 'nightcore', 'daycore', 'vaporwave', 'lofi', 'reverb', 'karaoke', 'surround', 'electronic', 'soft', 'radio', 'treble', 'pop', 'filter', 'clearfilters', 'nowplaying', 'autoplay', '247'],
+            utility: ['ping', 'help', 'serverinfo', 'userinfo', 'avatar', 'banner', 'roles', 'channels', 'calc', 'poll', 'snipe', 'afk', 'remind', 'uptime', 'stats', 'invite', 'bump'],
+            economy: ['balance', 'daily', 'weekly', 'work', 'crime', 'rob', 'deposit', 'withdraw', 'pay', 'shop', 'buy', 'inventory', 'slots', 'coinflip', 'dice', 'blackjack', 'chest', 'pet', 'prestige'],
+            social: ['highfive', 'hug', 'kiss', 'pat', 'slap', 'cuddle', 'bite', 'poke', 'punch', 'tickle', 'feed', 'lick', 'wave', 'sleep', 'wakeup', 'cry', 'laugh', 'dance', 'blush', 'pout', 'smile', 'bored', 'confess', 'marry'],
+            system: ['redeem', 'premium', 'cluster', 'status', 'telemetry', 'backup', 'restore']
+        };
+
+        function switchNav(tabId) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            
+            const btnIdx = tabId === 'overview' ? 0 : tabId === 'setup' ? 1 : tabId === 'premium' ? 2 : 3;
+            const tabs = document.querySelectorAll('.nav-tab');
+            if (tabs[btnIdx]) tabs[btnIdx].classList.add('active');
+            
+            const pane = document.getElementById('tab-' + tabId);
+            if (pane) pane.classList.add('active');
+
+            if (tabId === 'setup') {
+                loadGuilds();
+                populateConsoleCommands('moderation');
+            }
+            if (tabId === 'directory') loadDirectory();
+        }
+
+        function switchModule(modId) {
+            document.querySelectorAll('.side-link').forEach(l => l.classList.remove('active'));
+            document.querySelectorAll('.module-pane').forEach(m => m.style.display = 'none');
+
+            event.currentTarget.classList.add('active');
+            const targetMod = document.getElementById('mod-' + modId);
+            if (targetMod) targetMod.style.display = 'block';
+        }
+
+        function populateConsoleCommands(cat) {
+            const list = COMMAND_GROUPS[cat] || [];
+            const sel = document.getElementById('console-command-select');
+            sel.innerHTML = '';
+            list.forEach(c => {
+                sel.innerHTML += `<option value="${c}">,${c}</option>`;
+            });
+        }
+
+        async function loadGuilds() {
+            try {
+                const res = await fetch('/api/guilds', { headers: { 'bypass-tunnel-reminder': 'true' } });
+                const d = await res.json();
+                const guilds = d.guilds || [];
+                const sel = document.getElementById('guild-selector');
+                sel.innerHTML = '';
+                guilds.forEach(g => {
+                    sel.innerHTML += `<option value="${g.id}">${g.name} (${g.memberCount} members)</option>`;
+                });
+                if (guilds.length > 0) loadGuildData(guilds[0].id);
+            } catch (e) {}
+        }
+
+        async function loadGuildData(guildId) {
+            if (!guildId) return;
+            currentGuildId = guildId;
+            try {
+                const res = await fetch('/api/guild/' + guildId, { headers: { 'bypass-tunnel-reminder': 'true' } });
+                const data = await res.json();
+                guildDataCache = data;
+
+                // Update ban export button link
+                const expBtn = document.getElementById('btn-export-bans');
+                if (expBtn) expBtn.href = '/api/guild/' + guildId + '/audit/export';
+
+                // Populate channels
+                const textChannels = (data.channels || []).filter(c => c.isText);
+                const chanSelects = ['set-log-mod', 'set-log-msg', 'set-log-voice', 'embed-channel', 'ctrl-channel-select', 'ticket-channel-select', 'giveaway-channel-select', 'console-channel-select'];
+                chanSelects.forEach(sId => {
+                    const el = document.getElementById(sId);
+                    if (el) {
+                        el.innerHTML = '<option value="">Select Channel</option>';
+                        textChannels.forEach(tc => {
+                            el.innerHTML += `<option value="${tc.id}">#${tc.name}</option>`;
+                        });
+                    }
+                });
+
+                // Populate roles
+                const roles = data.roles || [];
+                const roleSelects = ['set-quarantine-role', 'set-verify-role', 'set-unverify-role', 'set-autorole-member', 'set-autorole-bot'];
+                roleSelects.forEach(rId => {
+                    const el = document.getElementById(rId);
+                    if (el) {
+                        el.innerHTML = '<option value="">Select Role</option>';
+                        roles.forEach(r => {
+                            el.innerHTML += `<option value="${r.id}">@${r.name}</option>`;
+                        });
+                    }
+                });
+
+                // Populate Player status
+                if (data.player && data.player.currentTrack) {
+                    document.getElementById('player-title').innerText = data.player.currentTrack.title || 'Track';
+                    document.getElementById('player-author').innerText = data.player.currentTrack.author || 'Artist';
+                }
+
+                // Populate settings
+                if (data.settings) {
+                    const s = data.settings;
+                    if (s.antinuke) {
+                        document.getElementById('set-antinuke-master').checked = s.antinuke.enabled !== false;
+                        document.getElementById('set-block-bots').checked = s.antinuke.blockUnapprovedBots !== false;
+                        document.getElementById('set-block-webhooks').checked = s.antinuke.blockWebhookCreation !== false;
+                        document.getElementById('set-panic').checked = !!s.antinuke.panicLockdown;
+                        if (s.antinuke.quarantineRoleId) document.getElementById('set-quarantine-role').value = s.antinuke.quarantineRoleId;
+                        if (s.antinuke.action) document.getElementById('set-antinuke-action').value = s.antinuke.action;
+                    }
+                    if (s.verification) {
+                        document.getElementById('set-verify-enabled').checked = !!s.verification.enabled;
+                        if (s.verification.roleId) document.getElementById('set-verify-role').value = s.verification.roleId;
+                        if (s.verification.unverifiedRoleId) document.getElementById('set-unverify-role').value = s.verification.unverifiedRoleId;
+                        if (s.verification.captchaType) document.getElementById('set-verify-type').value = s.verification.captchaType;
+                        if (s.verification.minAccountAgeDays) document.getElementById('set-verify-age').value = s.verification.minAccountAgeDays;
+                    }
+                    if (s.automod) {
+                        document.getElementById('set-antispam').checked = s.automod.antiSpam !== false;
+                        document.getElementById('set-antiping').checked = s.automod.antiMassPing !== false;
+                        document.getElementById('set-antiinvite').checked = s.automod.antiInvite !== false;
+                        document.getElementById('set-antiscam').checked = s.automod.antiScam !== false;
+                        document.getElementById('set-ghostping').checked = s.automod.ghostPingDetector !== false;
+                    }
+                    if (s.autorole) {
+                        if (s.autorole.memberRoles && s.autorole.memberRoles[0]) document.getElementById('set-autorole-member').value = s.autorole.memberRoles[0];
+                        if (s.autorole.botRoles && s.autorole.botRoles[0]) document.getElementById('set-autorole-bot').value = s.autorole.botRoles[0];
+                        document.getElementById('set-sticky').checked = !!s.autorole.stickyRoles;
+                    }
+                    if (s.logging) {
+                        if (s.logging.modLogChannel) document.getElementById('set-log-mod').value = s.logging.modLogChannel;
+                        if (s.logging.messageLogChannel) document.getElementById('set-log-msg').value = s.logging.messageLogChannel;
+                        if (s.logging.voiceLogChannel) document.getElementById('set-log-voice').value = s.logging.voiceLogChannel;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function saveAntiNuke() {
+            const body = {
+                antinuke: {
+                    enabled: document.getElementById('set-antinuke-master').checked,
+                    blockUnapprovedBots: document.getElementById('set-block-bots').checked,
+                    blockWebhookCreation: document.getElementById('set-block-webhooks').checked,
+                    panicLockdown: document.getElementById('set-panic').checked,
+                    quarantineRoleId: document.getElementById('set-quarantine-role').value,
+                    action: document.getElementById('set-antinuke-action').value
+                }
+            };
+            await fetch('/api/guild/' + currentGuildId + '/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify(body)
+            });
+            showToast('🛡️ Anti-Nuke Settings Saved!');
+        }
+
+        async function saveVerification() {
+            const body = {
+                verification: {
+                    enabled: document.getElementById('set-verify-enabled').checked,
+                    roleId: document.getElementById('set-verify-role').value,
+                    unverifiedRoleId: document.getElementById('set-unverify-role').value,
+                    captchaType: document.getElementById('set-verify-type').value,
+                    minAccountAgeDays: Number(document.getElementById('set-verify-age').value || 3)
+                }
+            };
+            await fetch('/api/guild/' + currentGuildId + '/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify(body)
+            });
+            showToast('👑 Verification Settings Saved!');
+        }
+
+        async function saveAutoMod() {
+            const body = {
+                automod: {
+                    antiSpam: document.getElementById('set-antispam').checked,
+                    antiMassPing: document.getElementById('set-antiping').checked,
+                    antiInvite: document.getElementById('set-antiinvite').checked,
+                    antiScam: document.getElementById('set-antiscam').checked,
+                    ghostPingDetector: document.getElementById('set-ghostping').checked
+                }
+            };
+            await fetch('/api/guild/' + currentGuildId + '/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify(body)
+            });
+            showToast('🤖 AutoMod Settings Saved!');
+        }
+
+        async function saveAutoRole() {
+            const body = {
+                autorole: {
+                    memberRoles: [document.getElementById('set-autorole-member').value].filter(Boolean),
+                    botRoles: [document.getElementById('set-autorole-bot').value].filter(Boolean),
+                    stickyRoles: document.getElementById('set-sticky').checked
+                }
+            };
+            await fetch('/api/guild/' + currentGuildId + '/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify(body)
+            });
+            showToast('🏷️ AutoRole Settings Saved!');
+        }
+
+        async function saveLogging() {
+            const body = {
+                logging: {
+                    modLogChannel: document.getElementById('set-log-mod').value,
+                    messageLogChannel: document.getElementById('set-log-msg').value,
+                    voiceLogChannel: document.getElementById('set-log-voice').value
+                }
+            };
+            await fetch('/api/guild/' + currentGuildId + '/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify(body)
+            });
+            showToast('📜 Logging Channels Saved!');
+        }
+
+        async function playWebTrack() {
+            const query = document.getElementById('web-music-query').value;
+            if (!query) return alert('Please enter a track name or URL!');
+            const res = await fetch('/api/guild/' + currentGuildId + '/music/play', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify({ query })
+            });
+            const d = await res.json();
+            if (d.success) {
+                showToast(d.message);
+                document.getElementById('web-music-query').value = '';
+            } else {
+                alert(d.error || 'Failed to play track');
+            }
+        }
+
+        async function controlMusic(action, value) {
+            await fetch('/api/guild/' + currentGuildId + '/music/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify({ action, value })
+            });
+            showToast(`🎵 Music Control: ${action}`);
+        }
+
+        async function executeModAction() {
+            const targetId = document.getElementById('mod-target-id').value;
+            const action = document.getElementById('mod-action-type').value;
+            const reason = document.getElementById('mod-reason').value;
+            const durationMinutes = document.getElementById('mod-duration').value;
+
+            if (!targetId && action !== 'unban') return alert('Please specify a target user ID!');
+
+            const res = await fetch('/api/guild/' + currentGuildId + '/mod/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify({ targetId, action, reason, durationMinutes })
+            });
+            const d = await res.json();
+            if (d.success) showToast(d.message);
+            else alert(d.error || 'Failed to execute moderation action');
+        }
+
+        async function purgeChannel() {
+            const channelId = document.getElementById('ctrl-channel-select').value;
+            const amount = document.getElementById('ctrl-purge-count').value;
+            if (!channelId) return alert('Please select a channel!');
+
+            const res = await fetch('/api/guild/' + currentGuildId + '/mod/purge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify({ channelId, amount })
+            });
+            const d = await res.json();
+            if (d.success) showToast(d.message);
+            else alert(d.error || 'Failed to purge channel');
+        }
+
+        async function toggleChannelLock(action) {
+            const channelId = document.getElementById('ctrl-channel-select').value;
+            if (!channelId) return alert('Please select a channel!');
+
+            const res = await fetch('/api/guild/' + currentGuildId + '/mod/channel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify({ channelId, action })
+            });
+            const d = await res.json();
+            if (d.success) showToast(d.message);
+            else alert(d.error || 'Failed to change channel permissions');
+        }
+
+        async function dispatchTicketPanel() {
+            const channelId = document.getElementById('ticket-channel-select').value;
+            const title = document.getElementById('ticket-title').value;
+            const description = document.getElementById('ticket-desc').value;
+            if (!channelId) return alert('Please select a channel!');
+
+            const res = await fetch('/api/guild/' + currentGuildId + '/tickets/dispatch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify({ channelId, title, description })
+            });
+            const d = await res.json();
+            if (d.success) showToast(d.message);
+            else alert(d.error || 'Failed to deploy ticket panel');
+        }
+
+        async function launchGiveaway() {
+            const channelId = document.getElementById('giveaway-channel-select').value;
+            const prize = document.getElementById('giveaway-prize').value;
+            const durationMinutes = document.getElementById('giveaway-duration').value;
+            const winners = document.getElementById('giveaway-winners').value;
+            if (!channelId) return alert('Please select a channel!');
+
+            const res = await fetch('/api/guild/' + currentGuildId + '/giveaway/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify({ channelId, prize, durationMinutes, winners })
+            });
+            const d = await res.json();
+            if (d.success) showToast(d.message);
+            else alert(d.error || 'Failed to launch giveaway');
+        }
+
+        async function runRemoteConsoleCommand() {
+            const commandName = document.getElementById('console-command-select').value;
+            const rawArgs = document.getElementById('console-args-input').value;
+            const channelId = document.getElementById('console-channel-select').value;
+            const outBox = document.getElementById('console-output-box');
+
+            outBox.style.display = 'block';
+            outBox.innerHTML = `⏳ Executing \`,${commandName} ${rawArgs}\` on Discord server...`;
+
+            const args = rawArgs.trim() ? rawArgs.trim().split(/\s+/) : [];
+            const res = await fetch('/api/guild/' + currentGuildId + '/command/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify({ commandName, args, channelId })
+            });
+            const d = await res.json();
+            if (d.success) {
+                outBox.innerHTML = `✅ [SUCCESS] ${d.message}`;
+                showToast(`Executed ,${commandName}!`);
+            } else {
+                outBox.innerHTML = `<span style="color:#EF4444;">❌ [ERROR] ${d.error || 'Execution failed'}</span>`;
+            }
+        }
+
+        function updateEmbedPreview() {
+            const title = document.getElementById('embed-title').value || 'Title';
+            const desc = document.getElementById('embed-desc').value || 'Description';
+            const color = document.getElementById('embed-color').value || '#5865F2';
+
+            document.getElementById('dp-title-text').innerText = title;
+            document.getElementById('dp-desc-text').innerText = desc;
+            document.getElementById('dp-card').style.borderLeftColor = color;
+        }
+
+        async function sendEmbed() {
+            const channelId = document.getElementById('embed-channel').value;
+            if (!channelId) return alert('Please select a destination channel!');
+            const body = {
+                channelId,
+                title: document.getElementById('embed-title').value,
+                description: document.getElementById('embed-desc').value,
+                color: document.getElementById('embed-color').value
+            };
+            const res = await fetch('/api/guild/' + currentGuildId + '/embed/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify(body)
+            });
+            const d = await res.json();
+            if (d.success) showToast('🚀 Embed Dispatched to Discord!');
+            else alert(d.error || 'Failed to dispatch embed');
+        }
+
+        async function redeemLicenseKey() {
+            const key = document.getElementById('redeem-key-input').value;
+            if (!key) return alert('Please enter a license key!');
+            const res = await fetch('/api/premium/redeem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                body: JSON.stringify({ key, guildId: currentGuildId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(data.message);
+                document.getElementById('redeem-key-input').value = '';
+            } else {
+                alert(data.error || 'Failed to redeem key.');
+            }
+        }
+
+        let checkoutSelectedTier = 'pro_cluster';
+        let checkoutSelectedPrice = '$12.99';
+        let currentOrderId = null;
+        let currentOrderData = null;
+        let currentCryptoCoin = 'usdt_trc20';
+        let orderPollInterval = null;
+
+        function openCheckout(tier, price) {
+            checkoutSelectedTier = tier;
+            checkoutSelectedPrice = price;
+
+            const modal = document.getElementById('checkout-modal');
+            const tierNames = {
+                'shield_plus': 'Starry Shield Plus ($4.99 / mo | ₹399)',
+                'pro_cluster': 'Starry Pro Cluster ($12.99 / mo | ₹999)',
+                'lifetime': 'Starry Supreme Lifetime VIP ($39.99 | ₹3,299)'
+            };
+
+            document.getElementById('modal-tier-name').innerText = tierNames[tier] || tier.toUpperCase();
+            document.getElementById('modal-tier-price').innerText = price;
+            
+            const currentGuildName = (guildDataCache[currentGuildId]?.name) || (currentGuildId ? `Server (${currentGuildId})` : 'Personal Account VIP');
+            const targetGuildEl = document.getElementById('modal-target-guild');
+            if (targetGuildEl) targetGuildEl.innerText = currentGuildName;
+
+            backToStep1();
+            modal.style.display = 'flex';
+        }
+
+        function closeCheckout() {
+            if (orderPollInterval) {
+                clearInterval(orderPollInterval);
+                orderPollInterval = null;
+            }
+            document.getElementById('checkout-modal').style.display = 'none';
+        }
+
+        function backToStep1() {
+            if (orderPollInterval) {
+                clearInterval(orderPollInterval);
+                orderPollInterval = null;
+            }
+            document.getElementById('checkout-step-1').style.display = 'block';
+            document.getElementById('checkout-step-2').style.display = 'none';
+            document.getElementById('checkout-step-3').style.display = 'none';
+            document.getElementById('checkout-step-4').style.display = 'none';
+            const errEl = document.getElementById('checkout-utr-error');
+            if (errEl) errEl.style.display = 'none';
+        }
+
+        function onPaymentMethodChange() {
+            const method = document.getElementById('checkout-method-select').value;
+            const upiInfo = document.getElementById('method-upi-info');
+            const paypalInfo = document.getElementById('method-paypal-info');
+            const cryptoInfo = document.getElementById('method-crypto-info');
+            const cardInfo = document.getElementById('method-card-info');
+            
+            if (cryptoInfo) cryptoInfo.style.display = method === 'crypto' ? 'block' : 'none';
+            if (paypalInfo) paypalInfo.style.display = method === 'paypal' ? 'block' : 'none';
+            if (upiInfo) upiInfo.style.display = method === 'upi' ? 'block' : 'none';
+            if (cardInfo) cardInfo.style.display = method === 'card' ? 'block' : 'none';
+        }
+
+        function selectCryptoCoin(coinId) {
+            currentCryptoCoin = coinId;
+            if (!currentOrderData || !currentOrderData.paymentDetails?.allCrypto) return;
+            const coinData = currentOrderData.paymentDetails.allCrypto[coinId];
+            if (!coinData) return;
+
+            // Update pills
+            document.querySelectorAll('.crypto-coin-pill').forEach(p => {
+                if (p.getAttribute('data-coin') === coinId) {
+                    p.classList.add('active');
+                } else {
+                    p.classList.remove('active');
+                }
+            });
+
+            // Update displayed details
+            const qrImg = document.getElementById('step2-crypto-qr-img');
+            if (qrImg) qrImg.src = coinData.qrUrl;
+
+            const addrText = document.getElementById('step2-crypto-address-text');
+            if (addrText) addrText.innerText = coinData.address;
+
+            const netBadge = document.getElementById('step2-crypto-network-badge');
+            if (netBadge) netBadge.innerText = coinData.network + ' • ' + coinData.badge;
+
+            const amtBadge = document.getElementById('step2-crypto-amount-badge');
+            if (amtBadge) amtBadge.innerText = `$${currentOrderData.amountUsd} in ${coinData.symbol}`;
+        }
+
+        function copyCryptoAddress() {
+            const addr = document.getElementById('step2-crypto-address-text').innerText;
+            navigator.clipboard.writeText(addr);
+            showToast('📋 ' + currentCryptoCoin.toUpperCase() + ' Address Copied!');
+        }
+
+        function copyPaypalEmail() {
+            const email = document.getElementById('paypal-email-text').innerText;
+            navigator.clipboard.writeText(email);
+            showToast('📋 PayPal Email Copied: ' + email);
+        }
+
+        function copyUpiId() {
+            const upiId = document.getElementById('step2-upi-id-text').innerText;
+            navigator.clipboard.writeText(upiId);
+            showToast('📋 UPI ID Copied: ' + upiId);
+        }
+
+        async function proceedToPayment() {
+            const methodSelect = document.getElementById('checkout-method-select');
+            const method = methodSelect.value;
+            const step1Btn = document.getElementById('checkout-step1-btn');
+
+            step1Btn.disabled = true;
+            step1Btn.innerText = '⚡ Initializing Gateway...';
+
+            try {
+                const res = await fetch('/api/premium/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                    body: JSON.stringify({
+                        tier: checkoutSelectedTier,
+                        method: method,
+                        cryptoCoin: currentCryptoCoin,
+                        guildId: currentGuildId
+                    })
+                });
+
+                const data = await res.json();
+                step1Btn.disabled = false;
+                step1Btn.innerText = '💳 Proceed to Payment Details';
+
+                if (!data.success || !data.order) {
+                    alert(data.error || 'Failed to initialize payment order.');
+                    return;
+                }
+
+                currentOrderData = data.order;
+                currentOrderId = currentOrderData.orderId;
+
+                document.getElementById('step2-order-id').innerText = currentOrderData.orderId;
+                document.getElementById('step2-order-amount').innerText = currentOrderData.method === 'upi' ? `₹${currentOrderData.amountInr} INR` : `$${currentOrderData.amountUsd} USD`;
+
+                const cryptoContainer = document.getElementById('step2-crypto-container');
+                const paypalContainer = document.getElementById('step2-paypal-container');
+                const upiContainer = document.getElementById('step2-upi-container');
+                const cardContainer = document.getElementById('step2-card-container');
+
+                const proofLabel = document.getElementById('step2-proof-label');
+                const proofHint = document.getElementById('step2-proof-hint');
+                const proofInput = document.getElementById('checkout-utr-input');
+
+                cryptoContainer.style.display = 'none';
+                paypalContainer.style.display = 'none';
+                upiContainer.style.display = 'none';
+                cardContainer.style.display = 'none';
+
+                if (currentOrderData.method === 'crypto') {
+                    cryptoContainer.style.display = 'block';
+                    proofLabel.innerText = '📝 Enter Blockchain Transaction Hash (TxHash / TxID):';
+                    proofHint.innerText = 'Copy and paste the transaction hash from your wallet (TronLink, Binance, TrustWallet, Phantom, Metamask).';
+                    proofInput.placeholder = 'e.g. 7f8a9b2c3d4e5f6... or 0x4e2f8c...';
+
+                    selectCryptoCoin(currentCryptoCoin || 'usdt_trc20');
+
+                } else if (currentOrderData.method === 'paypal') {
+                    paypalContainer.style.display = 'block';
+                    proofLabel.innerText = '📝 Enter PayPal Transaction ID or Payer Email:';
+                    proofHint.innerText = 'Find your PayPal Transaction ID in your activity or confirmation email after paying.';
+                    proofInput.placeholder = 'e.g. 9XX12345YY67890ZZ or your@email.com';
+
+                    document.getElementById('step2-paypal-amount-badge').innerText = `$${currentOrderData.amountUsd} USD`;
+                    const paypalMeBtn = document.getElementById('step2-paypal-me-btn');
+                    if (paypalMeBtn) paypalMeBtn.href = currentOrderData.paymentDetails?.paypalMeUrl || 'https://paypal.me';
+                    const paypalEmail = document.getElementById('paypal-email-text');
+                    if (paypalEmail) paypalEmail.innerText = currentOrderData.paymentDetails?.paypalEmail || 'starrypayments@gmail.com';
+
+                } else if (currentOrderData.method === 'upi') {
+                    upiContainer.style.display = 'block';
+                    proofLabel.innerText = '📝 Enter 12-Digit UPI UTR / Reference ID:';
+                    proofHint.innerText = 'Locate the 12-digit UTR or Reference Number in your UPI receipt (GPay, PhonePe, Paytm).';
+                    proofInput.placeholder = 'e.g. 423456789012';
+
+                    document.getElementById('step2-upi-qr-img').src = currentOrderData.paymentDetails?.upiQrUrl || '';
+                    document.getElementById('step2-upi-id-text').innerText = currentOrderData.paymentDetails?.upiId || 'starrybot@upi';
+                    const intentLink = document.getElementById('step2-upi-intent-link');
+                    if (intentLink) intentLink.href = currentOrderData.paymentDetails?.upiUri || '#';
+
+                } else {
+                    cardContainer.style.display = 'block';
+                    proofLabel.innerText = '📝 Enter Card Payment Reference / Receipt ID:';
+                    proofHint.innerText = 'Enter the confirmation code or receipt email from the checkout.';
+                    proofInput.placeholder = 'e.g. ch_3M... or receipt email';
+
+                    const cardLink = document.getElementById('step2-card-link');
+                    if (cardLink) cardLink.href = currentOrderData.paymentDetails?.cardUrl || '#';
+                }
+
+                proofInput.value = '';
+                const errEl = document.getElementById('checkout-utr-error');
+                if (errEl) errEl.style.display = 'none';
+
+                document.getElementById('checkout-step-1').style.display = 'none';
+                document.getElementById('checkout-step-2').style.display = 'block';
+            } catch (e) {
+                step1Btn.disabled = false;
+                step1Btn.innerText = '💳 Proceed to Payment Details';
+                alert('Connection error: ' + e.message);
+            }
+        }
+
+        async function submitPaymentProof() {
+            const proofInput = document.getElementById('checkout-utr-input');
+            const proofValue = proofInput.value.trim();
+            const errEl = document.getElementById('checkout-utr-error');
+            const submitBtn = document.getElementById('checkout-submit-proof-btn');
+
+            if (!proofValue || proofValue.length < 5) {
+                errEl.innerText = '❌ Please enter a valid Transaction Hash / Payment Reference (minimum 5 characters).';
+                errEl.style.display = 'block';
+                return;
+            }
+            errEl.style.display = 'none';
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = '⏳ Submitting Verification...';
+
+            try {
+                const res = await fetch('/api/premium/submit-proof', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true' },
+                    body: JSON.stringify({
+                        orderId: currentOrderId,
+                        utr: proofValue,
+                        method: currentOrderData?.method || document.getElementById('checkout-method-select').value,
+                        cryptoCoin: currentCryptoCoin
+                    })
+                });
+
+                const data = await res.json();
+                submitBtn.disabled = false;
+                submitBtn.innerText = '⚡ Confirm & Submit Verification';
+
+                if (!data.success) {
+                    errEl.innerText = '❌ ' + (data.error || 'Submission failed.');
+                    errEl.style.display = 'block';
+                    return;
+                }
+
+                // Transition to Step 3: Verification in Progress
+                document.getElementById('step3-order-id').innerText = currentOrderId;
+                document.getElementById('step3-method-text').innerText = (data.method || 'payment').toUpperCase() + (data.cryptoCoin ? ` (${data.cryptoCoin.toUpperCase()})` : '');
+                document.getElementById('step3-utr-text').innerText = proofValue;
+
+                document.getElementById('checkout-step-2').style.display = 'none';
+                document.getElementById('checkout-step-3').style.display = 'block';
+                showToast('✅ Payment Submitted for Instant Verification!');
+
+                // Start Auto-Polling every 4 seconds
+                if (orderPollInterval) clearInterval(orderPollInterval);
+                orderPollInterval = setInterval(() => {
+                    checkCurrentOrderStatus(false);
+                }, 4000);
+
+            } catch (e) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = '⚡ Confirm & Submit Verification';
+                alert('Connection error: ' + e.message);
+            }
+        }
+
+        async function checkCurrentOrderStatus(manual = false) {
+            if (!currentOrderId) return;
+            const checkBtn = document.getElementById('step3-check-btn');
+            if (manual && checkBtn) checkBtn.innerText = '🔄 Checking...';
+
+            try {
+                const res = await fetch(`/api/premium/order/${currentOrderId}`, {
+                    headers: { 'bypass-tunnel-reminder': 'true' }
+                });
+                const data = await res.json();
+                if (manual && checkBtn) checkBtn.innerText = '🔄 Refresh Status';
+
+                if (data.success && data.order) {
+                    if (data.order.status === 'completed' && data.order.licenseKey) {
+                        if (orderPollInterval) {
+                            clearInterval(orderPollInterval);
+                            orderPollInterval = null;
+                        }
+
+                        document.getElementById('checkout-step-3').style.display = 'none';
+                        document.getElementById('checkout-step-4').style.display = 'block';
+                        document.getElementById('generated-key-display').innerText = data.order.licenseKey;
+
+                        showToast('🎉 Payment Confirmed & License Key Issued!');
+                    } else if (data.order.status === 'rejected') {
+                        if (orderPollInterval) {
+                            clearInterval(orderPollInterval);
+                            orderPollInterval = null;
+                        }
+                        alert('❌ Payment Verification was rejected: ' + (data.order.notes || 'Invalid reference or unpaid.'));
+                        backToStep1();
+                    } else if (manual) {
+                        showToast('🟡 Settlement still verifying. Please allow a moment.');
+                    }
+                }
+            } catch (e) {
+                if (manual && checkBtn) checkBtn.innerText = '🔄 Refresh Status';
+            }
+        }
+
+        function copyGeneratedKey() {
+            const key = document.getElementById('generated-key-display').innerText;
+            navigator.clipboard.writeText(key);
+            showToast('📋 License Key Copied to Clipboard!');
+        }
+
+        async function loadDirectory() {
+            try {
+                const res = await fetch('/api/servers', { headers: { 'bypass-tunnel-reminder': 'true' } });
+                const servers = await res.json();
+                const container = document.getElementById('directory-container');
+                container.innerHTML = '';
+                if (!servers || servers.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-muted);">No servers bumped yet. Run ,bump in your server!</p>';
+                    return;
+                }
+                servers.forEach(s => {
+                    container.innerHTML += `
+                        <div class="stat-card">
+                            <h4 style="font-size: 1.05rem; color: #fff; margin-bottom: 6px;">${s.name}</h4>
+                            <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 12px;">${s.description || 'Community Discord Server'}</p>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.78rem; color: var(--gold); font-weight: 700;">🔥 ${s.totalBumps || s.bumps || 1} Bumps</span>
+                                <a href="${s.inviteLink || s.inviteUrl || '#'}" target="_blank" class="btn btn-outline" style="padding: 6px 14px; font-size: 0.8rem;">Join</a>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (e) {}
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+</html>

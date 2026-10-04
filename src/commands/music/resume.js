@@ -1,36 +1,24 @@
-const { SlashCommandBuilder } = require("discord.js");
-const { StarryAudioEngine } = require("../../utils/nativeAudioEngine");
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+const { StarryAudioEngine } = require('../../utils/nativeAudioEngine');
+
+const EPHEMERAL_FLAG = (MessageFlags && MessageFlags.Ephemeral) ? MessageFlags.Ephemeral : 64;
 
 module.exports = {
-  name: "resume",
-  category: "Music",
-  description: "Resume paused audio playback.",
-  usage: "resume",
-  data: new SlashCommandBuilder().setName("resume").setDescription("Resume paused audio playback."),
+    data: new SlashCommandBuilder()
+        .setName('resume')
+        .setDescription('▶️ Resumes paused audio playback'),
+        
+    async execute(interaction, client) {
+        const player = StarryAudioEngine.getPlayer(interaction.guild.id) || (client.manager ? client.manager.getPlayer(interaction.guild.id) : null);
+        
+        if (!player || (!player.currentTrack && !player.playing)) {
+            return interaction.reply({ content: '❌ Nothing is currently playing in this server.', flags: [EPHEMERAL_FLAG] });
+        }
+        if (!player.paused) {
+            return interaction.reply({ content: '⚠️ The audio is not paused!', flags: [EPHEMERAL_FLAG] });
+        }
 
-  async execute(context, args, client) {
-    const kPlayer = client.manager?.getPlayer(context.guild.id);
-    const nPlayer = StarryAudioEngine.getPlayer(context.guild.id);
-
-    if (kPlayer && (kPlayer.playing || kPlayer.paused)) {
-      if (!kPlayer.paused) {
-        return context.reply({ content: "⚠️ Audio is already playing!", ephemeral: true });
-      }
-      kPlayer.pause(false);
-      return context.reply({ content: "▶️ **Resumed audio playback.**" });
+        player.pause(false);
+        return interaction.reply('▶️ **Resumed audio playback.**');
     }
-
-    if (nPlayer && (nPlayer.isPlaying || nPlayer.currentTrack)) {
-      if (!nPlayer.paused) {
-        return context.reply({ content: "⚠️ Audio is already playing!", ephemeral: true });
-      }
-      nPlayer.pause(false);
-      if (nPlayer.currentTrack) {
-        await nPlayer.sendNowPlayingPanel(nPlayer.currentTrack, true).catch(() => {});
-      }
-      return context.reply({ content: "▶️ **Resumed audio playback.**" });
-    }
-
-    return context.reply({ content: "❌ Nothing is currently playing in this server.", ephemeral: true });
-  },
 };

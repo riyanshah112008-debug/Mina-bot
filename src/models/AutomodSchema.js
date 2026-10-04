@@ -7,8 +7,10 @@ const guildSchema = new mongoose.Schema({
 
 const channelSchema = new mongoose.Schema({
     channelId: { type: String, required: true, unique: true },
-    links: { type: Boolean, default: false },
-    emojis: { type: Boolean, default: false }
+    guildId: { type: String, index: true },
+    links: { type: Boolean, default: false },   // true = ignore/allow links (filter disabled)
+    emojis: { type: Boolean, default: false },  // true = ignore/allow emojis (filter disabled)
+    updatedAt: { type: Date, default: Date.now }
 });
 
 module.exports = {

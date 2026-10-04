@@ -1,36 +1,24 @@
-const { SlashCommandBuilder } = require("discord.js");
-const { StarryAudioEngine } = require("../../utils/nativeAudioEngine");
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+const { StarryAudioEngine } = require('../../utils/nativeAudioEngine');
+
+const EPHEMERAL_FLAG = (MessageFlags && MessageFlags.Ephemeral) ? MessageFlags.Ephemeral : 64;
 
 module.exports = {
-  name: "pause",
-  category: "Music",
-  description: "Pause the currently playing track.",
-  usage: "pause",
-  data: new SlashCommandBuilder().setName("pause").setDescription("Pause audio playback."),
+    data: new SlashCommandBuilder()
+        .setName('pause')
+        .setDescription('⏸️ Pauses the active audio playback'),
+        
+    async execute(interaction, client) {
+        const player = StarryAudioEngine.getPlayer(interaction.guild.id) || (client.manager ? client.manager.getPlayer(interaction.guild.id) : null);
+        
+        if (!player || (!player.currentTrack && !player.playing)) {
+            return interaction.reply({ content: '❌ Nothing is currently playing in this server.', flags: [EPHEMERAL_FLAG] });
+        }
+        if (player.paused) {
+            return interaction.reply({ content: '⚠️ The audio playback is already paused!', flags: [EPHEMERAL_FLAG] });
+        }
 
-  async execute(context, args, client) {
-    const kPlayer = client.manager?.getPlayer(context.guild.id);
-    const nPlayer = StarryAudioEngine.getPlayer(context.guild.id);
-
-    if (kPlayer && (kPlayer.playing || kPlayer.paused)) {
-      if (kPlayer.paused) {
-        return context.reply({ content: "⚠️ The audio playback is already paused!", ephemeral: true });
-      }
-      kPlayer.pause(true);
-      return context.reply({ content: "⏸️ **Paused the music.** Use `?resume` to continue." });
+        player.pause(true);
+        return interaction.reply('⏸️ **Paused the music.**');
     }
-
-    if (nPlayer && (nPlayer.isPlaying || nPlayer.currentTrack)) {
-      if (nPlayer.paused) {
-        return context.reply({ content: "⚠️ The audio playback is already paused!", ephemeral: true });
-      }
-      nPlayer.pause(true);
-      if (nPlayer.currentTrack) {
-        await nPlayer.sendNowPlayingPanel(nPlayer.currentTrack, true).catch(() => {});
-      }
-      return context.reply({ content: "⏸️ **Paused the music.** Use `?resume` to continue." });
-    }
-
-    return context.reply({ content: "❌ Nothing is currently playing in this server.", ephemeral: true });
-  },
 };

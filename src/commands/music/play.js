@@ -1,111 +1,103 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
-const config = require("../../config");
-const { formatTime } = require("../../utils/musicManager");
-const { StarryAudioEngine } = require("../../utils/nativeAudioEngine");
+// ==========================================
+// 🎵 STARRY SUPREME MUSIC ENGINE - PLAY COMMAND
+// File Path: commands/play.js
+// Bulletproof Native Audio Streamer
+// ==========================================
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const { StarryAudioEngine } = require('../../utils/nativeAudioEngine');
+const config = require('../../config');
 
-const EPHEMERAL_FLAG = MessageFlags && MessageFlags.Ephemeral ? MessageFlags.Ephemeral : 64;
+const EPHEMERAL_FLAG = (MessageFlags && MessageFlags.Ephemeral) ? MessageFlags.Ephemeral : 64;
+
+const formatTime = (ms) => {
+    if (!ms || isNaN(ms)) return '0:00';
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
 
 module.exports = {
-  name: "play",
-  aliases: ["p"],
-  category: "Music",
-  description: "Play high-fidelity audio from SoundCloud, Spotify, YouTube, or direct URLs.",
-  usage: "play <song title or URL>",
   data: new SlashCommandBuilder()
-    .setName("play")
-    .setDescription("Play high-fidelity audio in your voice channel.")
-    .addStringOption((opt) =>
-      opt.setName("song").setDescription("Song title, Spotify URL, or audio link").setRequired(true).setAutocomplete(true)
+    .setName('play')
+    .setDescription('🎵 Play high-fidelity audio from SoundCloud, Spotify, or web URL')
+    .addStringOption(option => 
+      option.setName('song')
+        .setDescription('Song title, Spotify Playlist URL, or SoundCloud link')
+        .setRequired(true)
+        .setAutocomplete(true)
     ),
 
   async autocomplete(interaction, client) {
-    try {
-      const { getSongAutocomplete } = require("../../utils/musicSearchHelper");
-      const focused = interaction.options.getFocused();
-      const choices = await getSongAutocomplete(focused, client.manager);
-      return interaction.respond(choices).catch(() => {});
-    } catch (_) {}
+    const { getSongAutocomplete } = require('../../utils/musicSearchHelper');
+    const focused = interaction.options.getFocused();
+    const choices = await getSongAutocomplete(focused, client.manager);
+    return interaction.respond(choices).catch(() => {});
   },
 
-  async execute(context, args, client) {
-    const isSlash = typeof context.isChatInputCommand === "function" && context.isChatInputCommand();
-    const user = isSlash ? context.user : context.author;
-    const member = context.member;
-    const guild = context.guild;
+  async execute(interaction, client) {
+    const rawQuery = typeof interaction.options?.getString === 'function' 
+        ? interaction.options.getString('song') 
+        : (interaction.args ? interaction.args.join(' ') : null);
+    const query = rawQuery?.trim();
+    if (!query) {
+      return (interaction.reply || interaction.editReply).call(interaction, {
+        content: '❌ Please provide a song name or URL! Example: `,play beggin`',
+        flags: [EPHEMERAL_FLAG]
+      });
+    }
 
-    const voiceChannel = member?.voice?.channel;
+    const voiceChannel = interaction.member?.voice?.channel;
     if (!voiceChannel) {
-      return context.reply({
-        content: "❌ You must be connected to a voice channel first to play music!",
-        flags: [EPHEMERAL_FLAG],
+      return (interaction.reply || interaction.editReply).call(interaction, { 
+        content: '❌ You must be connected to a voice channel first!', 
+        flags: [EPHEMERAL_FLAG] 
       });
     }
 
-    const botMember = guild?.members?.me;
+    const botMember = interaction.guild.members.me;
     if (botMember?.voice?.channelId && botMember.voice.channelId !== voiceChannel.id) {
-      return context.reply({
-        content: `❌ I am already playing music in <#${botMember.voice.channelId}>! Join my channel or wait for the queue to finish.`,
-        flags: [EPHEMERAL_FLAG],
+      return (interaction.reply || interaction.editReply).call(interaction, { 
+        content: `❌ I am already playing music in <#${botMember.voice.channelId}>! Join my channel or wait for the queue to finish.`, 
+        flags: [EPHEMERAL_FLAG] 
       });
     }
 
-    const perms = voiceChannel.permissionsFor(botMember);
-    if (perms && (!perms.has(PermissionFlagsBits.Connect) || !perms.has(PermissionFlagsBits.Speak))) {
-      return context.reply({
-        content: "❌ I lack permissions to **Connect** or **Speak** in your voice channel!",
-        flags: [EPHEMERAL_FLAG],
+    const permissions = voiceChannel.permissionsFor(botMember);
+    if (!permissions?.has(PermissionFlagsBits.Connect) || !permissions?.has(PermissionFlagsBits.Speak)) {
+      return (interaction.reply || interaction.editReply).call(interaction, { 
+        content: '❌ I do not have permission to **Connect** or **Speak** in your voice channel!', 
+        flags: [EPHEMERAL_FLAG] 
       });
     }
 
-    let query;
-    if (isSlash) {
-      query = context.options.getString("song")?.trim();
-    } else {
-      if (!args || !args[0]) {
-        const prefix = config.prefix || "?";
-        return context.reply({ content: `❌ **Usage:** \`${prefix}play <song title or URL>\`` });
-      }
-      query = args.join(" ").trim();
-    }
-
-    if (isSlash && typeof context.deferReply === "function") {
-      await context.deferReply().catch(() => {});
-    }
-
-    const replyFunc = isSlash
-      ? (payload) => context.editReply(payload)
-      : (payload) => context.reply(payload);
-
-    let loadingMsg = null;
-    if (!isSlash && typeof context.reply === "function") {
-      loadingMsg = await context.reply(
-        `🔍 **Searching:** \`${query.length > 50 ? query.substring(0, 47) + "..." : query}\` • *Connecting to voice...*`
-      ).catch(() => null);
+    if (typeof interaction.deferReply === 'function') {
+        await interaction.deferReply().catch(() => {});
     }
 
     try {
-      // 1. Lavalink v4 Cluster Priority (Fastest <1s resolution & zero CPU overhead)
+      const replyFunc = interaction.editReply || interaction.reply;
       const manager = client.manager;
       const hasLavalink = Boolean(
-        manager &&
-        manager.shoukaku &&
-        Array.from(manager.shoukaku.nodes.values()).some((n) => n.state === 1)
+        manager && 
+        manager.shoukaku && 
+        Array.from(manager.shoukaku.nodes.values()).some(n => n.state === 1)
       );
 
       if (hasLavalink) {
         try {
-          const res = await manager.search(query, { requester: user });
-          if (!res || !res.tracks || res.tracks.length === 0 || res.loadType === "empty" || res.loadType === "error") {
+          const res = await manager.search(query, { requester: interaction.user });
+          if (!res || !res.tracks || res.tracks.length === 0 || res.loadType === 'empty' || res.loadType === 'error') {
             throw new Error(`Lavalink could not resolve "${query}". Falling back to Native Audio Engine.`);
           }
 
-          let player = manager.getPlayer(guild.id);
+          let player = manager.getPlayer(interaction.guild.id);
           if (!player) {
             player = await manager.createPlayer({
-              guildId: guild.id,
+              guildId: interaction.guild.id,
               voiceId: voiceChannel.id,
-              textId: context.channel.id,
-              deaf: true,
+              textId: interaction.channel.id,
+              deaf: true
             });
           }
 
@@ -113,12 +105,7 @@ module.exports = {
             player.setVoiceChannel(voiceChannel.id);
           }
 
-          if (loadingMsg) {
-            loadingMsg.delete().catch(() => {});
-            loadingMsg = null;
-          }
-
-          if (res.loadType === "playlist") {
+          if (res.loadType === 'playlist') {
             for (const track of res.tracks) {
               player.queue.add(track);
             }
@@ -127,173 +114,156 @@ module.exports = {
             const totalDurationMs = res.tracks.reduce((acc, t) => acc + (t.length || 0), 0);
             const totalDurationStr = formatTime(totalDurationMs);
             const previewTracks = res.tracks.slice(0, 3).map((t, idx) => {
-              return `\`${idx + 1}.\` **[${(t.title || "Track").substring(0, 45)}](${t.uri || "https://discord.gg"})** • \`${t.author || "Artist"}\` (\`${formatTime(t.length)}\`)`;
-            }).join("\n");
-            const remainingCount = res.tracks.length > 3 ? `\n*... and **${res.tracks.length - 3}** more tracks*` : "";
+              return `\`${idx + 1}.\` **[${(t.title || 'Track').substring(0, 45)}](${t.uri || 'https://discord.gg'})** • \`${t.author || 'Artist'}\` (\`${formatTime(t.length)}\`)`;
+            }).join('\n');
+            const remainingCount = res.tracks.length > 3 ? `\n*... and **${res.tracks.length - 3}** more tracks*` : '';
 
             const embed = new EmbedBuilder()
-              .setColor(config.theme.primary || 0x5865f2)
-              .setAuthor({
-                name: `📚 Playlist Enqueued • ${res.playlist?.name || "Online Stream"}`,
-                iconURL: user.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : undefined,
+              .setColor('#5865F2')
+              .setAuthor({ 
+                name: `📚 Playlist Enqueued • ${res.playlist?.name || 'Online Stream'}`, 
+                iconURL: interaction.user.displayAvatarURL({ dynamic: true }) 
               })
-              .setTitle(res.playlist?.name ? res.playlist.name.substring(0, 95) : "Loaded Playlist")
-              .setThumbnail(res.tracks[0]?.thumbnail || "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80")
+              .setTitle(res.playlist?.name ? res.playlist.name.substring(0, 95) : 'Loaded Playlist')
+              .setThumbnail(res.tracks[0]?.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80')
               .setDescription(
                 `✅ Added **${res.tracks.length}** tracks to the server queue!\n\n` +
-                `👤 **Curator / Artist:** \`${res.tracks[0]?.author || "Featured Artist"}\`\n` +
+                `👤 **Curator / Artist:** \`${res.tracks[0]?.author || 'Featured Artist'}\`\n` +
                 `🕒 **Total Estimated Playtime:** \`${totalDurationStr}\`\n` +
                 `🔠 **Queue Status:** Currently playing • \`${player.queue.length}\` songs in queue\n` +
                 `🔊 **Mastering:** \`Lavalink Studio Hi-Fi Active\`\n\n` +
                 `📝 **Upcoming Tracks Preview:**\n` +
                 `${previewTracks}${remainingCount}`
               )
-              .setFooter({ text: `Requested by ${user.tag || user.username}` })
+              .setFooter({ text: `Requested by ${interaction.user.tag} • Prefix: ,`, iconURL: interaction.user.displayAvatarURL() })
               .setTimestamp();
-
-            return replyFunc({ embeds: [embed] });
+            return replyFunc.call(interaction, { embeds: [embed] });
           } else {
             const track = res.tracks[0];
             if (!player.playing && !player.paused && !player.queue.current) {
+              player.data.set('interaction', interaction);
               player.queue.add(track);
               player.play();
-              if (isSlash) {
-                return replyFunc({ content: `▶️ **Playing:** \`${track.title}\``, flags: [EPHEMERAL_FLAG] });
-              }
             } else {
               player.queue.add(track);
               const embed = new EmbedBuilder()
-                .setColor(config.theme.primary || 0x5865f2)
-                .setAuthor({
-                  name: "Track Queued • Original Studio Hi-Fi Active",
-                  iconURL: user.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : undefined,
-                })
-                .setTitle(track.title ? track.title.substring(0, 90) : "Track")
-                .setURL(track.uri || "https://discord.gg")
-                .setThumbnail(track.thumbnail || "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80")
+                .setColor('#5865F2')
+                .setAuthor({ name: 'Track Queued • Original Studio Hi-Fi Active', iconURL: interaction.user.displayAvatarURL({ dynamic: true }) })
+                .setTitle(track.title ? track.title.substring(0, 90) : 'Track')
+                .setURL(track.uri || 'https://discord.gg')
+                .setThumbnail(track.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80')
                 .setDescription(
-                  `👤 **Artist:** \`${track.author || "Artist"}\`\n` +
+                  `👤 **Artist:** \`${track.author || 'Artist'}\`\n` +
                   `🕒 **Duration:** \`${formatTime(track.length)}\`\n` +
                   `🔢 **Queue Position:** \`#${player.queue.length}\`\n` +
-                  `🌐 **Source:** \`${track.sourceName || "Lavalink Hi-Fi"}\`\n` +
+                  `🌐 **Source:** \`${track.sourceName || 'Lavalink Hi-Fi'}\`\n` +
                   `🔊 **Sound Profile:** \`⭐ Studio Hi-Fi Master (Original Release)\``
                 )
-                .setFooter({ text: `Requested by ${user.tag || user.username}` })
+                .setFooter({ text: `Requested by ${interaction.user.tag} • Prefix: ,` })
                 .setTimestamp();
-
-              return replyFunc({ embeds: [embed] });
+              return replyFunc.call(interaction, { embeds: [embed] });
             }
-            return;
           }
+          return;
         } catch (kErr) {
-          console.warn("⚠️ [play.js Lavalink Fallback]:", kErr.message || kErr);
+          console.warn('⚠️ [play.js Lavalink Fallback]:', kErr.message || kErr);
         }
       }
 
-      // 2. High-Fidelity Native Audio Engine (Bulletproof Termux / Host-Anywhere Fallback)
-      const player = StarryAudioEngine.getOrCreatePlayer(client, guild.id, voiceChannel, context.channel);
-      if (loadingMsg) player.loadingMessage = loadingMsg;
-
-      // ⚡ Asynchronously start voice connection in background without blocking search
+      const player = StarryAudioEngine.getOrCreatePlayer(client, interaction.guild.id, voiceChannel, interaction.channel);
+      // ⚡ Instantly join voice channel in background without blocking search
       player.connect().catch(() => {});
 
-      const result = await StarryAudioEngine.search(query, user);
+      const result = await Promise.race([
+        StarryAudioEngine.search(query, interaction.user),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Audio search timed out after 4s')), 4000))
+      ]);
 
       if (!result || !result.tracks || result.tracks.length === 0) {
-        if (loadingMsg) loadingMsg.delete().catch(() => {});
-        return replyFunc({ content: `❌ No results found for: \`${query}\`` });
+        const replyFunc = interaction.editReply || interaction.reply;
+        return replyFunc.call(interaction, '❌ No audio results found. Please check the song name or link!');
       }
 
-      if (result.type === "PLAYLIST") {
+      if (result.type === 'PLAYLIST') {
         for (const track of result.tracks) {
           player.queue.push(track);
         }
-        if (!player.currentTrack && !player.isPlaying) {
-          player.playNext().catch((e) => console.error("[playNext error]:", e));
-        }
-
-        if (loadingMsg) {
-          loadingMsg.delete().catch(() => {});
-          player.loadingMessage = null;
+        if (!player.currentTrack) {
+          player.playNext().catch(err => console.warn('playNext error:', err.message || err));
         }
 
         const totalDurationMs = result.tracks.reduce((acc, t) => acc + (t.duration || 0), 0);
         const totalDurationStr = formatTime(totalDurationMs);
 
         const previewTracks = result.tracks.slice(0, 3).map((t, idx) => {
-          return `\`${idx + 1}.\` **[${(t.title || "Track").substring(0, 45)}](${t.url || "https://discord.gg"})** • \`${t.author || "Artist"}\` (\`${formatTime(t.duration)}\`)`;
-        }).join("\n");
-        const remainingCount = result.tracks.length > 3 ? `\n*... and **${result.tracks.length - 3}** more tracks*` : "";
+          return `\`${idx + 1}.\` **[${(t.title || 'Track').substring(0, 45)}](${t.url || 'https://discord.gg'})** • \`${t.author || 'Artist'}\` (\`${formatTime(t.duration)}\`)`;
+        }).join('\n');
+        const remainingCount = result.tracks.length > 3 ? `\n*... and **${result.tracks.length - 3}** more tracks*` : '';
 
         const embed = new EmbedBuilder()
-          .setColor(config.theme.primary || 0x5865f2)
-          .setAuthor({
-            name: `📚 Playlist Enqueued • ${result.source || "Online Stream"}`,
-            iconURL: user.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : undefined,
+          .setColor('#5865F2')
+          .setAuthor({ 
+            name: `📚 Playlist Enqueued • ${result.source || 'Online Stream'}`, 
+            iconURL: interaction.user.displayAvatarURL({ dynamic: true }) 
           })
-          .setTitle(result.playlistName ? result.playlistName.substring(0, 95) : "Loaded Playlist")
-          .setThumbnail(result.thumbnail || "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80")
+          .setTitle(result.playlistName ? result.playlistName.substring(0, 95) : 'Loaded Playlist')
+          .setThumbnail(result.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80')
           .setDescription(
             `✅ Added **${result.tracks.length}** tracks to the server queue!\n\n` +
-            `👤 **Curator / Artist:** \`${result.author || "Featured Artist"}\`\n` +
+            `👤 **Curator / Artist:** \`${result.author || 'Featured Artist'}\`\n` +
             `🕒 **Total Estimated Playtime:** \`${totalDurationStr}\`\n` +
             `🔠 **Queue Status:** Currently playing • \`${player.queue.length}\` songs in queue\n` +
             `🔊 **Mastering:** \`Empowering Hi-Fi Dynamic EQ Active\`\n\n` +
             `📝 **Upcoming Tracks Preview:**\n` +
             `${previewTracks}${remainingCount}`
           )
-          .setFooter({ text: `Requested by ${user.tag || user.username}` })
+          .setFooter({ text: `Requested by ${interaction.user.tag} • Prefix: ,`, iconURL: interaction.user.displayAvatarURL() })
           .setTimestamp();
 
-        return replyFunc({ embeds: [embed] });
+        const replyFunc = interaction.editReply || interaction.reply;
+        return replyFunc.call(interaction, { embeds: [embed] });
       } else {
         const track = result.tracks[0];
-        if (!player.currentTrack && !player.isPlaying) {
+        if (!player.currentTrack) {
           player.queue.push(track);
-          if (loadingMsg) {
-            loadingMsg.delete().catch(() => {});
-            loadingMsg = null;
-            player.loadingMessage = null;
+          // ⚡ Launch playback asynchronously in background - NEVER wait for it before showing embed!
+          player.playNext().catch(err => console.warn('playNext error:', err.message || err));
+
+          // ⚡ Deliver Now Playing embed immediately (< 2 seconds)!
+          const payload = player.buildNowPlayingPayload(track);
+          const replyFunc = interaction.editReply || interaction.reply;
+          const msg = await replyFunc.call(interaction, payload).catch(() => null);
+          if (msg) {
+            player.nowPlayingMessage = msg;
           }
-          // Fast embed dispatch: render Now Playing embed immediately (<2 seconds)
-          await player.sendNowPlayingPanel(track).catch(() => {});
-          player.playNext().catch((err) => console.error("[playNext error]:", err));
-          if (isSlash) {
-            return replyFunc({ content: `▶️ **Playing:** \`${track.title}\``, flags: [EPHEMERAL_FLAG] });
-          }
+          return;
         } else {
           player.queue.push(track);
-          if (loadingMsg) {
-            loadingMsg.delete().catch(() => {});
-            player.loadingMessage = null;
-          }
-
           const embed = new EmbedBuilder()
-            .setColor(config.theme.primary || 0x5865f2)
-            .setAuthor({
-              name: "Track Queued • Empowering Sound Active",
-              iconURL: user.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : undefined,
-            })
-            .setTitle(track.title ? track.title.substring(0, 90) : "Track")
-            .setURL(track.url || "https://discord.gg")
-            .setThumbnail(track.thumbnail || "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80")
+            .setColor('#5865F2')
+            .setAuthor({ name: 'Track Queued • Empowering Sound Active', iconURL: interaction.user.displayAvatarURL({ dynamic: true }) })
+            .setTitle(track.title ? track.title.substring(0, 90) : 'Track')
+            .setURL(track.url || 'https://discord.gg')
+            .setThumbnail(track.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80')
             .setDescription(
-              `👤 **Artist:** \`${track.author || "Artist"}\`\n` +
+              `👤 **Artist:** \`${track.author || 'Artist'}\`\n` +
               `🕒 **Duration:** \`${formatTime(track.duration)}\`\n` +
               `🔢 **Queue Position:** \`#${player.queue.length}\`\n` +
-              `🌐 **Source:** \`${track.source || "Studio Hi-Fi"}\`\n` +
+              `🌐 **Source:** \`${track.source || 'Studio Hi-Fi'}\`\n` +
               `🔊 **Sound Profile:** \`Empowering Master Dynamic EQ\``
             )
-            .setFooter({ text: `Requested by ${user.tag || user.username}` })
+            .setFooter({ text: `Requested by ${interaction.user.tag} • Prefix: ,` })
             .setTimestamp();
 
-          return replyFunc({ embeds: [embed] });
+          const replyFunc = interaction.editReply || interaction.reply;
+          return replyFunc.call(interaction, { embeds: [embed] });
         }
       }
+
     } catch (err) {
-      console.error("[play.js error]:", err);
-      if (loadingMsg) loadingMsg.delete().catch(() => {});
-      return replyFunc({ content: `❌ Could not play track: ${err.message}` });
+      console.error('Play error in play.js:', err);
+      const replyFunc = interaction.editReply || interaction.reply;
+      return replyFunc.call(interaction, `❌ Playback error: \`${err.message}\``);
     }
-  },
+  }
 };

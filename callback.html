@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logging in... - Starryboard</title>
+    <style>
+        body {
+            background-color: #0f1117;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .loading-box {
+            text-align: center;
+            background: #1a1d26;
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid #2a2e3d;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #5865F2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="loading-box">
+    <div class="spinner"></div>
+    <h2>Logging in with Discord...</h2>
+    <p style="color: #8a8f9d; font-size: 14px;">Please wait while we redirect you to your dashboard.</p>
+</div>
+
+<script>
+    async function handleAuthCallback() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+
+        if (!code) {
+            alert('Authentication failed: No authorization code received.');
+            console.log("code",code);
+            window.location.href = '../index.html';
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:5000/api/auth/discord', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: code })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("后端处理失败:", errorData);
+                throw new Error(errorData.error || 'Server error');
+            }
+
+            const resData = await response.json();
+            console.log("后端返回的响应数据:", resData);
+            localStorage.setItem('starryboard_token', resData.token);
+            localStorage.setItem('starryboard_user', JSON.stringify(resData.user));
+            if (resData.guilds) {
+                localStorage.setItem('starryboard_guilds', JSON.stringify(resData.guilds));
+            }
+            window.location.href = '../dashboard.html';
+
+        } catch (error) {
+            console.error('Login error:', error);
+            alert('Login failed, returning to home page.');
+            window.location.href = '../index.html';
+        }
+    }
+    document.addEventListener('DOMContentLoaded', handleAuthCallback);
+</script>
+</body>
+</html>

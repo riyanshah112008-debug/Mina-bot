@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starryboard - Discover Amazing Discord Communities</title>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Header Section -->
+<header>
+    <nav class="sb-nav">
+        <div class="sb-nav-top">
+            <a href="index.html" class="sb-logo">
+                <i class="fa-solid fa-compass sb-logo-icon"></i>
+                <span>STARRYBOARD</span>
+            </a>
+
+            <!-- 右侧认证区域 -->
+            <div class="sb-nav-right" style="display: flex; align-items: center; gap: 15px;">
+                <!-- 1. 未登录时显示 -->
+                <button class="sb-btn-login js-login-btn" id="loginBtn">
+                    <i class="fa-brands fa-discord"></i>
+                    <span>Login with Discord</span>
+                </button>
+
+                <!-- 2. 已登录时显示 (默认隐藏) -->
+                <div class="sb-user-profile" id="userProfile" style="display: none; position: relative;">
+                    <div class="sb-user-info" id="userMenuToggle" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <img id="userAvatar" src="" alt="User Avatar" class="sb-user-avatar" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #5865F2;">
+                        <span id="userName" style="color: #fff; font-weight: 600; font-size: 14px;">Username</span>
+                        <i class="fa-solid fa-chevron-down" style="color: #8a8f9d; font-size: 12px;"></i>
+                    </div>
+
+                    <!-- 下拉菜单：支持直接前往 Dashboard 或退出登录 -->
+                    <div class="sb-user-dropdown" id="userDropdown" style="display: none; position: absolute; right: 0; top: 120%; background: #1a1d26; border: 1px solid #2a2e3d; border-radius: 8px; padding: 8px 0; min-width: 140px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 100;">
+                        <a href="dashboard.html" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; color: #fff; text-decoration: none; font-size: 14px;">
+                            <i class="fa-solid fa-gauge"></i> Dashboard
+                        </a>
+                        <a href="javascript:void(0);" id="logoutBtn" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; color: #ff4d4f; text-decoration: none; font-size: 14px;">
+                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 顶部提示条，已登录时可以通过 JS 隐藏 -->
+    <section class="sb-info-banner" id="infoBanner" style="position: relative; z-index: -100">
+        <p><strong>Starryboard</strong> helps you reach active members. <a href="javascript:void(0);" class="js-login-btn" style="color: inherit; text-decoration: underline;">Sign in</a> today to list and bump your server!</p>
+    </section>
+</header>
+
+<!-- Hero Search -->
+<section class="sb-hero">
+    <h1 class="sb-hero-title">Explore Next-Gen Communities</h1>
+    <p class="sb-hero-subtitle">Connect, chat, and share with thousands of Discord servers worldwide.</p>
+
+    <form class="sb-search-box" id="heroSearchForm" action="search.html" method="GET">
+        <label for="heroSearchInput"></label>
+        <input type="text" name="q" id="heroSearchInput" placeholder="Search by name, topics, or keywords..."
+               class="sb-search-input" autocomplete="off" required>
+        <button type="submit" class="sb-search-btn" aria-label="Search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+    </form>
+</section>
+
+<!-- Main Content -->
+<main class="sb-main">
+    <div class="sb-section-header">
+        <h2 class="sb-section-title">Recently Bumped</h2>
+        <a href="search.html" class="sb-btn-all">Explore All</a>
+    </div>
+
+    <!-- 服务器卡片动态渲染容器 -->
+    <div class="sb-grid" id="recentlyBumpedGrid">
+        <!-- 卡片由 JS 动态生成 -->
+    </div>
+</main>
+
+<!-- Footer -->
+<footer class="sb-footer">
+    <p>© 2026 Starryboard. Built for Discord Communities. Independent & Unaffiliated.</p>
+</footer>
+
+<!-- Custom JS -->
+<script src="script.js"></script>
+</body>
+</html>

@@ -49,9 +49,18 @@ ydl_playlist_opts = {
     'socket_timeout': 12
 }
 
+try:
+    import signal
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+except (AttributeError, ValueError, Exception):
+    pass
+
 ydl_track = yt_dlp.YoutubeDL(ydl_track_opts)
 ydl_playlist = yt_dlp.YoutubeDL(ydl_playlist_opts)
-print('READY', flush=True)
+try:
+    print('READY', flush=True)
+except BrokenPipeError:
+    sys.exit(0)
 
 for line in sys.stdin:
     line = line.strip()
@@ -106,19 +115,45 @@ for line in sys.stdin:
                 resp = {'id': req_id, 'status': 'error', 'message': 'Could not extract playlist information'}
 
         else:
-            query = req.get('query', '')
+            query = req.get('query', '').strip()
+            video = None
 
-            if 'youtube.com' in query or 'youtu.be' in query:
-                target = query
-            else:
-                target = f'ytsearch1:{query}'
+            # 1. Direct URLs (SoundCloud, YouTube, direct media links)
+            if 'soundcloud.com' in query or 'youtube.com' in query or 'youtu.be' in query or query.startswith('http://') or query.startswith('https://'):
+                try:
+                    info = ydl_track.extract_info(query, download=False)
+                    if info:
+                        cand = info.get('entries', [info])[0] if 'entries' in info else info
+                        fmt_id = (cand.get('format_id') or '').lower()
+                        if 'preview' not in fmt_id or 'soundcloud.com' not in query:
+                            video = cand
+                except Exception:
+                    video = None
 
-            info = ydl_track.extract_info(target, download=False)
-            if 'entries' in info:
-                entries = info.get('entries') or []
-                video = entries[0] if entries else None
-            else:
-                video = info
+            # 2. General music search: YouTube primary for full-length studio audio
+            if not video or not video.get('url'):
+                try:
+                    yt_target = f'ytsearch1:{query}'
+                    info = ydl_track.extract_info(yt_target, download=False)
+                    if info:
+                        cand = info.get('entries', [info])[0] if 'entries' in info else info
+                        if cand and cand.get('url'):
+                            video = cand
+                except Exception:
+                    video = None
+
+            # 3. Fallback to SoundCloud search if YouTube was blocked or had no results
+            if not video or not video.get('url'):
+                try:
+                    sc_target = f'scsearch1:{query}'
+                    info = ydl_track.extract_info(sc_target, download=False)
+                    if info and 'entries' in info and info['entries']:
+                        cand = info['entries'][0]
+                        fmt_id = (cand.get('format_id') or '').lower()
+                        if 'preview' not in fmt_id and cand.get('url'):
+                            video = cand
+                except Exception:
+                    video = None
 
             if video and video.get('url'):
                 resp = {
@@ -126,11 +161,16 @@ for line in sys.stdin:
                     'status': 'ok',
                     'url': video.get('url'),
                     'title': video.get('title'),
-                    'duration': video.get('duration')
+                    'duration': video.get('duration'),
+                    'headers': video.get('http_headers') or {}
                 }
             else:
                 resp = {'id': req_id, 'status': 'error', 'message': 'No playable audio stream found'}
     except Exception as e:
         resp = {'id': req_id, 'status': 'error', 'message': str(e)}
 
-    print(json.dumps(resp), flush=True)
+    try:
+        print(json.dumps(resp), flush=True)
+    except BrokenPipeError:
+        sys.exit(0)
+
