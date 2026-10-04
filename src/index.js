@@ -904,9 +904,45 @@ async function startBot(overrideToken, overrideMongo) {
 
         // Pre-flight REST verification with Discord API
         console.log('📡 Verifying bot token with Discord REST API...');
-        const preflight = await verifyDiscordToken(primaryToken);
+        let preflight = await verifyDiscordToken(primaryToken);
+        let effectiveToken = preflight.cleanedToken || primaryToken;
         lastPreflight = preflight;
+
         if (!preflight.valid) {
+            // Check fallback token candidates (TOKEN, BOT_TOKEN, DISCORD_TOKEN_2, .env)
+            const candidates = [
+                process.env.TOKEN,
+                process.env.BOT_TOKEN,
+                process.env.DISCORD_TOKEN_2,
+                process.env.DISCORD_TOKEN_3,
+            ].filter(Boolean);
+
+            try {
+                const envPath = path.join(process.cwd(), '.env');
+                if (fs.existsSync(envPath)) {
+                    const parsed = require('dotenv').parse(fs.readFileSync(envPath));
+                    if (parsed.DISCORD_TOKEN) candidates.push(parsed.DISCORD_TOKEN);
+                    if (parsed.TOKEN) candidates.push(parsed.TOKEN);
+                }
+            } catch (_) {}
+
+            for (const cand of candidates) {
+                const cleanedCand = cleanToken(cand);
+                if (cleanedCand && cleanedCand !== primaryToken) {
+                    const testPreflight = await verifyDiscordToken(cleanedCand);
+                    if (testPreflight.valid) {
+                        console.log(`✨ [Auto-Recovery] Found valid Discord token in fallback source! Using identity: ${testPreflight.bot.username}#${testPreflight.bot.discriminator || '0'}`);
+                        effectiveToken = cleanedCand;
+                        preflight = testPreflight;
+                        lastPreflight = testPreflight;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!preflight.valid) {
+            isBootingBot = false;
             lastBootstrapError = `Discord REST API rejected token (${preflight.status || 'Network error'}): ${preflight.error || preflight.networkError}`;
             console.error('🛑 DISCORD TOKEN VERIFICATION FAILED!');
             console.error(`Status: ${preflight.status || 'Network/Fetch error'}`);
@@ -918,7 +954,32 @@ async function startBot(overrideToken, overrideMongo) {
             console.error('2. Go to the "Environment" tab.');
             console.error('3. Ensure DISCORD_TOKEN is set strictly to your bot token string');
             console.error('   without "DISCORD_TOKEN=" in the value box and without quotes.');
+            console.error('   Or open your Render service URL /setup to paste it directly.');
             console.error('------------------------------------------------------------------');
+            console.warn(`🌐 Keeping Express server & /health active on port ${port} so Render remains healthy.`);
+
+            // Poll for environment variable updates without crashing the process
+            if (!tokenCheckInterval) {
+                tokenCheckInterval = setInterval(async () => {
+                    try {
+                        const envPath = path.join(process.cwd(), '.env');
+                        if (fs.existsSync(envPath)) {
+                            require('dotenv').config({ path: envPath, override: true });
+                        }
+                        const checkTok = cleanToken(process.env.DISCORD_TOKEN || process.env.TOKEN || process.env.BOT_TOKEN);
+                        if (checkTok) {
+                            const recheck = await verifyDiscordToken(checkTok);
+                            if (recheck.valid) {
+                                console.log('✨ [Auto-Detect] Detected valid bot token! Connecting bot now...');
+                                clearInterval(tokenCheckInterval);
+                                tokenCheckInterval = null;
+                                await startBot();
+                            }
+                        }
+                    } catch (_) {}
+                }, 10000);
+            }
+            return; // DO NOT PROCEED TO client.login() WITH INVALID TOKEN!
         } else {
             console.log(`✨ Discord Token Verified! Bot identity: ${preflight.bot.username}#${preflight.bot.discriminator || '0'} (ID: ${preflight.bot.id})`);
         }
@@ -981,7 +1042,7 @@ async function startBot(overrideToken, overrideMongo) {
 
         // 1. Connect Primary Client to Discord Gateway IMMEDIATELY
         console.log('🚀 Connecting Primary Bot to Discord Gateway...');
-        await client.login(primaryToken);
+        await client.login(effectiveToken);
         console.log('✨ Primary Bot login sequence initiated successfully!');
 
         // 2. Initialize Background Modules
@@ -995,7 +1056,7 @@ async function startBot(overrideToken, overrideMongo) {
         }
 
         // 3. Boot Multi-Bot Cluster Worker Nodes
-        await multiBot.initAll(client, primaryToken);
+        await multiBot.initAll(client, effectiveToken);
 
     } catch (error) {
         isBootingBot = false;
