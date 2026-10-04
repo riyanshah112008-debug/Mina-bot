@@ -136,10 +136,86 @@ function buildLevelUpEmbed(user, newLevel, newXp, guild, customSettings = null) 
     return embed;
 }
 
+const isDbConnected = () => Boolean(mongoose.connection && mongoose.connection.readyState === 1);
+
+// ⚙️ Leveling State Management Helpers
+async function enableLeveling(guildId, logChannelId = undefined) {
+    const update = { enabled: true };
+    if (logChannelId !== undefined) update.logChannelId = logChannelId;
+    let settings = null;
+    if (isDbConnected()) {
+        settings = await LevelSettings.findOneAndUpdate({ guildId }, update, { new: true, upsert: true }).catch(() => null);
+    }
+    const cached = settingsCache.get(guildId) || {};
+    const newCached = { ...cached, enabled: true, ...(logChannelId !== undefined ? { logChannelId } : {}) };
+    settingsCache.set(guildId, newCached);
+    return settings || newCached;
+}
+
+async function disableLeveling(guildId) {
+    let settings = null;
+    if (isDbConnected()) {
+        settings = await LevelSettings.findOneAndUpdate({ guildId }, { enabled: false }, { new: true, upsert: true }).catch(() => null);
+    }
+    const cached = settingsCache.get(guildId) || {};
+    const newCached = { ...cached, enabled: false };
+    settingsCache.set(guildId, newCached);
+    return settings || newCached;
+}
+
+async function toggleLeveling(guildId) {
+    let currentEnabled = true;
+    if (isDbConnected()) {
+        const settings = await LevelSettings.findOne({ guildId }).catch(() => null);
+        if (settings) currentEnabled = settings.enabled !== false;
+        else if (settingsCache.has(guildId)) currentEnabled = settingsCache.get(guildId).enabled !== false;
+    } else if (settingsCache.has(guildId)) {
+        currentEnabled = settingsCache.get(guildId).enabled !== false;
+    }
+
+    const nextState = !currentEnabled;
+    let settings = null;
+    if (isDbConnected()) {
+        settings = await LevelSettings.findOneAndUpdate({ guildId }, { enabled: nextState }, { new: true, upsert: true }).catch(() => null);
+    }
+    const cached = settingsCache.get(guildId) || {};
+    const newCached = { ...cached, enabled: nextState };
+    settingsCache.set(guildId, newCached);
+    return { enabled: nextState, settings: settings || newCached };
+}
+
+async function setLevelingChannel(guildId, logChannelId) {
+    let settings = null;
+    if (isDbConnected()) {
+        settings = await LevelSettings.findOneAndUpdate({ guildId }, { logChannelId }, { new: true, upsert: true }).catch(() => null);
+    }
+    const cached = settingsCache.get(guildId) || {};
+    const newCached = { ...cached, logChannelId };
+    settingsCache.set(guildId, newCached);
+    return settings || newCached;
+}
+
 async function getLevelControlPanel(guildId, client) {
-    let settings = await LevelSettings.findOne({ guildId });
+    let settings = null;
+    if (isDbConnected()) {
+        settings = await LevelSettings.findOne({ guildId }).catch(() => null);
+        if (!settings) {
+            settings = await LevelSettings.create({
+                guildId,
+                enabled: true,
+                title: '✨ Congratulations {user}!',
+                description: 'Your active participation in **{server}** has paid off! You reached **Level {level}**!',
+                color: '#FFD700',
+                image: '',
+                thumbnail: 'avatar',
+                footer: '{server} • Leveling System',
+                pingContent: '🎉 **Level Up!** <@{user}>',
+                authorName: '🎉 LEVEL UP UNLOCKED!'
+            }).catch(() => null);
+        }
+    }
     if (!settings) {
-        settings = await LevelSettings.create({
+        settings = settingsCache.get(guildId) || {
             guildId,
             enabled: true,
             title: '✨ Congratulations {user}!',
@@ -150,10 +226,11 @@ async function getLevelControlPanel(guildId, client) {
             footer: '{server} • Leveling System',
             pingContent: '🎉 **Level Up!** <@{user}>',
             authorName: '🎉 LEVEL UP UNLOCKED!'
-        });
+        };
     }
 
-    const channelDisplay = settings.logChannelId ? `<#${settings.logChannelId}>` : '*Current Channel*';
+    const isEnabled = settings.enabled !== false;
+    const channelDisplay = settings.logChannelId ? `<#${settings.logChannelId}>` : '*Current Channel (Where user levels up)*';
     const pingDisplay = settings.pingContent || '🎉 **Level Up!** <@{user}>';
     const authorDisplay = settings.authorName || '🎉 LEVEL UP UNLOCKED!';
     const titleDisplay = settings.title || '✨ Congratulations {user}!';
@@ -165,10 +242,11 @@ async function getLevelControlPanel(guildId, client) {
     const imageDisplay = isValidUrl(activeImage) ? `[View Media Link](${activeImage})` : '*None*';
 
     const panelEmbed = new EmbedBuilder()
-        .setColor(colorDisplay)
-        .setTitle('📊 Level-Up Embed Visuality Control Panel')
+        .setColor(isEnabled ? colorDisplay : '#ED4245')
+        .setTitle('📊 Starry Leveling Engine • Server Control Panel')
         .setDescription(
-            `Configure and design custom level-up announcement cards for your server.\n\n` +
+            `Configure leveling rewards and design custom level-up announcement cards for your server.\n\n` +
+            `**🌐 System State:** ${isEnabled ? '🟢 **Enabled (Active)**' : '🔴 **Disabled (Suspended)**'}\n` +
             `**📍 Announcement Channel:** ${channelDisplay}\n` +
             `**💬 Message Header / Ping:** \`${pingDisplay}\`\n` +
             `**👑 Author Header:** \`${authorDisplay}\`\n` +
@@ -182,12 +260,17 @@ async function getLevelControlPanel(guildId, client) {
             value: '`{user}` • `{username}` • `{tag}` • `{server}` • `{level}` • `{xp}` • `{count}`',
             inline: false
         })
-        .setFooter({ text: 'Use the interactive buttons below to modify each section in real time.' });
+        .setFooter({ text: '💡 Click the interactive buttons below or type ,leveling toggle to switch state.' });
 
     const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('lvl_btn_toggle')
+            .setLabel(isEnabled ? 'Leveling: Enabled' : 'Leveling: Disabled')
+            .setStyle(isEnabled ? ButtonStyle.Success : ButtonStyle.Danger)
+            .setEmoji(isEnabled ? '🟢' : '🔴'),
         new ButtonBuilder().setCustomId('lvl_btn_text').setLabel('Edit Text').setStyle(ButtonStyle.Primary).setEmoji('✏️'),
         new ButtonBuilder().setCustomId('lvl_btn_media').setLabel('Edit Media').setStyle(ButtonStyle.Secondary).setEmoji('🖼️'),
-        new ButtonBuilder().setCustomId('lvl_btn_style').setLabel('Edit Style & Footer').setStyle(ButtonStyle.Secondary).setEmoji('🎨')
+        new ButtonBuilder().setCustomId('lvl_btn_style').setLabel('Edit Style').setStyle(ButtonStyle.Secondary).setEmoji('🎨')
     );
 
     const row2 = new ActionRowBuilder().addComponents(
@@ -301,19 +384,25 @@ const levelingModule = (client) => {
         const cacheKey = `${guildId}-${userId}`;
 
         if (!oldState.channelId && newState.channelId) {
-            vcJoinTimes.set(cacheKey, Date.now());
+            const guildSettings = settingsCache.get(guildId) || { enabled: true };
+            if (guildSettings.enabled !== false) {
+                vcJoinTimes.set(cacheKey, Date.now());
+            }
         } else if (oldState.channelId && !newState.channelId) {
             if (vcJoinTimes.has(cacheKey)) {
                 const durationMs = Date.now() - vcJoinTimes.get(cacheKey);
-                const durationMinutes = Math.floor(durationMs / 60000);
-                if (durationMinutes > 0) {
-                    await LevelUser.findOneAndUpdate(
-                        { userId, guildId }, 
-                        { $inc: { vc_time: durationMinutes, xp: durationMinutes * 5 } }, 
-                        { upsert: true }
-                    ).catch(() => {});
-                }
                 vcJoinTimes.delete(cacheKey);
+                const guildSettings = settingsCache.get(guildId) || { enabled: true };
+                if (guildSettings.enabled !== false) {
+                    const durationMinutes = Math.floor(durationMs / 60000);
+                    if (durationMinutes > 0) {
+                        await LevelUser.findOneAndUpdate(
+                            { userId, guildId }, 
+                            { $inc: { vc_time: durationMinutes, xp: durationMinutes * 5 } }, 
+                            { upsert: true }
+                        ).catch(() => {});
+                    }
+                }
             }
         }
     });
@@ -326,12 +415,14 @@ const levelingModule = (client) => {
         const guildId = message.guild.id;
         const rawContent = message.content.toLowerCase().trim();
 
-        const isPrefix = rawContent.startsWith(PREFIX);
+        const activePrefixes = Array.from(new Set([PREFIX, '.', ',', '!', '?'])).filter(Boolean);
+        const matchedPrefix = activePrefixes.find(p => rawContent.startsWith(p));
+        const isPrefix = Boolean(matchedPrefix);
         const isTrigger = rawContent.startsWith('starry ') || rawContent.startsWith('jarvis ') || message.mentions.has(client.user?.id);
 
         if (isPrefix || isTrigger) {
             let cleanText = rawContent;
-            if (isPrefix) cleanText = rawContent.slice(PREFIX.length).trim();
+            if (isPrefix) cleanText = rawContent.slice(matchedPrefix.length).trim();
             if (isTrigger) cleanText = rawContent.replace(/^(?:<@!?\d+>|starry|jarvis)\s*/i, '').trim();
 
             const args = cleanText.split(/ +/);
@@ -356,26 +447,122 @@ const levelingModule = (client) => {
                 return message.reply(data).catch(() => {});
             }
 
-            // Admin Commands (.enableleveling, .addxp, .removexp, .resetlevel)
-            if (message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-                if (command === 'enableleveling') {
+            // Admin & Management Commands
+            const isManager = message.member.permissions.has(PermissionFlagsBits.Administrator) ||
+                              message.member.permissions.has(PermissionFlagsBits.ManageGuild) ||
+                              (config.BOT_OWNERS && config.BOT_OWNERS.includes(message.author.id)) ||
+                              message.guild.ownerId === message.author.id;
+
+            if (isManager) {
+                // 1. Enable Leveling
+                if (command === 'enableleveling' || command === 'enablelevels' || command === 'setuplevels') {
                     const targetChan = message.mentions.channels.first();
                     const logId = targetChan ? targetChan.id : null;
+                    await enableLeveling(guildId, logId);
 
-                    await LevelSettings.findOneAndUpdate({ guildId }, { enabled: true, logChannelId: logId }, { upsert: true });
-                    settingsCache.set(guildId, { enabled: true, logChannelId: logId });
-
-                    // Generate Sample Preview Embed
                     const previewEmbed = buildLevelUpEmbed(message.author, 5, 2500, message.guild);
-
-                    let msg = `⚙️ **Leveling System Enabled!**\nShowing a preview of the level-up announcement embed below:`;
+                    let msg = `⚙️ **Leveling System Enabled!**\nMembers will now earn XP from chat and voice activity.`;
                     if (targetChan) {
                         msg += `\n📌 **Announcements Channel:** <#${targetChan.id}>`;
-                        // Send sample message to log channel
                         targetChan.send({ content: `🧪 **[Leveling System Setup Test]**`, embeds: [previewEmbed] }).catch(() => {});
                     }
-
                     return message.reply({ content: msg, embeds: [previewEmbed] });
+                }
+
+                // 2. Disable Leveling
+                if (command === 'disableleveling' || command === 'disablelevels' || command === 'stoplevels') {
+                    await disableLeveling(guildId);
+                    return message.reply(`🚫 **Leveling System Disabled!**\nXP gain and level-up announcements are paused server-wide.`);
+                }
+
+                // 3. Toggle Leveling
+                if (command === 'toggleleveling' || command === 'togglelevels' || command === 'switchlevels') {
+                    const { enabled } = await toggleLeveling(guildId);
+                    return message.reply(`${enabled ? '✅' : '🚫'} **Leveling System is now ${enabled ? 'ENABLED' : 'DISABLED'}** for **${message.guild.name}**.`);
+                }
+
+                // 4. Unified Leveling Command (.leveling on|off|toggle|channel|preview|status)
+                if (command === 'leveling' || command === 'levels' || command === 'levelsystem') {
+                    const sub = (args[0] || '').toLowerCase();
+
+                    if (sub === 'on' || sub === 'enable' || sub === 'start') {
+                        const targetChan = message.mentions.channels.first();
+                        const logId = targetChan ? targetChan.id : undefined;
+                        await enableLeveling(guildId, logId);
+
+                        const previewEmbed = buildLevelUpEmbed(message.author, 5, 2500, message.guild);
+                        let msg = `✅ **Leveling System has been ENABLED for ${message.guild.name}!**\nMembers will now earn XP from chat and voice activity.`;
+                        if (targetChan) {
+                            msg += `\n📌 **Announcements Channel:** <#${targetChan.id}>`;
+                        }
+                        return message.reply({ content: msg, embeds: [previewEmbed] });
+                    }
+
+                    if (sub === 'off' || sub === 'disable' || sub === 'stop') {
+                        await disableLeveling(guildId);
+                        return message.reply(`🚫 **Leveling System has been DISABLED for ${message.guild.name}.**\nXP gain and level-up announcements are paused server-wide.`);
+                    }
+
+                    if (sub === 'toggle' || sub === 'switch') {
+                        const { enabled } = await toggleLeveling(guildId);
+                        return message.reply(`${enabled ? '✅' : '🚫'} **Leveling System is now ${enabled ? 'ENABLED' : 'DISABLED'}** for **${message.guild.name}**.`);
+                    }
+
+                    if (sub === 'channel' || sub === 'setchannel') {
+                        const targetChan = message.mentions.channels.first();
+                        const isReset = args[1] === 'reset' || args[1] === 'none' || args[1] === 'current';
+                        const logId = isReset ? null : (targetChan ? targetChan.id : null);
+
+                        if (!targetChan && !isReset) {
+                            return message.reply(`❌ Please mention a channel or use \`channel reset\`.\n*Usage: \`.leveling channel #channel\` or \`.leveling channel reset\`*`);
+                        }
+
+                        await setLevelingChannel(guildId, logId);
+                        return message.reply(logId 
+                            ? `✅ Level-up announcements will now be sent to <#${logId}>.` 
+                            : `✅ Level-up announcements will now be sent to the **current active channel** where the user levels up.`
+                        );
+                    }
+
+                    if (sub === 'preview' || sub === 'test') {
+                        const previewEmbed = buildLevelUpEmbed(message.author, 5, 2500, message.guild);
+                        return message.reply({ content: `🧪 **[Leveling Card Live Preview]**`, embeds: [previewEmbed] });
+                    }
+
+                    // Default: show full interactive control panel
+                    const panel = await getLevelControlPanel(guildId, client);
+                    return message.reply(panel);
+                }
+
+                // 5. XP & Level Set
+                if (command === 'setlevel' || command === 'setlvl') {
+                    const targetUser = message.mentions.users.first();
+                    const targetLvl = parseInt(args[1]);
+                    if (!targetUser || isNaN(targetLvl) || targetLvl < 0) {
+                        return message.reply('❌ Usage: `.setlevel @User <level>` (e.g. `.setlevel @User 10`)');
+                    }
+                    const targetXp = Math.round(xpForNextLevel(targetLvl - 1)) || 0;
+                    await LevelUser.findOneAndUpdate(
+                        { userId: targetUser.id, guildId },
+                        { $set: { level: targetLvl, xp: targetXp } },
+                        { new: true, upsert: true }
+                    );
+                    return message.reply(`✅ Set <@${targetUser.id}>'s level directly to **Level ${targetLvl}** (\`${targetXp.toLocaleString()} XP\`).`);
+                }
+
+                if (command === 'setxp') {
+                    const targetUser = message.mentions.users.first();
+                    const amount = parseInt(args[1]);
+                    if (!targetUser || isNaN(amount) || amount < 0) {
+                        return message.reply('❌ Usage: `.setxp @User <amount>` (e.g. `.setxp @User 5000`)');
+                    }
+                    const newLevel = calculateLevel(amount);
+                    await LevelUser.findOneAndUpdate(
+                        { userId: targetUser.id, guildId },
+                        { $set: { xp: amount, level: newLevel } },
+                        { new: true, upsert: true }
+                    );
+                    return message.reply(`✅ Set <@${targetUser.id}>'s XP directly to **${amount.toLocaleString()} XP** (Level **${newLevel}**).`);
                 }
 
                 if (command === 'addxp') {
@@ -500,6 +687,22 @@ const levelingModule = (client) => {
 
             let settings = await LevelSettings.findOne({ guildId: interaction.guildId });
             if (!settings) settings = await LevelSettings.create({ guildId: interaction.guildId, enabled: true });
+
+            // TOGGLE LEVELING STATE BUTTON
+            if (interaction.customId === 'lvl_btn_toggle') {
+                const current = settings.enabled !== false;
+                const nextState = !current;
+                await LevelSettings.findOneAndUpdate({ guildId: interaction.guildId }, { enabled: nextState }, { upsert: true });
+                const existing = settingsCache.get(interaction.guildId) || {};
+                settingsCache.set(interaction.guildId, { ...existing, enabled: nextState });
+
+                const panelData = await getLevelControlPanel(interaction.guildId, client);
+                if (interaction.message) {
+                    return await interaction.update(panelData).catch(() => {});
+                } else {
+                    return await interaction.reply({ ...panelData, flags: [EPHEMERAL_FLAG] }).catch(() => {});
+                }
+            }
 
             // EDIT TITLE & DESCRIPTION MODAL
             if (interaction.customId === 'lvl_btn_text') {
@@ -700,26 +903,44 @@ const levelingModule = (client) => {
 
             const channel = interaction.options.getChannel('channel');
             const logChannelId = channel ? channel.id : null;
-
-            await LevelSettings.findOneAndUpdate(
-                { guildId: interaction.guildId },
-                { enabled: true, logChannelId: logChannelId },
-                { upsert: true }
-            );
-
-            const existing = settingsCache.get(interaction.guildId) || {};
-            settingsCache.set(interaction.guildId, { ...existing, enabled: true, logChannelId });
+            await enableLeveling(interaction.guildId, logChannelId);
 
             const panelData = await getLevelControlPanel(interaction.guildId, client);
             return interaction.reply({ 
-                content: `⚙️ **Leveling System Configured!** ${channel ? `Announcements sent to ${channel}.` : 'Announcements sent to active channels.'}`,
+                content: `⚙️ **Leveling System Configured & Enabled!** ${channel ? `Announcements sent to ${channel}.` : 'Announcements sent to active channels.'}`,
                 ...panelData,
                 flags: [EPHEMERAL_FLAG] 
             });
         }
 
-        // /customizelevels
-        if (interaction.commandName === 'customizelevels') {
+        // /disableleveling
+        if (interaction.commandName === 'disableleveling') {
+            if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator) && !interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
+                return interaction.reply({ content: '❌ Admin or Manage Server permissions required.', flags: [EPHEMERAL_FLAG] });
+            }
+
+            await disableLeveling(interaction.guildId);
+            return interaction.reply({ 
+                content: '🚫 **Leveling System Disabled!** XP gain and level-up announcements are paused server-wide.', 
+                flags: [EPHEMERAL_FLAG] 
+            });
+        }
+
+        // /toggleleveling
+        if (interaction.commandName === 'toggleleveling') {
+            if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator) && !interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
+                return interaction.reply({ content: '❌ Admin or Manage Server permissions required.', flags: [EPHEMERAL_FLAG] });
+            }
+
+            const { enabled } = await toggleLeveling(interaction.guildId);
+            return interaction.reply({ 
+                content: `${enabled ? '✅' : '🚫'} **Leveling System is now ${enabled ? 'ENABLED' : 'DISABLED'}** for this server.`, 
+                flags: [EPHEMERAL_FLAG] 
+            });
+        }
+
+        // /customizelevels or /leveling
+        if (interaction.commandName === 'customizelevels' || interaction.commandName === 'leveling') {
             if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator) && !interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
                 return interaction.reply({ content: '❌ Admin or Manage Server permissions required.', flags: [EPHEMERAL_FLAG] });
             }
@@ -731,6 +952,16 @@ const levelingModule = (client) => {
 };
 
 levelingModule.LevelSettings = LevelSettings;
+levelingModule.LevelUser = LevelUser;
 levelingModule.getLevelControlPanel = getLevelControlPanel;
 levelingModule.buildLevelUpEmbed = buildLevelUpEmbed;
+levelingModule.buildRankEmbed = buildRankEmbed;
+levelingModule.buildLeaderboardData = buildLeaderboardData;
+levelingModule.settingsCache = settingsCache;
+levelingModule.calculateLevel = calculateLevel;
+levelingModule.xpForNextLevel = xpForNextLevel;
+levelingModule.enableLeveling = enableLeveling;
+levelingModule.disableLeveling = disableLeveling;
+levelingModule.toggleLeveling = toggleLeveling;
+levelingModule.setLevelingChannel = setLevelingChannel;
 module.exports = levelingModule;

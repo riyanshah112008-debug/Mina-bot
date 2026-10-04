@@ -1366,6 +1366,261 @@ const commands = [
             const panel = await embedVisualityModule.getThemeControlPanel(ctx.guild.id, ctx.client);
             return ctx.reply(panel);
         }
+    },
+
+    // 21. LEVELING / LEVELS SYSTEM CONTROLLER & TOGGLE
+    {
+        name: 'leveling',
+        aliases: ['levels', 'levelsystem', 'levelingsystem', 'lvlsettings'],
+        category: 'Systems',
+        description: 'Configure and toggle the server-wide leveling system, set channels, and preview cards.',
+        usage: ',leveling [toggle | on | off | channel <#channel> | preview | status]',
+        permissions: [PermissionFlagsBits.ManageGuild],
+        async execute(ctx) {
+            if (!ctx.guild) {
+                return ctx.reply('❌ This command can only be used within a server.');
+            }
+            if (!hasManagePerms(ctx)) {
+                return ctx.reply('❌ You need **Manage Server** or **Administrator** permissions to configure leveling.');
+            }
+
+            const sub = ctx.args[0]?.toLowerCase();
+
+            // Toggle Leveling
+            if (sub === 'toggle' || sub === 'switch') {
+                const { enabled } = await levelingModule.toggleLeveling(ctx.guild.id);
+                return ctx.reply(`${enabled ? '🟢' : '🔴'} **Leveling System is now ${enabled ? 'ENABLED' : 'DISABLED'}** for **${ctx.guild.name}**!`);
+            }
+
+            // Turn On
+            if (sub === 'on' || sub === 'enable' || sub === 'start') {
+                await levelingModule.enableLeveling(ctx.guild.id);
+                return ctx.reply('🟢 **Leveling System is now ENABLED!** Members will gain XP and receive level-up cards.');
+            }
+
+            // Turn Off
+            if (sub === 'off' || sub === 'disable' || sub === 'stop') {
+                await levelingModule.disableLeveling(ctx.guild.id);
+                return ctx.reply('🔴 **Leveling System is now DISABLED!** XP accumulation and level-up announcements are paused.');
+            }
+
+            // Channel
+            if (sub === 'channel' || sub === 'setchannel' || sub === 'logchannel') {
+                const opt = ctx.args[1]?.toLowerCase();
+                if (opt === 'reset' || opt === 'none' || opt === 'current') {
+                    await levelingModule.setLevelingChannel(ctx.guild.id, null);
+                    return ctx.reply('✅ Level-up announcements will now be sent in the **current channel** where the member levels up.');
+                }
+                const channel = ctx.message?.mentions?.channels?.first() || ctx.guild.channels.cache.get(ctx.args[1]);
+                if (!channel) {
+                    return ctx.reply('❌ Please specify a valid channel. Usage: `,leveling channel #channel` (or `,leveling channel reset`)');
+                }
+                await levelingModule.setLevelingChannel(ctx.guild.id, channel.id);
+                return ctx.reply(`✅ Level-up announcement channel set to <#${channel.id}>.`);
+            }
+
+            // Preview
+            if (sub === 'preview' || sub === 'test') {
+                const previewEmbed = levelingModule.buildLevelUpEmbed(ctx.user, 5, 2500, ctx.guild);
+                return ctx.reply({ content: '🧪 **[Leveling Card Live Preview]**', embeds: [previewEmbed] });
+            }
+
+            // Status
+            if (sub === 'status') {
+                let settings = await levelingModule.LevelSettings.findOne({ guildId: ctx.guild.id });
+                const isEnabled = settings ? settings.enabled !== false : true;
+                const chan = settings?.logChannelId ? `<#${settings.logChannelId}>` : '*Current active channel*';
+                const embed = new EmbedBuilder()
+                    .setColor(isEnabled ? '#57F287' : '#ED4245')
+                    .setTitle(`📊 Leveling System Status — ${ctx.guild.name}`)
+                    .setDescription(
+                        `• **State:** ${isEnabled ? '🟢 **Enabled**' : '🔴 **Disabled**'}\n` +
+                        `• **Announcement Channel:** ${chan}\n` +
+                        `• **Title:** \`${settings?.title || '✨ Congratulations {user}!'}\`\n` +
+                        `• **Ping Format:** \`${settings?.pingContent || '🎉 **Level Up!** <@{user}>'}\`\n\n` +
+                        `*Use \`,leveling toggle\` or \`,leveling on/off\` to change system state.*`
+                    )
+                    .setFooter({ text: 'Prefix: , or .' });
+                return ctx.reply({ embeds: [embed] });
+            }
+
+            // Default: show interactive control panel
+            const panel = await levelingModule.getLevelControlPanel(ctx.guild.id, ctx.client);
+            return ctx.reply(panel);
+        }
+    },
+
+    // 22. ENABLE LEVELING
+    {
+        name: 'enableleveling',
+        aliases: ['setuplevels', 'levelsetup', 'enablelevels', 'levelssetup'],
+        category: 'Systems',
+        description: 'Turn on the leveling system server-wide and optionally assign an announcement channel.',
+        usage: ',enableleveling [#channel]',
+        permissions: [PermissionFlagsBits.ManageGuild],
+        async execute(ctx) {
+            if (!ctx.guild) return ctx.reply('❌ This command can only be used within a server.');
+            if (!hasManagePerms(ctx)) return ctx.reply('❌ You need **Manage Server** or **Administrator** permissions.');
+
+            const channel = ctx.message?.mentions?.channels?.first() || ctx.guild.channels.cache.get(ctx.args[0]);
+            const logChannelId = channel ? channel.id : null;
+            await levelingModule.enableLeveling(ctx.guild.id, logChannelId);
+
+            const panel = await levelingModule.getLevelControlPanel(ctx.guild.id, ctx.client);
+            return ctx.reply({
+                content: `🟢 **Leveling System is now ENABLED!** ${channel ? `Announcements sent to <#${channel.id}>.` : 'Announcements sent to active chat channels.'}`,
+                ...panel
+            });
+        }
+    },
+
+    // 23. DISABLE LEVELING
+    {
+        name: 'disableleveling',
+        aliases: ['disablelevels', 'stoplevels', 'unleveling', 'pauseleveling'],
+        category: 'Systems',
+        description: 'Turn off the leveling system server-wide (pauses XP gain and level-up announcements).',
+        usage: ',disableleveling',
+        permissions: [PermissionFlagsBits.ManageGuild],
+        async execute(ctx) {
+            if (!ctx.guild) return ctx.reply('❌ This command can only be used within a server.');
+            if (!hasManagePerms(ctx)) return ctx.reply('❌ You need **Manage Server** or **Administrator** permissions.');
+
+            await levelingModule.disableLeveling(ctx.guild.id);
+            return ctx.reply('🔴 **Leveling System has been DISABLED!** Members will no longer gain XP or receive level-up alerts.');
+        }
+    },
+
+    // 24. TOGGLE LEVELING
+    {
+        name: 'toggleleveling',
+        aliases: ['togglelevels', 'switchlevels', 'leveltoggle'],
+        category: 'Systems',
+        description: 'Quickly toggle the server-wide leveling system on or off.',
+        usage: ',toggleleveling',
+        permissions: [PermissionFlagsBits.ManageGuild],
+        async execute(ctx) {
+            if (!ctx.guild) return ctx.reply('❌ This command can only be used within a server.');
+            if (!hasManagePerms(ctx)) return ctx.reply('❌ You need **Manage Server** or **Administrator** permissions.');
+
+            const { enabled } = await levelingModule.toggleLeveling(ctx.guild.id);
+            return ctx.reply(`${enabled ? '🟢' : '🔴'} **Leveling System is now ${enabled ? 'ENABLED' : 'DISABLED'}** for **${ctx.guild.name}**!`);
+        }
+    },
+
+    // 25. ADD XP
+    {
+        name: 'addxp',
+        aliases: ['givexp', 'xpadd'],
+        category: 'Systems',
+        description: 'Add XP points to a member (Admin only).',
+        usage: ',addxp <@user> <amount>',
+        permissions: [PermissionFlagsBits.Administrator],
+        async execute(ctx) {
+            if (!ctx.guild) return ctx.reply('❌ This command can only be used within a server.');
+            if (!ctx.member?.permissions?.has(PermissionFlagsBits.Administrator) && !(config.BOT_OWNERS && config.BOT_OWNERS.includes(ctx.user.id))) {
+                return ctx.reply('❌ Administrator permission required.');
+            }
+
+            const target = ctx.message?.mentions?.users?.first();
+            const amount = parseInt(ctx.args[1]);
+            if (!target || isNaN(amount) || amount <= 0) {
+                return ctx.reply('❌ Usage: `,addxp @user <amount>` (e.g. `,addxp @User 500`)');
+            }
+
+            const userDoc = await levelingModule.LevelUser.findOneAndUpdate(
+                { userId: target.id, guildId: ctx.guild.id },
+                { $inc: { xp: amount } },
+                { new: true, upsert: true }
+            );
+            const newLevel = levelingModule.calculateLevel(userDoc.xp);
+            await levelingModule.LevelUser.updateOne({ userId: target.id, guildId: ctx.guild.id }, { level: newLevel });
+
+            return ctx.reply(`✅ Added **${amount.toLocaleString()} XP** to <@${target.id}>! (New Level: **${newLevel}**, Total XP: **${userDoc.xp.toLocaleString()}**)`);
+        }
+    },
+
+    // 26. REMOVE XP
+    {
+        name: 'removexp',
+        aliases: ['takexp', 'xpremove', 'subxp'],
+        category: 'Systems',
+        description: 'Remove XP points from a member (Admin only).',
+        usage: ',removexp <@user> <amount>',
+        permissions: [PermissionFlagsBits.Administrator],
+        async execute(ctx) {
+            if (!ctx.guild) return ctx.reply('❌ This command can only be used within a server.');
+            if (!ctx.member?.permissions?.has(PermissionFlagsBits.Administrator) && !(config.BOT_OWNERS && config.BOT_OWNERS.includes(ctx.user.id))) {
+                return ctx.reply('❌ Administrator permission required.');
+            }
+
+            const target = ctx.message?.mentions?.users?.first();
+            const amount = parseInt(ctx.args[1]);
+            if (!target || isNaN(amount) || amount <= 0) {
+                return ctx.reply('❌ Usage: `,removexp @user <amount>` (e.g. `,removexp @User 500`)');
+            }
+
+            const userDoc = await levelingModule.LevelUser.findOne({ userId: target.id, guildId: ctx.guild.id });
+            if (!userDoc || userDoc.xp <= 0) {
+                return ctx.reply(`❌ <@${target.id}> has no XP to remove.`);
+            }
+
+            const newXp = Math.max(0, userDoc.xp - amount);
+            const newLevel = levelingModule.calculateLevel(newXp);
+            await levelingModule.LevelUser.updateOne({ userId: target.id, guildId: ctx.guild.id }, { xp: newXp, level: newLevel });
+
+            return ctx.reply(`✅ Removed **${amount.toLocaleString()} XP** from <@${target.id}>! (New Level: **${newLevel}**, Remaining XP: **${newXp.toLocaleString()}**)`);
+        }
+    },
+
+    // 27. RESET LEVEL
+    {
+        name: 'resetlevel',
+        aliases: ['resetxp', 'clearlevel', 'clearxp'],
+        category: 'Systems',
+        description: 'Reset a member\'s level and XP back to level 0 (Admin only).',
+        usage: ',resetlevel <@user>',
+        permissions: [PermissionFlagsBits.Administrator],
+        async execute(ctx) {
+            if (!ctx.guild) return ctx.reply('❌ This command can only be used within a server.');
+            if (!ctx.member?.permissions?.has(PermissionFlagsBits.Administrator) && !(config.BOT_OWNERS && config.BOT_OWNERS.includes(ctx.user.id))) {
+                return ctx.reply('❌ Administrator permission required.');
+            }
+
+            const target = ctx.message?.mentions?.users?.first();
+            if (!target) {
+                return ctx.reply('❌ Usage: `,resetlevel @user`');
+            }
+
+            await levelingModule.LevelUser.deleteOne({ userId: target.id, guildId: ctx.guild.id });
+            return ctx.reply(`🧹 **Reset all leveling stats and XP for <@${target.id}>.**`);
+        }
+    },
+
+    // 28. MESSAGES COUNT
+    {
+        name: 'messages',
+        aliases: ['msgcount', 'chatcount', 'messagecount'],
+        category: 'Social',
+        description: 'Check total messages tracked by the leveling system.',
+        usage: ',messages [@user]',
+        async execute(ctx) {
+            if (!ctx.guild) return ctx.reply('❌ This command can only be used within a server.');
+            const target = ctx.message?.mentions?.users?.first() || ctx.user;
+            const userData = await levelingModule.LevelUser.findOne({ userId: target.id, guildId: ctx.guild.id });
+            const count = userData ? (userData.messages || 0) : 0;
+            const level = userData ? userData.level : 0;
+            const xp = userData ? userData.xp : 0;
+
+            const embed = new EmbedBuilder()
+                .setColor('#5865F2')
+                .setAuthor({ name: `${target.username}'s Message Stats`, iconURL: target.displayAvatarURL({ dynamic: true }) })
+                .setDescription(`💬 <@${target.id}> has sent **${count.toLocaleString()}** messages in **${ctx.guild.name}**!\n👑 Current Level: **Level ${level}** (\`${xp.toLocaleString()} XP\`)`)
+                .setFooter({ text: 'Leveling Chat Tracker • Prefix: ,' })
+                .setTimestamp();
+
+            return ctx.reply({ embeds: [embed] });
+        }
     }
 ];
 

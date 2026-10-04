@@ -372,7 +372,9 @@ const commands = [
         usage: ',userinfo [@user]',
         async execute(ctx) {
             let targetUser = ctx.user;
-            if (ctx.message?.mentions?.users?.size > 0) targetUser = ctx.message.mentions.users.first();
+            if (ctx.isSlash && ctx.options?.getUser) {
+                targetUser = ctx.options.getUser('user') || ctx.options.getUser('target') || ctx.user;
+            } else if (ctx.message?.mentions?.users?.size > 0) targetUser = ctx.message.mentions.users.first();
             else if (ctx.args[0]) {
                 const rawId = ctx.args[0].replace(/[^0-9]/g, '');
                 targetUser = await ctx.client.users.fetch(rawId).catch(() => ctx.user);
@@ -408,7 +410,9 @@ const commands = [
         usage: ',avatar [@user]',
         async execute(ctx) {
             let targetUser = ctx.user;
-            if (ctx.message?.mentions?.users?.size > 0) targetUser = ctx.message.mentions.users.first();
+            if (ctx.isSlash && ctx.options?.getUser) {
+                targetUser = ctx.options.getUser('user') || ctx.options.getUser('target') || ctx.user;
+            } else if (ctx.message?.mentions?.users?.size > 0) targetUser = ctx.message.mentions.users.first();
             else if (ctx.args[0]) {
                 const rawId = ctx.args[0].replace(/[^0-9]/g, '');
                 targetUser = await ctx.client.users.fetch(rawId).catch(() => ctx.user);
@@ -439,7 +443,13 @@ const commands = [
         usage: ',banner [@user]',
         async execute(ctx) {
             let targetUser = ctx.user;
-            if (ctx.message?.mentions?.users?.size > 0) targetUser = ctx.message.mentions.users.first();
+            if (ctx.isSlash && ctx.options?.getUser) {
+                targetUser = ctx.options.getUser('user') || ctx.options.getUser('target') || ctx.user;
+            } else if (ctx.message?.mentions?.users?.size > 0) targetUser = ctx.message.mentions.users.first();
+            else if (ctx.args[0]) {
+                const rawId = ctx.args[0].replace(/[^0-9]/g, '');
+                targetUser = await ctx.client.users.fetch(rawId).catch(() => ctx.user);
+            }
             const userFetched = await ctx.client.users.fetch(targetUser.id, { force: true }).catch(() => targetUser);
             const bannerUrl = userFetched.bannerURL({ dynamic: true, size: 1024 });
 

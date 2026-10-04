@@ -13,6 +13,7 @@ const {
 const mongoose = require('mongoose');
 const config = require('../../config');
 const { ONE_YEAR_MS } = require('../../utils/contextHelper');
+const levelingModule = require('../../modules/leveling');
 
 // Economy schema definition / model loader
 const economySchema = new mongoose.Schema({
@@ -94,6 +95,14 @@ const commands = [
         usage: ',rank [@user]',
         async execute(ctx) {
             const target = ctx.message?.mentions?.users?.first() || ctx.user;
+            try {
+                const lvlUser = await levelingModule.LevelUser.findOne({ userId: target.id, guildId: ctx.guild.id });
+                if (lvlUser) {
+                    const rankEmbed = await levelingModule.buildRankEmbed(target, lvlUser, ctx.guild);
+                    return ctx.reply({ embeds: [rankEmbed] });
+                }
+            } catch (err) {}
+
             const doc = await getOrCreateEcoUser(target.id, ctx.guild.id);
             const neededXp = doc.level * 100;
 
@@ -122,6 +131,13 @@ const commands = [
         usage: ',leaderboard [xp / money]',
         async execute(ctx) {
             const type = ctx.args[0]?.toLowerCase() === 'money' ? 'wallet' : 'xp';
+            if (type === 'xp') {
+                try {
+                    const lbData = await levelingModule.buildLeaderboardData(ctx.guild.id, ctx.guild, 'xp');
+                    return ctx.reply(lbData);
+                } catch (e) {}
+            }
+
             const top = await EcoUser.find({ guildId: ctx.guild.id }).sort({ [type]: -1 }).limit(10).lean();
 
             if (top.length === 0) return ctx.reply('📭 Leaderboard is empty for this server.');
@@ -145,7 +161,7 @@ const commands = [
     // 3. SETLEVEL
     {
         name: 'setlevel',
-        aliases: ['givexp'],
+        aliases: ['setlvl', 'lvlset'],
         category: 'Economy',
         description: 'Set a user\'s level or add XP (Admins Only).',
         usage: ',setlevel <@user> <level number>',
@@ -160,6 +176,14 @@ const commands = [
                 return ctx.reply('❌ Usage: `,setlevel @user <level>`');
             }
             await EcoUser.updateOne({ userId: target.id, guildId: ctx.guild.id }, { level, xp: 0 }, { upsert: true });
+            try {
+                const targetXp = Math.round(levelingModule.xpForNextLevel(level - 1)) || 0;
+                await levelingModule.LevelUser.findOneAndUpdate(
+                    { userId: target.id, guildId: ctx.guild.id },
+                    { $set: { level, xp: targetXp } },
+                    { upsert: true }
+                );
+            } catch (e) {}
             return ctx.reply(`✅ **Set ${target.username}'s level to Level ${level}!**`);
         }
     },

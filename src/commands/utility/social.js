@@ -160,11 +160,11 @@ function buildSocialPayload(actionKey, sender, target) {
 }
 
 module.exports = {
-  name: "social",
-  aliases: ["hug", "kiss", "slap", "pat", "cuddle", "poke", "punch", "dance", "cry", "wave"],
-  category: "Fun",
+  name: "socialmenu",
+  aliases: ["socialactions", "animesocial"],
+  category: "Social",
   description: "Express social emotions & anime reactions (hug, kiss, slap, pat, cuddle, dance, etc.).",
-  usage: "hug @user | kiss @user | slap @user | social <action> [@user]",
+  usage: "socialmenu <action> [@user]",
   data: new SlashCommandBuilder()
     .setName("social")
     .setDescription("Express social reactions & anime interactions.")

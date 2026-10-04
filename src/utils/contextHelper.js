@@ -86,6 +86,9 @@ class CommandContext {
                 getRole: (name) => {
                     return this.message?.mentions?.roles?.first() || null;
                 },
+                getAttachment: (name) => {
+                    return this.message?.attachments?.first() || null;
+                },
                 getBoolean: (name) => {
                     if (!this.args[0]) return false;
                     const val = this.args[0].toLowerCase();
@@ -96,6 +99,22 @@ class CommandContext {
                 }
             };
         }
+    }
+
+    isChatInputCommand() {
+        return Boolean(this.isSlash);
+    }
+
+    isButton() {
+        return Boolean(this.source?.isButton && this.source.isButton());
+    }
+
+    isStringSelectMenu() {
+        return Boolean(this.source?.isStringSelectMenu && this.source.isStringSelectMenu());
+    }
+
+    get attachments() {
+        return this.source?.attachments || this.message?.attachments || null;
     }
 
     async defer(ephemeral = false) {

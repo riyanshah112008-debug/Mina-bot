@@ -125,10 +125,17 @@ async function executeSafely(command, ctx, client, cmdName) {
     });
 
     try {
-        await Promise.race([
-            command.execute(ctx, client),
-            timeoutPromise
-        ]);
+        if (command.execute.length >= 3) {
+            await Promise.race([
+                command.execute(ctx, ctx.args, client),
+                timeoutPromise
+            ]);
+        } else {
+            await Promise.race([
+                command.execute(ctx, client),
+                timeoutPromise
+            ]);
+        }
     } finally {
         if (timer) clearTimeout(timer);
     }
@@ -195,15 +202,17 @@ class CommandRegistry {
                             if (!this.categories.has(cmdModule.category)) this.categories.set(cmdModule.category, []);
                             this.categories.get(cmdModule.category).push(cmdModule);
                         }
-                    }
 
-                    // Register all aliases for standalone commands
-                    if (cmdModule.aliases && Array.isArray(cmdModule.aliases)) {
-                        for (const alias of cmdModule.aliases) {
-                            const cleanAlias = alias.toLowerCase();
-                            this.aliases.set(cleanAlias, name);
-                            client.aliases.set(cleanAlias, name);
-                            client.prefixCommands.set(cleanAlias, cmdModule);
+                        // Register all aliases for standalone commands only if not already taken
+                        if (cmdModule.aliases && Array.isArray(cmdModule.aliases)) {
+                            for (const alias of cmdModule.aliases) {
+                                const cleanAlias = alias.toLowerCase();
+                                if (!this.commands.has(cleanAlias) && !this.aliases.has(cleanAlias)) {
+                                    this.aliases.set(cleanAlias, name);
+                                    client.aliases.set(cleanAlias, name);
+                                    client.prefixCommands.set(cleanAlias, cmdModule);
+                                }
+                            }
                         }
                     }
                 }
@@ -316,12 +325,15 @@ class CommandRegistry {
                     } else if (content.startsWith('?')) {
                         matchedPrefix = '?';
                         commandBody = content.slice(1).trim();
+                    } else if (content.startsWith('!')) {
+                        matchedPrefix = '!';
+                        commandBody = content.slice(1).trim();
                     } else if (guildId) {
                         const activePrefix = guildPrefixCache.has(guildId) 
                             ? guildPrefixCache.get(guildId) 
                             : await getGuildPrefix(guildId);
 
-                        if (activePrefix && activePrefix !== ',' && activePrefix !== '.' && activePrefix !== '?' && content.startsWith(activePrefix)) {
+                        if (activePrefix && !['.', ',', '?', '!'].includes(activePrefix) && content.startsWith(activePrefix)) {
                             matchedPrefix = activePrefix;
                             commandBody = content.slice(activePrefix.length).trim();
                         } else {
@@ -380,7 +392,7 @@ class CommandRegistry {
             const commandKey = args.shift()?.toLowerCase();
             if (!commandKey) return;
 
-            const resolvedName = this.aliases.get(commandKey) || commandKey;
+            const resolvedName = this.commands.has(commandKey) ? commandKey : (this.aliases.get(commandKey) || commandKey);
             let command = this.commands.get(resolvedName);
 
             // If user mentioned bot directly and spoke naturally, route seamlessly to Starry AI
@@ -399,51 +411,8 @@ class CommandRegistry {
             executedMessageIds.add(message.id);
             setTimeout(() => executedMessageIds.delete(message.id), 20000);
 
-            // 👑 OWNER-ONLY PREFIX RESTRICTION (Plan B: Slash Command Migration)
             const isPrefixInvocation = matchedPrefix !== '@' && matchedPrefix !== '';
-            if (isPrefixInvocation) {
-                const isOwner = typeof config.isBotOwner === 'function' 
-                    ? config.isBotOwner(message.author.id, client) 
-                    : (config.BOT_OWNERS || []).includes(message.author.id);
-
-                if (!isOwner) {
-                    // Throttle notices to avoid channel spam (1 notice per 8 seconds per user)
-                    if (!prefixNoticeCooldowns.has(message.author.id)) {
-                        prefixNoticeCooldowns.add(message.author.id);
-                        setTimeout(() => prefixNoticeCooldowns.delete(message.author.id), 8000);
-
-                        const slashEquivalent = `/${resolvedName}`;
-                        const embed = new EmbedBuilder()
-                            .setColor('#5865F2')
-                            .setAuthor({ name: '✨ Starry • Slash Command Migration', iconURL: client.user ? client.user.displayAvatarURL({ dynamic: true }) : undefined })
-                            .setTitle('⚡ Prefix Commands Are Reserved for Bot Owners')
-                            .setDescription(
-                                `Starry has officially transitioned to **Discord Slash Commands** in accordance with Discord platform guidelines!\n\n` +
-                                `• **Prefix commands (\`,\` / \`.\`)** are restricted exclusively to **Bot Owners**.\n` +
-                                `• Please use **\`${slashEquivalent}\`** instead!\n` +
-                                `• Type **\`/help\`** to browse and execute commands with interactive menus and autocomplete.`
-                            )
-                            .setFooter({ text: 'Tip: Type / to see all slash commands • Starry Bot' });
-
-                        const row = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder()
-                                .setCustomId('mention_help_btn')
-                                .setLabel('📖 Open /help Menu')
-                                .setStyle(ButtonStyle.Primary)
-                                .setEmoji('📜')
-                        );
-
-                        message.reply({ embeds: [embed], components: [row] })
-                            .then(sentMsg => {
-                                setTimeout(() => sentMsg.delete().catch(() => {}), 12000);
-                            })
-                            .catch(() => {});
-                    }
-                    return;
-                }
-            }
-
-            const logTag = isPrefixInvocation ? 'Owner-Prefix' : 'Command';
+            const logTag = isPrefixInvocation ? 'Prefix' : 'Command';
             console.log(`⚡ [${logTag}] Executing ${matchedPrefix || ''}${resolvedName} for ${message.author.tag} in ${message.guild?.name || 'DM'}`);
             const ctx = new CommandContext(message, client, args);
 

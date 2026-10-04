@@ -561,6 +561,40 @@ async function runAll() {
     assert.strictEqual(stats.hug, count2);
   });
 
+  await asyncIt("Direct social commands execute action and do not show the menu", async () => {
+    const socialCommands = require("../src/commands/bundles/socialCommands");
+    const hugCmd = socialCommands.find(c => c.name === "hug");
+    assert.ok(hugCmd, "hug command must be defined in socialCommands");
+
+    let repliedPayload = null;
+    const mockCtx = {
+      user: { id: "user_author_123", username: "Tester" },
+      client: { user: { id: "bot_id_999", username: "StarryBot" }, users: { cache: new Map(), fetch: async () => null } },
+      message: { mentions: { users: new Map([["user_target_456", { id: "user_target_456", username: "MoonPetal", bot: false }]]) } },
+      channel: { messages: { fetch: async () => null } },
+      args: [],
+      reply: async (payload) => {
+        repliedPayload = payload;
+        return payload;
+      }
+    };
+    mockCtx.message.mentions.users.first = () => ({ id: "user_target_456", username: "MoonPetal", bot: false });
+
+    await hugCmd.execute(mockCtx);
+    assert.ok(repliedPayload, "hug command must reply");
+    assert.ok(repliedPayload.embeds && repliedPayload.embeds.length === 1, "hug must reply with an embed");
+    const embedDesc = repliedPayload.embeds[0].data.description;
+    assert.ok(embedDesc.includes("Tester"), "Embed description must include author username");
+    assert.ok(embedDesc.includes("MoonPetal"), "Embed description must include target username");
+    assert.ok(embedDesc.includes("hugs"), "Embed description must include verb");
+    assert.strictEqual(Boolean(repliedPayload.embeds[0].data.title?.includes("Social Actions")), false, "Must not show menu title");
+
+    // Test reciprocation button
+    assert.ok(repliedPayload.components && repliedPayload.components.length === 1, "Must attach reciprocation button");
+    const button = repliedPayload.components[0].components[0];
+    assert.ok(button.data.custom_id.startsWith("social_hug_back_user_target_456_user_author_123"));
+  });
+
   // Test 15: Mini-Games & Utility Commands Load Check
   console.log("\n📁 15. Mini-Games & Utility Commands Integrity");
   it("Loads and validates all interactive games and utility tools", () => {
@@ -769,6 +803,83 @@ async function runAll() {
     const row2Components = channelButtons[1].components;
     assert.ok(row2Components.some(c => c.data.custom_id === `am_server_dashboard_${testChannelId}`));
     assert.ok(row2Components.some(c => c.data.custom_id === `am_toggle_server_${testChannelId}`));
+  });
+
+  // Test 22: Leveling System Controls, Toggles & Commands
+  console.log("\n📁 22. Leveling System Controls, Toggles & Commands");
+  await asyncIt("Handles leveling state toggles, panel generation, and command definitions", async () => {
+    const levelingModule = require("../src/modules/leveling");
+    const testGuildId = "test_lvl_guild_" + Date.now();
+
+    // 1. Math utilities
+    assert.strictEqual(levelingModule.calculateLevel(0), 0);
+    assert.strictEqual(levelingModule.calculateLevel(100), 1);
+    assert.ok(levelingModule.calculateLevel(1000) > 1);
+    assert.ok(levelingModule.xpForNextLevel(0) > 0);
+
+    // 2. Enable, Disable, Toggle, Channel functions
+    await levelingModule.enableLeveling(testGuildId);
+    assert.strictEqual(levelingModule.settingsCache.get(testGuildId).enabled, true);
+
+    await levelingModule.disableLeveling(testGuildId);
+    assert.strictEqual(levelingModule.settingsCache.get(testGuildId).enabled, false);
+
+    const toggled = await levelingModule.toggleLeveling(testGuildId);
+    assert.strictEqual(toggled.enabled, true);
+    assert.strictEqual(levelingModule.settingsCache.get(testGuildId).enabled, true);
+
+    await levelingModule.setLevelingChannel(testGuildId, "channel_456");
+    assert.strictEqual(levelingModule.settingsCache.get(testGuildId).logChannelId, "channel_456");
+
+    // 3. Control panel generation with interactive toggle button
+    const panel = await levelingModule.getLevelControlPanel(testGuildId, {});
+    assert.ok(panel.embeds && panel.embeds.length === 1);
+    assert.ok(panel.embeds[0].data.title.includes("Leveling Engine"));
+    assert.ok(panel.embeds[0].data.description.includes("System State"));
+    assert.ok(panel.components && panel.components.length === 2);
+
+    const row1Buttons = panel.components[0].components;
+    const toggleBtn = row1Buttons.find(b => b.data.custom_id === "lvl_btn_toggle");
+    assert.ok(toggleBtn, "Leveling toggle button must exist");
+    assert.strictEqual(toggleBtn.data.label, "Leveling: Enabled");
+
+    // Disable and verify toggle button updates label
+    await levelingModule.disableLeveling(testGuildId);
+    const disabledPanel = await levelingModule.getLevelControlPanel(testGuildId, {});
+    const disabledToggleBtn = disabledPanel.components[0].components.find(b => b.data.custom_id === "lvl_btn_toggle");
+    assert.strictEqual(disabledToggleBtn.data.label, "Leveling: Disabled");
+
+    // 4. Validate system commands registration
+    const systemCommands = require("../src/commands/bundles/systemCommands");
+    const requiredSystemCmds = [
+      "leveling",
+      "enableleveling",
+      "disableleveling",
+      "toggleleveling",
+      "addxp",
+      "removexp",
+      "resetlevel",
+      "messages"
+    ];
+
+    for (const cmdName of requiredSystemCmds) {
+      const found = systemCommands.find(c => c.name === cmdName);
+      assert.ok(found, `Command ${cmdName} must be exported in systemCommands`);
+      assert.strictEqual(typeof found.execute, "function", `${cmdName} must have an execute function`);
+    }
+
+    // 5. Validate economy commands integration
+    const economyCommands = require("../src/commands/bundles/economyCommands");
+    const rankCmd = economyCommands.find(c => c.name === "rank");
+    assert.ok(rankCmd, "Rank command must be present in economyCommands");
+    assert.ok(rankCmd.aliases.includes("level"));
+
+    const lbCmd = economyCommands.find(c => c.name === "leaderboard");
+    assert.ok(lbCmd, "Leaderboard command must be present in economyCommands");
+
+    const setlevelCmd = economyCommands.find(c => c.name === "setlevel");
+    assert.ok(setlevelCmd, "Setlevel command must be present in economyCommands");
+    assert.ok(setlevelCmd.aliases.includes("setlvl"));
   });
 
   // Test Summary

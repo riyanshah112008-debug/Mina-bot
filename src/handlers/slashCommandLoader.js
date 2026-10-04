@@ -13,8 +13,24 @@ const permissionMap = {
 };
 
 async function loadSlashCommands(client, config) {
-  const commands = [];
+  let commands = [];
   const seen = new Set();
+
+  // 1. Load Master Starry Deploy Engine Payloads (Complete Global Suite)
+  try {
+    const deployModule = require("../../deploy-commands");
+    const masterList = deployModule?.commands || [];
+    for (const cmd of masterList) {
+      if (cmd && cmd.name && !seen.has(cmd.name)) {
+        seen.add(cmd.name);
+        commands.push(cmd);
+      }
+    }
+  } catch (err) {
+    console.warn("[SlashCommands] Could not load deploy-commands:", err.message);
+  }
+
+  // 2. Discover any additional standalone commands in src/commands
   const commandsDir = path.join(__dirname, "../commands");
 
   function walk(dir) {
@@ -26,37 +42,47 @@ async function loadSlashCommands(client, config) {
       }
       if (!entry.name.endsWith(".js")) continue;
 
-      const command = require(fullPath);
-      const commandName = command?.name || command?.data?.name;
-      if (!command || !commandName || seen.has(commandName)) continue;
+      try {
+        const command = require(fullPath);
+        const commandName = command?.name || command?.data?.name;
+        if (!command || !commandName || seen.has(commandName)) continue;
 
-      if (command.slash !== false && command.data) {
-        seen.add(commandName);
-        commands.push({
-          name: command.data.name,
-          description: command.data.description || "No description.",
-          options: command.data.options?.length ? command.data.options.map((option) => option.toJSON()) : [],
-          default_member_permissions: null,
-        });
-      } else if (command.slash !== false) {
-        seen.add(commandName);
-        const bitmask = command.permissions
-          ? command.permissions.reduce((total, perm) => total | (permissionMap[perm] ?? 0n), 0n)
-          : null;
+        if (command.slash !== false && command.data) {
+          seen.add(commandName);
+          const json = typeof command.data.toJSON === 'function' ? command.data.toJSON() : command.data;
+          commands.push({
+            ...json,
+            default_member_permissions: json.default_member_permissions !== undefined ? json.default_member_permissions : null,
+            integration_types: json.integration_types || [0, 1],
+            contexts: json.contexts || [0, 1, 2],
+          });
+        } else if (command.slash !== false && typeof command.execute === 'function') {
+          seen.add(commandName);
+          const bitmask = command.permissions
+            ? command.permissions.reduce((total, perm) => total | (permissionMap[perm] ?? 0n), 0n)
+            : null;
 
-        commands.push({
-          name: command.name,
-          description: command.description || "No description.",
-          options: command.options || [],
-          default_member_permissions: bitmask !== null ? String(bitmask) : null,
-        });
-      }
+          commands.push({
+            name: command.name,
+            description: command.description || "No description.",
+            options: command.options || [],
+            default_member_permissions: bitmask !== null ? String(bitmask) : null,
+            integration_types: [0, 1],
+            contexts: [0, 1, 2],
+          });
+        }
+      } catch (e) {}
     }
   }
 
   if (fs.existsSync(commandsDir)) {
     walk(commandsDir);
   }
+
+  // Enforce Discord 100 chat inputs hard limit to prevent DiscordAPIError[30032]
+  const chatInputs = commands.filter(c => !c.type || c.type === 1).slice(0, 100);
+  const contextMenus = commands.filter(c => c.type === 2 || c.type === 3).slice(0, 10);
+  commands = [...chatInputs, ...contextMenus];
 
   // Register slash commands with Discord
   if (commands.length > 0 && config.token) {

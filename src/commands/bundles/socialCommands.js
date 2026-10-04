@@ -56,27 +56,27 @@ function createSocialCommand(key, configData) {
             let target = null;
             if (ctx.options?.getUser) {
                 target = ctx.options.getUser('target');
+            } else if (ctx.message?.mentions?.repliedUser) {
+                target = ctx.message.mentions.repliedUser;
+            } else if (ctx.message?.mentions?.users?.first()) {
+                target = ctx.message.mentions.users.first();
             } else if (ctx.message?.reference?.messageId) {
                 try {
                     const refMsg = await ctx.channel.messages.fetch(ctx.message.reference.messageId);
                     target = refMsg.author;
                 } catch (e) {}
-            } else if (ctx.message?.mentions?.users?.first()) {
-                target = ctx.message.mentions.users.first();
+            } else if (ctx.args && ctx.args[0]) {
+                const id = ctx.args[0].replace(/[^0-9]/g, '');
+                if (id) {
+                    target = ctx.client.users.cache.get(id) || await ctx.client.users.fetch(id).catch(() => null);
+                }
             }
 
-            if (configData.requiresTarget) {
-                if (!target) {
-                    return ctx.reply(`❌ Please mention someone or reply to their message to ${key} them!\n*Usage: \`,${key} @user\`*`);
-                }
-
-                if (String(target.id) === authorIdStr) {
-                    return ctx.reply(`❌ You cannot ${key} yourself! Please mention someone else.`);
-                }
-            } else if (target && String(target.id) === authorIdStr) {
-                target = null;
+            if (configData.requiresTarget && !target) {
+                target = ctx.client.user;
             }
 
+            const isSelf = target && String(target.id) === authorIdStr;
             const targetIdStr = target ? String(target.id) : null;
             const totalCount = await incrementSocialCount(authorIdStr, targetIdStr, key);
 
@@ -84,14 +84,16 @@ function createSocialCommand(key, configData) {
             const countWord = getSocialNoun(key, totalCount, configData);
 
             let desc = `**${author.username}** ${configData.verb}`;
-            if (target) {
+            if (target && !isSelf) {
                 if (configData.requiresTarget) {
                     desc += ` **${target.username}**!\n\n✨ That's **${totalCount}** ${countWord} shared together! ${configData.emoji}`;
                 } else {
                     desc += ` with **${target.username}**!\n\n✨ That's **${totalCount}** ${countWord} shared together! ${configData.emoji}`;
                 }
+            } else if (isSelf) {
+                desc += ` themselves! ✨ ${configData.emoji}\n\n✨ Self-love is the best love! Total: **${totalCount}**`;
             } else {
-                desc += `\n\n✨ Personal ${key} count: **${totalCount}** ${configData.emoji}`;
+                desc += ` everyone! ✨ ${configData.emoji}\n\n✨ Personal ${key} count: **${totalCount}** ${configData.emoji}`;
             }
 
             const embed = new EmbedBuilder()
@@ -101,7 +103,7 @@ function createSocialCommand(key, configData) {
                 .setFooter({ text: `Social Actions Engine • Total: ${totalCount} • Prefix: ,` });
 
             const components = [];
-            if (target && !target.bot) {
+            if (target && !target.bot && !isSelf) {
                 const row = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
                         .setCustomId(`social_${key}_back_${target.id}_${authorIdStr}`)
@@ -124,12 +126,18 @@ const commands = [
         aliases: ['actions', 'anime'],
         category: 'Social',
         description: 'Interactive anime social actions hub or execute direct social action.',
-        usage: ',social',
+        usage: ',social [action] [@user]',
         async execute(ctx) {
+            const sub = ctx.args[0]?.toLowerCase();
+            if (sub && ACTION_CONFIG[sub]) {
+                ctx.args = ctx.args.slice(1);
+                const subCmd = createSocialCommand(sub, ACTION_CONFIG[sub]);
+                return subCmd.execute(ctx);
+            }
             if (ctx.isSlash) {
-                const sub = ctx.source?.options?.getSubcommand(false);
-                if (sub && ACTION_CONFIG[sub]) {
-                    return executeSocialAction(sub, ctx.source, true);
+                const slashSub = ctx.source?.options?.getSubcommand(false);
+                if (slashSub && ACTION_CONFIG[slashSub]) {
+                    return executeSocialAction(slashSub, ctx.source, true);
                 }
             }
             return sendSocialHelpMenu(ctx);

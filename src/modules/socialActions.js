@@ -138,44 +138,44 @@ async function executeSocialAction(actionKey, context, isSlash) {
         if (isSlash) {
             target = context.options?.getUser ? context.options.getUser('target') : null;
         } else {
-            if (context.reference && context.reference.messageId) {
+            if (context.mentions?.repliedUser) {
+                target = context.mentions.repliedUser;
+            } else if (context.reference && context.reference.messageId) {
                 try {
                     const refMsg = await context.channel.messages.fetch(context.reference.messageId);
                     target = refMsg.author;
                 } catch (err) {}
             } else if (context.mentions && context.mentions.users && context.mentions.users.size > 0) {
                 target = context.mentions.users.first();
+            } else if (context.args && context.args[0]) {
+                const id = context.args[0].replace(/[^0-9]/g, '');
+                if (id) {
+                    target = context.client?.users?.cache?.get(id) || await context.client?.users?.fetch(id).catch(() => null);
+                }
             }
         }
 
         if (!target) {
-            const reqMsg = `❌ Please mention a user or reply to a message to ${actionKey} them!\n*Example: \`,${actionKey} @user\`*`;
-            return isSlash 
-                ? context.reply({ content: reqMsg, flags: [EPHEMERAL_FLAG] }) 
-                : context.reply(reqMsg);
-        }
-
-        if (String(target.id) === authorIdStr) {
-            const errReply = `❌ You can't ${actionKey} yourself! Mention someone else.`;
-            return isSlash 
-                ? context.reply({ content: errReply, flags: [EPHEMERAL_FLAG] }) 
-                : context.reply(errReply);
+            target = context.client?.user;
         }
     }
 
     const randomGif = await getSocialGif(actionKey);
 
     // Save and increment count in MongoDB database
+    const isSelf = target && String(target.id) === authorIdStr;
     const targetIdStr = target ? String(target.id) : null;
     const totalCount = await incrementSocialCount(authorIdStr, targetIdStr, actionKey);
 
     const countWord = getSocialNoun(actionKey, totalCount, configData);
 
     let descriptionText = `**${authorName}** ${configData.verb}`;
-    if (target) {
+    if (target && !isSelf) {
         descriptionText += ` **${target.username}**!\n\n✨ That's **${totalCount}** ${countWord} shared together! ${configData.emoji}`;
+    } else if (isSelf) {
+        descriptionText += ` themselves! ✨ ${configData.emoji}\n\n✨ Self-love is the best love! Total: **${totalCount}**`;
     } else {
-        descriptionText += `\n\n✨ Personal ${actionKey} count: **${totalCount}** ${configData.emoji}`;
+        descriptionText += ` everyone! ✨ ${configData.emoji}\n\n✨ Personal ${actionKey} count: **${totalCount}** ${configData.emoji}`;
     }
 
     const embed = new EmbedBuilder()
@@ -186,7 +186,7 @@ async function executeSocialAction(actionKey, context, isSlash) {
 
     // Attach single reciprocation button for target
     const components = [];
-    if (target && !target.bot) {
+    if (target && !target.bot && !isSelf) {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId(`social_${actionKey}_back_${target.id}_${authorIdStr}`)
