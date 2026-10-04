@@ -1,18 +1,25 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
 const db = require("../../utils/database");
 const config = require("../../config");
+const automodHelper = require("../../utils/automodHelper");
 
 module.exports = {
   name: "automod",
   category: "Moderation",
   description: "View or toggle automod settings (anti-invite, anti-link, anti-spam, mass-mention).",
-  usage: "automod [invites|links|spam|mentions|status] [on|off]",
+  usage: "automod [server|invites|links|spam|mentions|status] [on|off]",
   permissions: ["ManageGuild"],
   data: new SlashCommandBuilder()
     .setName("automod")
     .setDescription("Configure server automod settings.")
     .addSubcommand((sub) =>
       sub.setName("status").setDescription("View current automod settings")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("server")
+        .setDescription("Toggle server-wide automod")
+        .addBooleanOption((opt) => opt.setName("enabled").setDescription("Enable or disable").setRequired(true))
     )
     .addSubcommand((sub) =>
       sub
@@ -58,6 +65,30 @@ module.exports = {
       if (args && args[1]) {
         enabledVal = ["on", "enable", "true", "yes", "1"].includes(args[1].toLowerCase());
       }
+    }
+
+    if (["server", "global", "toggle", "on", "off", "enable", "disable"].includes(subcmd)) {
+      let shouldEnable;
+      if (["off", "disable"].includes(subcmd)) {
+        shouldEnable = false;
+      } else if (["on", "enable"].includes(subcmd)) {
+        shouldEnable = true;
+      } else if (enabledVal !== undefined) {
+        shouldEnable = enabledVal;
+      } else {
+        shouldEnable = !automodHelper.getGuildStatus(guild.id);
+      }
+      await automodHelper.setGuildStatus(guild.id, shouldEnable);
+      automod.enabled = shouldEnable;
+      db.updateGuildSettings(guild.id, { automod });
+      const overrides = await automodHelper.listGuildOverrides(guild.id);
+      const embed = automodHelper.buildServerAutomodEmbed(guild, shouldEnable, overrides);
+      const buttons = automodHelper.createServerAutomodButtons(context.channel?.id || "", shouldEnable);
+      return context.reply({
+        content: `${shouldEnable ? "✅" : "🚫"} Server-wide AutoMod is now **${shouldEnable ? "ENABLED" : "DISABLED"}**.`,
+        embeds: [embed],
+        components: Array.isArray(buttons) ? buttons : [buttons]
+      });
     }
 
     if (subcmd === "status") {

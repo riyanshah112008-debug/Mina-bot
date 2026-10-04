@@ -713,6 +713,64 @@ async function runAll() {
     assert.strictEqual(masked.includes("****"), true);
   });
 
+  // Test 21: AutoMod Server Controls & Dashboard
+  console.log("\n📁 21. AutoMod Server Controls & UI");
+  await asyncIt("Handles server-wide automod status, channel resolution, and interactive buttons", async () => {
+    const automodHelper = require("../src/utils/automodHelper");
+    const testGuildId = "998877665544332211";
+    const testChannelId = "112233445566778899";
+
+    // Test default status
+    assert.strictEqual(automodHelper.getGuildStatus(testGuildId), true);
+
+    // Test setting guild status to false
+    await automodHelper.setGuildStatus(testGuildId, false);
+    assert.strictEqual(automodHelper.getGuildStatus(testGuildId), false);
+
+    // Test setting guild status back to true
+    await automodHelper.setGuildStatus(testGuildId, true);
+    assert.strictEqual(automodHelper.getGuildStatus(testGuildId), true);
+
+    // Test resolveExplicitChannel does NOT match server/off keywords as channel
+    const mockCtx = {
+      guild: {
+        channels: {
+          cache: new Map()
+        }
+      }
+    };
+    const resServerOff = automodHelper.resolveExplicitChannel(mockCtx, ["server", "off"]);
+    assert.strictEqual(resServerOff, null, "Server/off arguments must not resolve to a channel");
+
+    const resBareOff = automodHelper.resolveExplicitChannel(mockCtx, ["off"]);
+    assert.strictEqual(resBareOff, null, "Bare off argument must not resolve to a channel");
+
+    // Test server dashboard embed
+    const mockGuild = { id: testGuildId, name: "Test Realm" };
+    const embedEnabled = automodHelper.buildServerAutomodEmbed(mockGuild, true, []);
+    assert.ok(embedEnabled.data.title.includes("Server Dashboard"));
+    assert.strictEqual(embedEnabled.data.fields[0].value.includes("Globally Active"), true);
+
+    const embedDisabled = automodHelper.buildServerAutomodEmbed(mockGuild, false, []);
+    assert.strictEqual(embedDisabled.data.fields[0].value.includes("SUSPENDED"), true);
+
+    // Test server buttons
+    const serverButtons = automodHelper.createServerAutomodButtons(testChannelId, true);
+    assert.strictEqual(Array.isArray(serverButtons), true);
+    assert.strictEqual(serverButtons.length, 1);
+    const serverRowComponents = serverButtons[0].components;
+    assert.ok(serverRowComponents.some(c => c.data.custom_id === `am_toggle_server_${testChannelId}`));
+    assert.ok(serverRowComponents.some(c => c.data.custom_id === `am_channel_config_${testChannelId}`));
+
+    // Test channel buttons 2-row layout
+    const channelButtons = automodHelper.createChannelAutomodButtons(testChannelId, { linksActive: true, emojisActive: true }, true);
+    assert.strictEqual(Array.isArray(channelButtons), true);
+    assert.strictEqual(channelButtons.length, 2);
+    const row2Components = channelButtons[1].components;
+    assert.ok(row2Components.some(c => c.data.custom_id === `am_server_dashboard_${testChannelId}`));
+    assert.ok(row2Components.some(c => c.data.custom_id === `am_toggle_server_${testChannelId}`));
+  });
+
   // Test Summary
   console.log("\n=========================================");
   console.log(`🌸 Test Suite Finished: ${passed} Passed, ${failed} Failed`);

@@ -14,7 +14,10 @@ const {
 } = require('discord.js');
 const mongoose = require('mongoose');
 const config = require('../config');
+const db = require('./database');
 const { AutomodGuild, AutomodChannel } = require('../models/AutomodSchema');
+
+const isDbConnected = () => Boolean(mongoose.connection && mongoose.connection.readyState === 1);
 
 // Fast In-Memory Caches for Zero-Latency Message Filtering
 const guildCache = new Map();
@@ -25,16 +28,15 @@ const channelCache = new Map();
  */
 async function initAutomodCaches() {
     try {
-        if (!mongoose.connection || mongoose.connection.readyState !== 1) {
-            return;
+        if (isDbConnected()) {
+            const gSettings = await AutomodGuild.find().lean();
+            gSettings.forEach(s => guildCache.set(s.guildId, s.enabled));
+
+            const cSettings = await AutomodChannel.find().lean();
+            cSettings.forEach(s => channelCache.set(s.channelId, { links: s.links, emojis: s.emojis }));
+
+            console.log(`✅ [AutoMod] Synchronized ${guildCache.size} guild rules & ${channelCache.size} channel rules into memory.`);
         }
-        const gSettings = await AutomodGuild.find().lean();
-        gSettings.forEach(s => guildCache.set(s.guildId, s.enabled));
-
-        const cSettings = await AutomodChannel.find().lean();
-        cSettings.forEach(s => channelCache.set(s.channelId, { links: s.links, emojis: s.emojis }));
-
-        console.log(`✅ [AutoMod] Synchronized ${guildCache.size} guild rules & ${channelCache.size} channel rules into memory.`);
     } catch (err) {
         console.error('❌ [AutoMod] Failed to synchronize MongoDB cache:', err.message);
     }
@@ -47,7 +49,15 @@ async function initAutomodCaches() {
  */
 function getGuildStatus(guildId) {
     if (!guildId) return true;
-    return guildCache.has(guildId) ? guildCache.get(guildId) : true;
+    if (guildCache.has(guildId)) return guildCache.get(guildId);
+    try {
+        const localSettings = db.getGuildSettings ? db.getGuildSettings(guildId) : null;
+        if (localSettings && localSettings.automod && localSettings.automod.enabled !== undefined) {
+            guildCache.set(guildId, localSettings.automod.enabled);
+            return localSettings.automod.enabled;
+        }
+    } catch (_) {}
+    return true;
 }
 
 /**
@@ -58,14 +68,28 @@ function getGuildStatus(guildId) {
 async function setGuildStatus(guildId, enabled) {
     if (!guildId) return false;
     guildCache.set(guildId, enabled);
+
+    // Save to local JSON database for persistent offline resilience
     try {
-        await AutomodGuild.findOneAndUpdate(
-            { guildId },
-            { enabled },
-            { upsert: true, new: true }
-        );
-    } catch (err) {
-        console.error('❌ [AutoMod] Error saving guild status:', err.message);
+        if (db.updateGuildSettings && db.getGuildSettings) {
+            const current = db.getGuildSettings(guildId) || {};
+            const automod = current.automod || {};
+            automod.enabled = enabled;
+            db.updateGuildSettings(guildId, { automod });
+        }
+    } catch (_) {}
+
+    // Save to MongoDB if online
+    if (isDbConnected()) {
+        try {
+            await AutomodGuild.findOneAndUpdate(
+                { guildId },
+                { enabled },
+                { upsert: true, new: true }
+            );
+        } catch (err) {
+            console.error('❌ [AutoMod] Error saving guild status:', err.message);
+        }
     }
     return enabled;
 }
@@ -191,12 +215,21 @@ async function resetChannelSettings(channelId, guildId = null) {
 async function listGuildOverrides(guildId) {
     if (!guildId) return [];
     try {
-        const docs = await AutomodChannel.find({ guildId }).lean();
-        return docs.filter(d => d.links === true || d.emojis === true);
+        if (isDbConnected()) {
+            const docs = await AutomodChannel.find({ guildId }).lean();
+            return docs.filter(d => d.links === true || d.emojis === true);
+        }
     } catch (err) {
         console.error('❌ [AutoMod] Error listing guild overrides:', err.message);
-        return [];
     }
+    // Fallback: in-memory cache
+    const overrides = [];
+    for (const [cId, data] of channelCache.entries()) {
+        if (data.links === true || data.emojis === true) {
+            overrides.push({ channelId: cId, guildId, links: data.links, emojis: data.emojis });
+        }
+    }
+    return overrides;
 }
 
 /**
@@ -212,29 +245,53 @@ function canManageAutomod(member, user, guild) {
 }
 
 /**
- * Universal Target Channel Resolver
+ * Resolves an explicit channel from args or mentions if present.
+ * Returns null if no explicit channel was passed (avoids default fallback to ctx.channel).
  */
-async function resolveChannel(ctx, args = []) {
+function resolveExplicitChannel(ctx, args = []) {
     if (ctx.isSlash) {
-        const ch = ctx.interaction.options.getChannel('channel');
+        const ch = ctx.interaction?.options?.getChannel?.('channel');
         if (ch) return ch;
     }
     if (ctx.message?.mentions?.channels?.size > 0) {
         return ctx.message.mentions.channels.first();
     }
     if (Array.isArray(args)) {
+        const reservedKeywords = new Set([
+            'server', 'guild', 'global', 'entire', 'whole',
+            'all', 'both', 'everything',
+            'on', 'off', 'enable', 'disable', 'activate', 'deactivate', 'allowblock', 'ignore', 'true', 'false',
+            'status', 'check', 'view', 'info',
+            'list', 'channels', 'overrides', 'reset', 'clear', 'toggle',
+            'links', 'link', 'url', 'urls',
+            'emojis', 'emoji', 'emote', 'emotes',
+            'channel', 'here', 'this'
+        ]);
+
         for (const raw of args) {
             if (!raw) continue;
+            const lower = raw.toLowerCase().trim();
+            if (reservedKeywords.has(lower)) continue;
+
             const cleanId = raw.replace(/[<#>]/g, '').trim();
             if (/^\d{17,20}$/.test(cleanId)) {
-                const fetched = ctx.guild.channels.cache.get(cleanId) || await ctx.guild.channels.fetch(cleanId).catch(() => null);
+                const fetched = ctx.guild?.channels?.cache?.get(cleanId);
                 if (fetched) return fetched;
             }
             // Match by channel name
-            const chByName = ctx.guild.channels.cache.find(c => c.name.toLowerCase() === raw.toLowerCase());
+            const chByName = ctx.guild?.channels?.cache?.find(c => c.name.toLowerCase() === lower);
             if (chByName) return chByName;
         }
     }
+    return null;
+}
+
+/**
+ * Universal Target Channel Resolver (falls back to current channel)
+ */
+async function resolveChannel(ctx, args = []) {
+    const explicit = resolveExplicitChannel(ctx, args);
+    if (explicit) return explicit;
     return ctx.channel;
 }
 
@@ -272,11 +329,11 @@ function buildChannelAutomodEmbed(guild, channel, settings, isGuildEnabled = tru
                 name: '🌐 Server AutoMod Engine',
                 value: isGuildEnabled 
                     ? '🟢 **Globally Active** across entire server' 
-                    : '🔴 **Suspended** *(Use `,automod toggle enable` to activate)*',
+                    : '🔴 **DISABLED / SUSPENDED Server-Wide** *(Use `,automod server on` or button below to enable)*',
                 inline: false
             }
         )
-        .setFooter({ text: '💡 Click the interactive buttons below to toggle channel filters in real-time.' })
+        .setFooter({ text: '💡 Use buttons below or type ,automod server on/off to manage server-wide.' })
         .setTimestamp();
 
     return embed;
@@ -285,8 +342,8 @@ function buildChannelAutomodEmbed(guild, channel, settings, isGuildEnabled = tru
 /**
  * Build 1-Year Persistent Action Buttons for Channel AutoMod
  */
-function createChannelAutomodButtons(channelId, settings) {
-    const row = new ActionRowBuilder().addComponents(
+function createChannelAutomodButtons(channelId, settings, isGuildEnabled = true) {
+    const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId(`am_toggle_links_${channelId}`)
             .setLabel(settings.linksActive ? '🔗 Links: Active' : '🔗 Links: Ignored')
@@ -300,7 +357,92 @@ function createChannelAutomodButtons(channelId, settings) {
             .setLabel('🔄 Refresh')
             .setStyle(ButtonStyle.Primary)
     );
-    return row;
+
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`am_toggle_server_${channelId}`)
+            .setLabel(isGuildEnabled ? '🌐 Server AutoMod: ON' : '🌐 Server AutoMod: OFF')
+            .setStyle(isGuildEnabled ? ButtonStyle.Success : ButtonStyle.Danger),
+        new ButtonBuilder()
+            .setCustomId(`am_server_dashboard_${channelId}`)
+            .setLabel('🛡️ Server Dashboard')
+            .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+            .setCustomId(`am_list_overrides_${channelId}`)
+            .setLabel('📋 Overrides')
+            .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId(`am_reset_channel_${channelId}`)
+            .setLabel('⚙️ Reset Channel')
+            .setStyle(ButtonStyle.Secondary)
+    );
+
+    return [row1, row2];
+}
+
+/**
+ * Build Server-Wide AutoMod Dashboard Embed
+ */
+function buildServerAutomodEmbed(guild, isGuildEnabled = true, overrides = []) {
+    const embed = new EmbedBuilder()
+        .setColor(isGuildEnabled ? '#2ECC71' : '#ED4245')
+        .setTitle(`🛡️ Starry AutoMod • Server Dashboard`)
+        .setDescription(`Server: **${guild.name}** (\`${guild.id}\`)\nAutonomous Real-time Server Moderation & Spam Shield`)
+        .addFields(
+            {
+                name: '🌐 Server AutoMod Engine',
+                value: isGuildEnabled 
+                    ? '🟢 **Globally Active**\n*All protective filters are actively shielding the entire server.*' 
+                    : '🔴 **SUSPENDED / DISABLED**\n*Automated deletions and mutes are turned off server-wide.*',
+                inline: false
+            },
+            {
+                name: '🔗 Link Protection',
+                value: 'Deletes unauthorized external invites & links.\n*Whitelisted media, GIFs, and staff exempt.*',
+                inline: true
+            },
+            {
+                name: '😀 Emoji Spam Protection',
+                value: 'Auto-mutes users sending 5 or more emojis.\n*Staff & bot owners exempt.*',
+                inline: true
+            },
+            {
+                name: '📋 Channel Overrides',
+                value: overrides.length > 0 
+                    ? `\`${overrides.length}\` channel(s) customized with channel-specific rules.\n*(Click **View Overrides** below)*` 
+                    : 'No channel overrides active. All channels use default protection.',
+                inline: false
+            }
+        )
+        .setFooter({ text: '💡 Use buttons below or type ,automod server on / off to toggle.' })
+        .setTimestamp();
+
+    return embed;
+}
+
+/**
+ * Build Server-Wide Control Buttons
+ */
+function createServerAutomodButtons(channelId, isGuildEnabled = true) {
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`am_toggle_server_${channelId}`)
+            .setLabel(isGuildEnabled ? '🌐 Turn Server AutoMod OFF' : '🌐 Turn Server AutoMod ON')
+            .setStyle(isGuildEnabled ? ButtonStyle.Danger : ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId(`am_channel_config_${channelId}`)
+            .setLabel('⚙️ Channel Config')
+            .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId(`am_list_overrides_${channelId}`)
+            .setLabel('📋 View Overrides')
+            .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId(`am_refresh_${channelId}`)
+            .setLabel('🔄 Refresh')
+            .setStyle(ButtonStyle.Primary)
+    );
+    return [row];
 }
 
 module.exports = {
@@ -314,7 +456,10 @@ module.exports = {
     resetChannelSettings,
     listGuildOverrides,
     canManageAutomod,
+    resolveExplicitChannel,
     resolveChannel,
     buildChannelAutomodEmbed,
-    createChannelAutomodButtons
+    createChannelAutomodButtons,
+    buildServerAutomodEmbed,
+    createServerAutomodButtons
 };

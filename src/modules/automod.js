@@ -91,13 +91,23 @@ module.exports = (client) => {
         if (interaction.commandName === 'automod') {
             const sub = interaction.options.getSubcommand(false);
 
-            // Subcommand: toggle (server-wide)
-            if (sub === 'toggle') {
-                const action = interaction.options.getString('action', true);
-                const targetState = action === 'enable';
+            // Subcommand: toggle or server (server-wide)
+            if (sub === 'toggle' || sub === 'server') {
+                const action = interaction.options.getString('action');
+                let targetState;
+                if (action) {
+                    targetState = action === 'enable' || action === 'on';
+                } else {
+                    targetState = !automodHelper.getGuildStatus(guildId);
+                }
                 await automodHelper.setGuildStatus(guildId, targetState);
+                const overrides = await automodHelper.listGuildOverrides(guildId);
+                const embed = automodHelper.buildServerAutomodEmbed(interaction.guild, targetState, overrides);
+                const buttons = automodHelper.createServerAutomodButtons(interaction.channelId, targetState);
                 return interaction.reply({
-                    content: `${targetState ? '✅' : '🚫'} Server-wide Automod is now **${action.toUpperCase()}D**.`
+                    content: `${targetState ? '✅' : '🚫'} Server-wide Automod is now **${targetState ? 'ENABLED' : 'DISABLED'}**.`,
+                    embeds: [embed],
+                    components: Array.isArray(buttons) ? buttons : [buttons]
                 }).catch(() => {});
             }
 
@@ -107,11 +117,11 @@ module.exports = (client) => {
                 const settings = await automodHelper.getChannelSettings(targetChannel.id, guildId);
                 const isGuildEnabled = automodHelper.getGuildStatus(guildId);
                 const embed = automodHelper.buildChannelAutomodEmbed(interaction.guild, targetChannel, settings, isGuildEnabled);
-                const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, settings);
+                const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, settings, isGuildEnabled);
 
                 return interaction.reply({
                     embeds: [embed],
-                    components: [buttons]
+                    components: Array.isArray(buttons) ? buttons : [buttons]
                 }).catch(() => {});
             }
 
@@ -124,11 +134,11 @@ module.exports = (client) => {
                 const settings = await automodHelper.getChannelSettings(targetChannel.id, guildId);
                 const isGuildEnabled = automodHelper.getGuildStatus(guildId);
                 const embed = automodHelper.buildChannelAutomodEmbed(interaction.guild, targetChannel, settings, isGuildEnabled);
-                const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, settings);
+                const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, settings, isGuildEnabled);
 
                 return interaction.reply({
                     embeds: [embed],
-                    components: [buttons]
+                    components: Array.isArray(buttons) ? buttons : [buttons]
                 }).catch(() => {});
             }
 
@@ -136,13 +146,13 @@ module.exports = (client) => {
             const updated = await automodHelper.setChannelFilter(targetChannel.id, guildId, filter, shouldEnable);
             const isGuildEnabled = automodHelper.getGuildStatus(guildId);
             const embed = automodHelper.buildChannelAutomodEmbed(interaction.guild, targetChannel, updated, isGuildEnabled);
-            const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated);
+            const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated, isGuildEnabled);
 
             const filterLabel = filter === 'all' ? 'All filters (links & emojis)' : `Filter **${filter}**`;
             return interaction.reply({
                 content: `${shouldEnable ? '✅' : '🚫'} ${filterLabel} is now **${shouldEnable ? 'ENABLED' : 'DISABLED'}** in <#${targetChannel.id}>.`,
                 embeds: [embed],
-                components: [buttons]
+                components: Array.isArray(buttons) ? buttons : [buttons]
             }).catch(() => {});
         }
 
@@ -156,21 +166,21 @@ module.exports = (client) => {
                 const settings = await automodHelper.getChannelSettings(channelId, guildId);
                 const isGuildEnabled = automodHelper.getGuildStatus(guildId);
                 const embed = automodHelper.buildChannelAutomodEmbed(interaction.guild, channel, settings, isGuildEnabled);
-                const buttons = automodHelper.createChannelAutomodButtons(channelId, settings);
-                return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true }).catch(() => {});
+                const buttons = automodHelper.createChannelAutomodButtons(channelId, settings, isGuildEnabled);
+                return interaction.reply({ embeds: [embed], components: Array.isArray(buttons) ? buttons : [buttons], ephemeral: true }).catch(() => {});
             }
 
             const shouldEnable = interaction.commandName === 'unignore';
             const updated = await automodHelper.setChannelFilter(channelId, guildId, filter, shouldEnable);
             const isGuildEnabled = automodHelper.getGuildStatus(guildId);
             const embed = automodHelper.buildChannelAutomodEmbed(interaction.guild, channel, updated, isGuildEnabled);
-            const buttons = automodHelper.createChannelAutomodButtons(channelId, updated);
+            const buttons = automodHelper.createChannelAutomodButtons(channelId, updated, isGuildEnabled);
 
             const filterLabel = filter === 'all' ? 'All Automod filters' : `Automod **${filter}** filter`;
             return interaction.reply({
                 content: `${shouldEnable ? '✅' : '🚫'} ${filterLabel} is now **${shouldEnable ? 'ENABLED' : 'DISABLED'}** in <#${channelId}>.`,
                 embeds: [embed],
-                components: [buttons]
+                components: Array.isArray(buttons) ? buttons : [buttons]
             }).catch(() => {});
         }
     });

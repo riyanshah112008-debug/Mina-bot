@@ -883,8 +883,17 @@ class CommandRegistry {
                     }
                 }
 
-                // AutoMod Channel Interactive Buttons (1-Year Global Handler)
-                if (customId.startsWith('am_toggle_links_') || customId.startsWith('am_toggle_emojis_') || customId.startsWith('am_refresh_')) {
+                // AutoMod Channel & Server Interactive Buttons (1-Year Global Handler)
+                if (
+                    customId.startsWith('am_toggle_links_') || 
+                    customId.startsWith('am_toggle_emojis_') || 
+                    customId.startsWith('am_toggle_server_') || 
+                    customId.startsWith('am_server_dashboard_') || 
+                    customId.startsWith('am_list_overrides_') || 
+                    customId.startsWith('am_reset_channel_') || 
+                    customId.startsWith('am_channel_config_') || 
+                    customId.startsWith('am_refresh_')
+                ) {
                     if (!interaction.guild) {
                         return interaction.reply({ content: '❌ AutoMod can only be configured in a server.', ephemeral: true }).catch(() => {});
                     }
@@ -897,33 +906,94 @@ class CommandRegistry {
                         }).catch(() => {});
                     }
 
-                    const channelId = customId.replace(/^(am_toggle_links_|am_toggle_emojis_|am_refresh_)/, '');
-                    const targetChannel = interaction.guild.channels.cache.get(channelId) || await interaction.guild.channels.fetch(channelId).catch(() => null);
+                    const channelId = customId.replace(/^(am_toggle_links_|am_toggle_emojis_|am_toggle_server_|am_server_dashboard_|am_list_overrides_|am_reset_channel_|am_channel_config_|am_refresh_)/, '');
+                    const targetChannel = interaction.guild.channels.cache.get(channelId) || await interaction.guild.channels.fetch(channelId).catch(() => null) || interaction.channel;
 
-                    if (!targetChannel) {
-                        return interaction.reply({
-                            content: '❌ Target channel could not be found or has been deleted.',
-                            ephemeral: true
-                        }).catch(() => {});
+                    // Handle: View Overrides List
+                    if (customId.startsWith('am_list_overrides_')) {
+                        const overrides = await automodHelper.listGuildOverrides(interaction.guild.id);
+                        if (overrides.length === 0) {
+                            return interaction.reply({
+                                content: 'ℹ️ **No channel overrides configured.** All channels follow default server protection.',
+                                ephemeral: true
+                            }).catch(() => {});
+                        }
+                        const listText = overrides.map(o => {
+                            const linksStatus = o.links ? '🔴 Links Allowed' : '🟢 Links Blocked';
+                            const emojisStatus = o.emojis ? '🔴 Emojis Allowed' : '🟢 Emojis Blocked';
+                            return `• <#${o.channelId}> — ${linksStatus} | ${emojisStatus}`;
+                        }).join('\n');
+
+                        const overridesEmbed = new EmbedBuilder()
+                            .setColor('#5865F2')
+                            .setTitle(`🛡️ AutoMod Channel Overrides (${overrides.length})`)
+                            .setDescription(listText)
+                            .setFooter({ text: 'Use Reset Channel button in any channel to restore default protection' })
+                            .setTimestamp();
+
+                        return interaction.reply({ embeds: [overridesEmbed], ephemeral: true }).catch(() => {});
                     }
 
-                    const current = await automodHelper.getChannelSettings(channelId, interaction.guild.id);
+                    // Handle: Server AutoMod Toggle
+                    if (customId.startsWith('am_toggle_server_')) {
+                        const currentGuild = automodHelper.getGuildStatus(interaction.guild.id);
+                        const newGuild = !currentGuild;
+                        await automodHelper.setGuildStatus(interaction.guild.id, newGuild);
 
+                        const isServerDashboard = interaction.message?.embeds?.[0]?.title?.includes('Server Dashboard');
+                        if (isServerDashboard) {
+                            const overrides = await automodHelper.listGuildOverrides(interaction.guild.id);
+                            const newEmbed = automodHelper.buildServerAutomodEmbed(interaction.guild, newGuild, overrides);
+                            const newButtons = automodHelper.createServerAutomodButtons(channelId, newGuild);
+                            return await interaction.update({
+                                embeds: [newEmbed],
+                                components: Array.isArray(newButtons) ? newButtons : [newButtons]
+                            }).catch(() => {});
+                        } else {
+                            const updatedSettings = await automodHelper.getChannelSettings(channelId, interaction.guild.id);
+                            const newEmbed = automodHelper.buildChannelAutomodEmbed(interaction.guild, targetChannel, updatedSettings, newGuild);
+                            const newButtons = automodHelper.createChannelAutomodButtons(channelId, updatedSettings, newGuild);
+                            return await interaction.update({
+                                embeds: [newEmbed],
+                                components: Array.isArray(newButtons) ? newButtons : [newButtons]
+                            }).catch(() => {});
+                        }
+                    }
+
+                    // Handle: Reset Channel Override
+                    if (customId.startsWith('am_reset_channel_')) {
+                        await automodHelper.resetChannelSettings(channelId, interaction.guild.id);
+                    }
+
+                    // Handle: Channel Filter Toggles
+                    const current = await automodHelper.getChannelSettings(channelId, interaction.guild.id);
                     if (customId.startsWith('am_toggle_links_')) {
                         await automodHelper.setChannelFilter(channelId, interaction.guild.id, 'links', !current.linksActive);
                     } else if (customId.startsWith('am_toggle_emojis_')) {
                         await automodHelper.setChannelFilter(channelId, interaction.guild.id, 'emojis', !current.emojisActive);
                     }
 
-                    const updatedSettings = await automodHelper.getChannelSettings(channelId, interaction.guild.id);
+                    // Re-render
+                    const isServerDashboard = (interaction.message?.embeds?.[0]?.title?.includes('Server Dashboard') || customId.startsWith('am_server_dashboard_')) && !customId.startsWith('am_channel_config_');
                     const isGuildEnabled = automodHelper.getGuildStatus(interaction.guild.id);
-                    const newEmbed = automodHelper.buildChannelAutomodEmbed(interaction.guild, targetChannel, updatedSettings, isGuildEnabled);
-                    const newButtons = automodHelper.createChannelAutomodButtons(channelId, updatedSettings);
 
-                    return await interaction.update({
-                        embeds: [newEmbed],
-                        components: [newButtons]
-                    }).catch(() => {});
+                    if (isServerDashboard) {
+                        const overrides = await automodHelper.listGuildOverrides(interaction.guild.id);
+                        const newEmbed = automodHelper.buildServerAutomodEmbed(interaction.guild, isGuildEnabled, overrides);
+                        const newButtons = automodHelper.createServerAutomodButtons(channelId, isGuildEnabled);
+                        return await interaction.update({
+                            embeds: [newEmbed],
+                            components: Array.isArray(newButtons) ? newButtons : [newButtons]
+                        }).catch(() => {});
+                    } else {
+                        const updatedSettings = await automodHelper.getChannelSettings(channelId, interaction.guild.id);
+                        const newEmbed = automodHelper.buildChannelAutomodEmbed(interaction.guild, targetChannel, updatedSettings, isGuildEnabled);
+                        const newButtons = automodHelper.createChannelAutomodButtons(channelId, updatedSettings, isGuildEnabled);
+                        return await interaction.update({
+                            embeds: [newEmbed],
+                            components: Array.isArray(newButtons) ? newButtons : [newButtons]
+                        }).catch(() => {});
+                    }
                 }
 
                 // C. Chest Claim Buttons (1-Year Global Handler)

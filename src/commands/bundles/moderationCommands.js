@@ -1496,10 +1496,10 @@ const commands = [
     // 41. AUTOMOD (Channel & Server AutoMod Pro Configuration)
     {
         name: 'automod',
-        aliases: ['am', 'automoderation'],
+        aliases: ['am', 'automoderation', 'autoshield', 'starryautomod', 'serverautomod'],
         category: 'Moderation',
-        description: 'Configure and toggle AutoMod protection for specific channels (links, emojis, status).',
-        usage: ',automod <enable|disable|status|list|reset> [links|emojis|all] [#channel]',
+        description: 'Configure and toggle AutoMod protection for the entire server or specific channels.',
+        usage: ',automod [server|channel|list|reset] [on|off|links|emojis] [#channel]',
         permissions: [PermissionFlagsBits.Administrator],
         async execute(ctx) {
             if (!ctx.inGuild) return ctx.reply('❌ This command can only be used in a Discord server.');
@@ -1515,21 +1515,29 @@ const commands = [
                 const settings = await automodHelper.getChannelSettings(ctx.channel.id, ctx.guild.id);
                 const isGuildEnabled = automodHelper.getGuildStatus(ctx.guild.id);
                 const embed = automodHelper.buildChannelAutomodEmbed(ctx.guild, ctx.channel, settings, isGuildEnabled);
-                const buttons = automodHelper.createChannelAutomodButtons(ctx.channel.id, settings);
+                const buttons = automodHelper.createChannelAutomodButtons(ctx.channel.id, settings, isGuildEnabled);
 
                 return ctx.reply({
                     embeds: [embed],
-                    components: [buttons]
+                    components: Array.isArray(buttons) ? buttons : [buttons]
                 });
             }
 
-            const firstArg = args[0].toLowerCase();
+            const rawArgs = args.map(a => a.toLowerCase().trim());
+            const firstArg = rawArgs[0];
 
             // Case B: List all channel overrides in the server
-            if (firstArg === 'list' || firstArg === 'channels') {
+            if (firstArg === 'list' || firstArg === 'channels' || firstArg === 'overrides') {
                 const overrides = await automodHelper.listGuildOverrides(ctx.guild.id);
+                const isGuildEnabled = automodHelper.getGuildStatus(ctx.guild.id);
                 if (overrides.length === 0) {
-                    return ctx.reply('ℹ️ **No channel overrides configured.** All channels are currently protected by standard server-wide AutoMod.');
+                    const embed = automodHelper.buildServerAutomodEmbed(ctx.guild, isGuildEnabled, []);
+                    const buttons = automodHelper.createServerAutomodButtons(ctx.channel.id, isGuildEnabled);
+                    return ctx.reply({
+                        content: 'ℹ️ **No channel overrides configured.** All channels follow default server protection.',
+                        embeds: [embed],
+                        components: Array.isArray(buttons) ? buttons : [buttons]
+                    });
                 }
 
                 const listText = overrides.map(o => {
@@ -1545,7 +1553,11 @@ const commands = [
                     .setFooter({ text: `Use ${prefix}automod reset #channel to restore default protection` })
                     .setTimestamp();
 
-                return ctx.reply({ embeds: [embed] });
+                const buttons = automodHelper.createServerAutomodButtons(ctx.channel.id, isGuildEnabled);
+                return ctx.reply({
+                    embeds: [embed],
+                    components: Array.isArray(buttons) ? buttons : [buttons]
+                });
             }
 
             // Case C: Reset channel overrides
@@ -1554,51 +1566,106 @@ const commands = [
                 const updated = await automodHelper.resetChannelSettings(targetChannel.id, ctx.guild.id);
                 const isGuildEnabled = automodHelper.getGuildStatus(ctx.guild.id);
                 const embed = automodHelper.buildChannelAutomodEmbed(ctx.guild, targetChannel, updated, isGuildEnabled);
-                const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated);
+                const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated, isGuildEnabled);
 
                 return ctx.reply({
                     content: `✅ Reset AutoMod settings for <#${targetChannel.id}> to **Full Active Protection** (Links & Emojis blocked).`,
                     embeds: [embed],
-                    components: [buttons]
+                    components: Array.isArray(buttons) ? buttons : [buttons]
                 });
             }
 
-            // Case D: Server-wide toggle (,automod toggle enable / disable)
-            if (firstArg === 'toggle') {
-                const targetStateStr = args[1]?.toLowerCase();
-                const shouldEnable = targetStateStr === 'enable' || targetStateStr === 'on' || targetStateStr === 'true';
-                await automodHelper.setGuildStatus(ctx.guild.id, shouldEnable);
-                return ctx.reply(`${shouldEnable ? '✅' : '🚫'} Server-wide AutoMod is now **${shouldEnable ? 'ENABLED' : 'DISABLED'}**.`);
+            // Parsing context
+            const explicitChannel = automodHelper.resolveExplicitChannel(ctx, args);
+            const hasServerKeyword = rawArgs.some(a => ['server', 'guild', 'global', 'entire', 'whole'].includes(a));
+            const hasChannelKeyword = rawArgs.some(a => ['channel', 'here', 'this'].includes(a)) || explicitChannel !== null;
+
+            let explicitFilter = null;
+            if (rawArgs.some(a => ['links', 'link', 'url', 'urls'].includes(a))) explicitFilter = 'links';
+            else if (rawArgs.some(a => ['emojis', 'emoji', 'emote', 'emotes'].includes(a))) explicitFilter = 'emojis';
+            else if (rawArgs.some(a => ['all', 'both', 'everything'].includes(a))) explicitFilter = 'all';
+
+            let parsedAction = null;
+            if (rawArgs.some(a => ['enable', 'on', 'activate', 'start', '1', 'true'].includes(a))) parsedAction = 'enable';
+            else if (rawArgs.some(a => ['disable', 'off', 'deactivate', 'stop', '0', 'false'].includes(a))) parsedAction = 'disable';
+            else if (rawArgs.some(a => ['toggle', 'switch'].includes(a))) parsedAction = 'toggle';
+            else if (rawArgs.some(a => ['status', 'info', 'check', 'view'].includes(a))) parsedAction = 'status';
+
+            // Case D: Server-Wide Targets
+            // Triggers if 'server/guild/global' in args, OR if no explicit channel & no filter specified when user types on/off/toggle/status
+            const isServerTarget = hasServerKeyword || (!hasChannelKeyword && !explicitFilter);
+
+            if (isServerTarget) {
+                // Server Toggle
+                if (parsedAction === 'toggle') {
+                    const currentGuild = automodHelper.getGuildStatus(ctx.guild.id);
+                    const newGuild = !currentGuild;
+                    await automodHelper.setGuildStatus(ctx.guild.id, newGuild);
+                    const overrides = await automodHelper.listGuildOverrides(ctx.guild.id);
+                    const embed = automodHelper.buildServerAutomodEmbed(ctx.guild, newGuild, overrides);
+                    const buttons = automodHelper.createServerAutomodButtons(ctx.channel.id, newGuild);
+
+                    return ctx.reply({
+                        content: `${newGuild ? '✅' : '🚫'} Server-wide AutoMod is now **${newGuild ? 'ENABLED' : 'DISABLED'}** for **${ctx.guild.name}**.`,
+                        embeds: [embed],
+                        components: Array.isArray(buttons) ? buttons : [buttons]
+                    });
+                }
+
+                // Server Enable
+                if (parsedAction === 'enable') {
+                    await automodHelper.setGuildStatus(ctx.guild.id, true);
+                    const overrides = await automodHelper.listGuildOverrides(ctx.guild.id);
+                    const embed = automodHelper.buildServerAutomodEmbed(ctx.guild, true, overrides);
+                    const buttons = automodHelper.createServerAutomodButtons(ctx.channel.id, true);
+
+                    return ctx.reply({
+                        content: `✅ **Server-Wide AutoMod is now ENABLED for ${ctx.guild.name}.**\nAll protective filters (links, emojis, spam) are actively shielding the server.`,
+                        embeds: [embed],
+                        components: Array.isArray(buttons) ? buttons : [buttons]
+                    });
+                }
+
+                // Server Disable
+                if (parsedAction === 'disable') {
+                    await automodHelper.setGuildStatus(ctx.guild.id, false);
+                    const overrides = await automodHelper.listGuildOverrides(ctx.guild.id);
+                    const embed = automodHelper.buildServerAutomodEmbed(ctx.guild, false, overrides);
+                    const buttons = automodHelper.createServerAutomodButtons(ctx.channel.id, false);
+
+                    return ctx.reply({
+                        content: `🚫 **Server-Wide AutoMod is now DISABLED for ${ctx.guild.name}.**\nAll automated deletions and mutes are paused across the entire server.\n*(Tip: To disable filters for just this channel instead, use \`${prefix}automod channel off\` or click the channel buttons below.)*`,
+                        embeds: [embed],
+                        components: Array.isArray(buttons) ? buttons : [buttons]
+                    });
+                }
+
+                // Server Status / Dashboard Embed
+                const isGuildEnabled = automodHelper.getGuildStatus(ctx.guild.id);
+                const overrides = await automodHelper.listGuildOverrides(ctx.guild.id);
+                const embed = automodHelper.buildServerAutomodEmbed(ctx.guild, isGuildEnabled, overrides);
+                const buttons = automodHelper.createServerAutomodButtons(ctx.channel.id, isGuildEnabled);
+
+                return ctx.reply({
+                    embeds: [embed],
+                    components: Array.isArray(buttons) ? buttons : [buttons]
+                });
             }
 
-            // Case E: General Action & Filter Parser
-            let action = null;
-            let filter = null;
-
-            for (const a of args) {
-                const lower = a.toLowerCase();
-                if (['enable', 'on', 'activate', 'allowblock', 'true'].includes(lower)) action = 'enable';
-                else if (['disable', 'off', 'deactivate', 'ignore', 'false'].includes(lower)) action = 'disable';
-                else if (['status', 'info', 'check', 'view'].includes(lower)) action = 'status';
-                
-                if (['links', 'link', 'url', 'urls'].includes(lower)) filter = 'links';
-                else if (['emojis', 'emoji', 'emote', 'emotes'].includes(lower)) filter = 'emojis';
-                else if (['all', 'both', 'everything'].includes(lower)) filter = 'all';
-            }
-
-            const targetChannel = await automodHelper.resolveChannel(ctx, args);
-            action = action || 'status';
-            filter = filter || 'all';
+            // Case E: Channel-Specific Action & Filter Parser
+            const targetChannel = explicitChannel || ctx.channel;
+            const filter = explicitFilter || 'all';
+            const action = parsedAction || 'status';
 
             if (action === 'status') {
                 const settings = await automodHelper.getChannelSettings(targetChannel.id, ctx.guild.id);
                 const isGuildEnabled = automodHelper.getGuildStatus(ctx.guild.id);
                 const embed = automodHelper.buildChannelAutomodEmbed(ctx.guild, targetChannel, settings, isGuildEnabled);
-                const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, settings);
+                const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, settings, isGuildEnabled);
 
                 return ctx.reply({
                     embeds: [embed],
-                    components: [buttons]
+                    components: Array.isArray(buttons) ? buttons : [buttons]
                 });
             }
 
@@ -1606,13 +1673,13 @@ const commands = [
             const updated = await automodHelper.setChannelFilter(targetChannel.id, ctx.guild.id, filter, shouldEnable);
             const isGuildEnabled = automodHelper.getGuildStatus(ctx.guild.id);
             const embed = automodHelper.buildChannelAutomodEmbed(ctx.guild, targetChannel, updated, isGuildEnabled);
-            const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated);
+            const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated, isGuildEnabled);
 
             const filterName = filter === 'all' ? 'All filters (links & emojis)' : `Filter **${filter}**`;
             return ctx.reply({
                 content: `${shouldEnable ? '✅' : '🚫'} ${filterName} is now **${shouldEnable ? 'ENABLED (Protected)' : 'DISABLED (Ignored)'}** in <#${targetChannel.id}>.`,
                 embeds: [embed],
-                components: [buttons]
+                components: Array.isArray(buttons) ? buttons : [buttons]
             });
         }
     },
@@ -1642,20 +1709,20 @@ const commands = [
                 const settings = await automodHelper.getChannelSettings(targetChannel.id, ctx.guild.id);
                 const isGuildEnabled = automodHelper.getGuildStatus(ctx.guild.id);
                 const embed = automodHelper.buildChannelAutomodEmbed(ctx.guild, targetChannel, settings, isGuildEnabled);
-                const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, settings);
+                const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, settings, isGuildEnabled);
 
-                return ctx.reply({ embeds: [embed], components: [buttons] });
+                return ctx.reply({ embeds: [embed], components: Array.isArray(buttons) ? buttons : [buttons] });
             }
 
             const updated = await automodHelper.setChannelFilter(targetChannel.id, ctx.guild.id, 'links', shouldEnable);
             const isGuildEnabled = automodHelper.getGuildStatus(ctx.guild.id);
             const embed = automodHelper.buildChannelAutomodEmbed(ctx.guild, targetChannel, updated, isGuildEnabled);
-            const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated);
+            const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated, isGuildEnabled);
 
             return ctx.reply({
                 content: `${shouldEnable ? '✅' : '🚫'} Link protection is now **${shouldEnable ? 'ENABLED (Links Blocked)' : 'DISABLED (Links Allowed)'}** in <#${targetChannel.id}>.`,
                 embeds: [embed],
-                components: [buttons]
+                components: Array.isArray(buttons) ? buttons : [buttons]
             });
         }
     },
@@ -1685,20 +1752,20 @@ const commands = [
                 const settings = await automodHelper.getChannelSettings(targetChannel.id, ctx.guild.id);
                 const isGuildEnabled = automodHelper.getGuildStatus(ctx.guild.id);
                 const embed = automodHelper.buildChannelAutomodEmbed(ctx.guild, targetChannel, settings, isGuildEnabled);
-                const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, settings);
+                const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, settings, isGuildEnabled);
 
-                return ctx.reply({ embeds: [embed], components: [buttons] });
+                return ctx.reply({ embeds: [embed], components: Array.isArray(buttons) ? buttons : [buttons] });
             }
 
             const updated = await automodHelper.setChannelFilter(targetChannel.id, ctx.guild.id, 'emojis', shouldEnable);
             const isGuildEnabled = automodHelper.getGuildStatus(ctx.guild.id);
             const embed = automodHelper.buildChannelAutomodEmbed(ctx.guild, targetChannel, updated, isGuildEnabled);
-            const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated);
+            const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated, isGuildEnabled);
 
             return ctx.reply({
                 content: `${shouldEnable ? '✅' : '🚫'} Emoji spam filter is now **${shouldEnable ? 'ENABLED (5+ Emojis Blocked)' : 'DISABLED (Emojis Allowed)'}** in <#${targetChannel.id}>.`,
                 embeds: [embed],
-                components: [buttons]
+                components: Array.isArray(buttons) ? buttons : [buttons]
             });
         }
     },
@@ -1727,13 +1794,13 @@ const commands = [
             const updated = await automodHelper.setChannelFilter(targetChannel.id, ctx.guild.id, filter, false);
             const isGuildEnabled = automodHelper.getGuildStatus(ctx.guild.id);
             const embed = automodHelper.buildChannelAutomodEmbed(ctx.guild, targetChannel, updated, isGuildEnabled);
-            const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated);
+            const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated, isGuildEnabled);
 
             const filterLabel = filter === 'all' ? 'All AutoMod filters' : `AutoMod **${filter}** filter`;
             return ctx.reply({
                 content: `🚫 ${filterLabel} is now **DISABLED / IGNORED** in <#${targetChannel.id}>. Members can now send ${filter} freely.`,
                 embeds: [embed],
-                components: [buttons]
+                components: Array.isArray(buttons) ? buttons : [buttons]
             });
         }
     },
@@ -1762,13 +1829,13 @@ const commands = [
             const updated = await automodHelper.setChannelFilter(targetChannel.id, ctx.guild.id, filter, true);
             const isGuildEnabled = automodHelper.getGuildStatus(ctx.guild.id);
             const embed = automodHelper.buildChannelAutomodEmbed(ctx.guild, targetChannel, updated, isGuildEnabled);
-            const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated);
+            const buttons = automodHelper.createChannelAutomodButtons(targetChannel.id, updated, isGuildEnabled);
 
             const filterLabel = filter === 'all' ? 'All AutoMod filters' : `AutoMod **${filter}** filter`;
             return ctx.reply({
                 content: `✅ ${filterLabel} is now **ENABLED / ACTIVE** in <#${targetChannel.id}>. Unauthorized content will be blocked.`,
                 embeds: [embed],
-                components: [buttons]
+                components: Array.isArray(buttons) ? buttons : [buttons]
             });
         }
     }
