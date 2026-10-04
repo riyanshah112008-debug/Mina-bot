@@ -23,7 +23,7 @@
     "@discord-player/extractor": "^4.5.0",
     "@discordjs/voice": "^0.19.2",
     "@distube/ytdl-core": "^4.16.12",
-    "@fastify/busboy": "^2.1.1",
+    "@fastify/busboy": "^3.2.2",
     "@google/genai": "latest",
     "@noble/ciphers": "^2.4.0",
     "@snazzah/davey": "^0.1.12",
