@@ -40,7 +40,7 @@
     "kazagumo-spotify": "^1.2.1",
     "libsodium-wrappers": "^0.7.16",
     "localtunnel": "^2.0.2",
-    "mongoose": "^8.4.0",
+    "mongoose": "^9.10.3",
     "node-fetch": "^2.7.0",
     "opusscript": "^0.0.8",
     "play-dl": "^1.9.7",
