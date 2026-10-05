@@ -35,14 +35,14 @@ const LevelSettingsSchema = new mongoose.Schema({
     guildId: { type: String, required: true, unique: true },
     enabled: { type: Boolean, default: true },
     logChannelId: { type: String, default: null },
-    title: { type: String, default: '✨ Congratulations {user}!' },
+    title: { type: String, default: 'Congratulations {user}!' },
     description: { type: String, default: 'Your active participation in **{server}** has paid off! You reached **Level {level}**!' },
-    color: { type: String, default: '#FFD700' },
+    color: { type: String, default: '#5865F2' },
     image: { type: String, default: '' },
     thumbnail: { type: String, default: 'avatar' },
     footer: { type: String, default: '{server} • Leveling System' },
-    pingContent: { type: String, default: '🎉 **Level Up!** <@{user}>' },
-    authorName: { type: String, default: '🎉 LEVEL UP UNLOCKED!' }
+    pingContent: { type: String, default: '**Level Up:** <@{user}>' },
+    authorName: { type: String, default: 'LEVEL UP UNLOCKED' }
 });
 const LevelSettings = mongoose.models.LevelSettings || mongoose.model('LevelSettings', LevelSettingsSchema);
 
@@ -99,11 +99,11 @@ function buildLevelUpEmbed(user, newLevel, newXp, guild, customSettings = null) 
     const nextLevelXp = xpForNextLevel(newLevel);
     const settings = customSettings || settingsCache.get(guild?.id) || {};
 
-    const color = (settings.color && isValidHex(settings.color)) ? settings.color : '#FFD700';
-    const authorRaw = settings.authorName || '🎉 LEVEL UP UNLOCKED!';
-    const titleRaw = settings.title || '✨ Congratulations {user}!';
+    const color = (settings.color && isValidHex(settings.color)) ? settings.color : '#5865F2';
+    const authorRaw = (settings.authorName || 'LEVEL UP UNLOCKED').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim() || 'LEVEL UP UNLOCKED';
+    const titleRaw = (settings.title || 'Congratulations {user}!').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim() || 'Congratulations {user}!';
     const descRaw = settings.description || 'Your active participation in **{server}** has paid off! You reached **Level {level}**!';
-    const footerRaw = settings.footer || '{server} • Leveling System';
+    const footerRaw = (settings.footer || '{server} • Leveling System').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim() || '{server} • Leveling System';
 
     const authorText = replaceLvlPlaceholders(authorRaw, user, newLevel, newXp, guild);
     const titleText = replaceLvlPlaceholders(titleRaw, user, newLevel, newXp, guild);
@@ -116,9 +116,9 @@ function buildLevelUpEmbed(user, newLevel, newXp, guild, customSettings = null) 
         .setTitle(titleText.slice(0, 256))
         .setDescription(descText.slice(0, 4000))
         .addFields(
-            { name: '⭐ Level Reached', value: `**Level ${newLevel}**`, inline: true },
-            { name: '📊 Total Experience', value: `**${newXp.toLocaleString()}** XP`, inline: true },
-            { name: '🎯 Next Target', value: `**${Math.round(nextLevelXp).toLocaleString()}** XP`, inline: true }
+            { name: 'Level Reached', value: `\`Level ${newLevel}\``, inline: true },
+            { name: 'Total Experience', value: `\`${newXp.toLocaleString()} XP\``, inline: true },
+            { name: 'Next Target', value: `\`${Math.round(nextLevelXp).toLocaleString()} XP\``, inline: true }
         )
         .setFooter({ text: footerText.slice(0, 2048), iconURL: guild?.iconURL({ dynamic: true }) })
         .setTimestamp();
@@ -203,14 +203,14 @@ async function getLevelControlPanel(guildId, client) {
             settings = await LevelSettings.create({
                 guildId,
                 enabled: true,
-                title: '✨ Congratulations {user}!',
+                title: 'Congratulations {user}!',
                 description: 'Your active participation in **{server}** has paid off! You reached **Level {level}**!',
-                color: '#FFD700',
+                color: '#5865F2',
                 image: '',
                 thumbnail: 'avatar',
                 footer: '{server} • Leveling System',
-                pingContent: '🎉 **Level Up!** <@{user}>',
-                authorName: '🎉 LEVEL UP UNLOCKED!'
+                pingContent: '**Level Up:** <@{user}>',
+                authorName: 'LEVEL UP UNLOCKED'
             }).catch(() => null);
         }
     }
@@ -218,66 +218,65 @@ async function getLevelControlPanel(guildId, client) {
         settings = settingsCache.get(guildId) || {
             guildId,
             enabled: true,
-            title: '✨ Congratulations {user}!',
+            title: 'Congratulations {user}!',
             description: 'Your active participation in **{server}** has paid off! You reached **Level {level}**!',
-            color: '#FFD700',
+            color: '#5865F2',
             image: '',
             thumbnail: 'avatar',
             footer: '{server} • Leveling System',
-            pingContent: '🎉 **Level Up!** <@{user}>',
-            authorName: '🎉 LEVEL UP UNLOCKED!'
+            pingContent: '**Level Up:** <@{user}>',
+            authorName: 'LEVEL UP UNLOCKED'
         };
     }
 
     const isEnabled = settings.enabled !== false;
     const channelDisplay = settings.logChannelId ? `<#${settings.logChannelId}>` : '*Current Channel (Where user levels up)*';
-    const pingDisplay = settings.pingContent || '🎉 **Level Up!** <@{user}>';
-    const authorDisplay = settings.authorName || '🎉 LEVEL UP UNLOCKED!';
-    const titleDisplay = settings.title || '✨ Congratulations {user}!';
+    const pingDisplay = (settings.pingContent || '**Level Up:** <@{user}>').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+    const authorDisplay = (settings.authorName || 'LEVEL UP UNLOCKED').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+    const titleDisplay = (settings.title || 'Congratulations {user}!').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
     const descDisplay = settings.description || 'Your active participation in **{server}** has paid off! You reached **Level {level}**!';
-    const colorDisplay = isValidHex(settings.color) ? settings.color : '#FFD700';
-    const footerDisplay = settings.footer || '{server} • Leveling System';
+    const colorDisplay = isValidHex(settings.color) ? settings.color : '#5865F2';
+    const footerDisplay = (settings.footer || '{server} • Leveling System').replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
     
     const activeImage = cleanImageUrl(settings.image);
     const imageDisplay = isValidUrl(activeImage) ? `[View Media Link](${activeImage})` : '*None*';
 
     const panelEmbed = new EmbedBuilder()
         .setColor(isEnabled ? colorDisplay : '#ED4245')
-        .setTitle('🌸 Mina Leveling Engine • Server Control Center')
+        .setTitle('Mina Leveling Engine • Server Control Center')
         .setDescription(
             `Configure leveling rewards and design custom level-up announcement cards for your server.\n\n` +
-            `**🌐 System State:** ${isEnabled ? '🟢 **Enabled (Active)**' : '🔴 **Disabled (Suspended)**'}\n` +
-            `**📍 Announcement Channel:** ${channelDisplay}\n` +
-            `**💬 Message Header / Ping:** \`${pingDisplay}\`\n` +
-            `**👑 Author Header:** \`${authorDisplay}\`\n` +
-            `**🏷️ Title:** \`${titleDisplay}\`\n` +
-            `**📝 Description:** \`\`\`${descDisplay}\`\`\`\n` +
-            `**🎨 Hex Color:** \`${colorDisplay}\` | **🌸 Footer:** \`${footerDisplay}\`\n` +
-            `**🖼️ Banner Image:** ${imageDisplay}`
+            `**System State:** ${isEnabled ? '**Enabled (Active)**' : '**Disabled (Suspended)**'}\n` +
+            `**Announcement Channel:** ${channelDisplay}\n` +
+            `**Message Header / Ping:** \`${pingDisplay}\`\n` +
+            `**Author Header:** \`${authorDisplay}\`\n` +
+            `**Title:** \`${titleDisplay}\`\n` +
+            `**Description:** \`\`\`${descDisplay}\`\`\`\n` +
+            `**Hex Color:** \`${colorDisplay}\` | **Footer:** \`${footerDisplay}\`\n` +
+            `**Banner Image:** ${imageDisplay}`
         )
         .addFields({
-            name: '🔤 Supported Variables',
+            name: 'Supported Variables',
             value: '`{user}` • `{username}` • `{tag}` • `{server}` • `{level}` • `{xp}` • `{count}`',
             inline: false
         })
-        .setFooter({ text: '💡 Click the interactive buttons below or type ,leveling toggle to switch state.' });
+        .setFooter({ text: 'Use the buttons below or type ,leveling toggle to change configuration.' });
 
     const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId('lvl_btn_toggle')
             .setLabel(isEnabled ? 'Leveling: Enabled' : 'Leveling: Disabled')
-            .setStyle(isEnabled ? ButtonStyle.Success : ButtonStyle.Danger)
-            .setEmoji(isEnabled ? '🟢' : '🔴'),
-        new ButtonBuilder().setCustomId('lvl_btn_text').setLabel('Edit Text').setStyle(ButtonStyle.Primary).setEmoji('✏️'),
-        new ButtonBuilder().setCustomId('lvl_btn_media').setLabel('Edit Media').setStyle(ButtonStyle.Secondary).setEmoji('🖼️'),
-        new ButtonBuilder().setCustomId('lvl_btn_style').setLabel('Edit Style').setStyle(ButtonStyle.Secondary).setEmoji('🎨')
+            .setStyle(isEnabled ? ButtonStyle.Success : ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('lvl_btn_text').setLabel('Edit Text').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('lvl_btn_media').setLabel('Edit Media').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('lvl_btn_style').setLabel('Edit Style').setStyle(ButtonStyle.Secondary)
     );
 
     const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('lvl_btn_ping').setLabel('Edit Header').setStyle(ButtonStyle.Secondary).setEmoji('💬'),
-        new ButtonBuilder().setCustomId('lvl_btn_preview').setLabel('Live Preview').setStyle(ButtonStyle.Success).setEmoji('👁️'),
-        new ButtonBuilder().setCustomId('lvl_btn_reset').setLabel('Reset Defaults').setStyle(ButtonStyle.Danger).setEmoji('🔄'),
-        new ButtonBuilder().setCustomId('visuality_btn_studio').setLabel('Studio Hub').setStyle(ButtonStyle.Secondary).setEmoji('🎨')
+        new ButtonBuilder().setCustomId('lvl_btn_ping').setLabel('Edit Header').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('lvl_btn_preview').setLabel('Live Preview').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('lvl_btn_reset').setLabel('Reset Defaults').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('visuality_btn_studio').setLabel('Studio Hub').setStyle(ButtonStyle.Secondary)
     );
 
     return { embeds: [panelEmbed], components: [row1, row2] };
@@ -291,8 +290,8 @@ async function buildRankEmbed(targetUser, userData, guild) {
     const userLevelXp = Math.max(0, userData.xp - currentLevelBaseXp);
     
     const pct = Math.min(100, Math.max(0, Math.round((userLevelXp / levelXpNeeded) * 100)));
-    const filledCount = Math.min(12, Math.max(0, Math.round((pct / 100) * 12)));
-    const progressBar = '▰'.repeat(filledCount) + '▱'.repeat(12 - filledCount);
+    const filledCount = Math.min(14, Math.max(0, Math.round((pct / 100) * 14)));
+    const progressBar = '▰'.repeat(filledCount) + '▱'.repeat(14 - filledCount);
 
     const higherUsers = await LevelUser.countDocuments({ guildId: guild.id, xp: { $gt: userData.xp } }).catch(() => 0);
     const rankPos = higherUsers + 1;
@@ -300,44 +299,45 @@ async function buildRankEmbed(targetUser, userData, guild) {
     return new EmbedBuilder()
         .setColor('#5865F2')
         .setAuthor({ 
-            name: `${targetUser.username}'s Rank & Progression`, 
+            name: `${targetUser.username} — Leveling Profile`, 
             iconURL: targetUser.displayAvatarURL({ dynamic: true }) 
         })
         .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 512 }))
         .setDescription(
-            `>>> **Server Standing & Progression**\n` +
-            `• **Server Rank:** **#${rankPos}**\n` +
-            `• **Current Level:** **Level ${userData.level}**\n` +
-            `• **Total Experience:** **${userData.xp.toLocaleString()}** XP`
+            `>>> **Level Overview**\n` +
+            `• **Server Rank:** #${rankPos}\n` +
+            `• **Current Level:** Level ${userData.level}\n` +
+            `• **Total Experience:** ${userData.xp.toLocaleString()} XP`
         )
         .addFields(
-            { name: '💬 Messages Sent', value: `\`${(userData.messages || 0).toLocaleString()}\``, inline: true },
-            { name: '🎙️ Voice Active', value: `\`${formatVcTime(userData.vc_time)}\``, inline: true },
-            { name: '🎯 Next Level Target', value: `\`Level ${userData.level + 1}\``, inline: true },
+            { name: 'Messages Sent', value: `\`${(userData.messages || 0).toLocaleString()}\``, inline: true },
+            { name: 'Voice Time', value: `\`${formatVcTime(userData.vc_time)}\``, inline: true },
+            { name: 'Target Milestone', value: `\`Level ${userData.level + 1}\``, inline: true },
             { 
-                name: `📈 Progress to Level ${userData.level + 1} (${pct}%)`, 
-                value: `${progressBar}\n\`${userData.xp.toLocaleString()} / ${Math.round(nextLevelXp).toLocaleString()} XP\` (*${Math.max(0, Math.round(nextLevelXp - userData.xp)).toLocaleString()} XP needed*)`, 
+                name: `Progress to Level ${userData.level + 1} (${pct}%)`, 
+                value: `${progressBar}\n\`${userData.xp.toLocaleString()} / ${Math.round(nextLevelXp).toLocaleString()} XP\` (${Math.max(0, Math.round(nextLevelXp - userData.xp)).toLocaleString()} XP needed)`, 
                 inline: false 
             }
         )
-        .setFooter({ text: `${guild.name} • Mina Leveling System`, iconURL: guild.iconURL() || undefined })
+        .setFooter({ text: `${guild.name} • Leveling System`, iconURL: guild.iconURL() || undefined })
         .setTimestamp();
 }
 
 // Build Leaderboard Data
 async function buildLeaderboardData(guildId, guild, type = 'xp') {
     let topUsers = [];
-    let title = ''; let color = '';
+    let title = ''; 
+    const color = '#5865F2';
 
     if (type === 'xp') {
         topUsers = await LevelUser.find({ guildId }).sort({ xp: -1 }).limit(10);
-        title = 'Top Experience Leaders'; color = '#FFD700';
+        title = 'Top Experience Leaders';
     } else if (type === 'messages') {
         topUsers = await LevelUser.find({ guildId }).sort({ messages: -1 }).limit(10);
-        title = 'Most Active Chatters'; color = '#00BFFF';
+        title = 'Most Active Chatters';
     } else if (type === 'vc') {
         topUsers = await LevelUser.find({ guildId }).sort({ vc_time: -1 }).limit(10);
-        title = 'Voice Channel Leaders'; color = '#FF4500';
+        title = 'Voice Channel Leaders';
     }
 
     let description = '';
@@ -345,30 +345,26 @@ async function buildLeaderboardData(guildId, guild, type = 'xp') {
         description = '*No data available for this category yet.*';
     } else {
         topUsers.forEach((user, index) => {
-            let medal = '🏅';
-            if (index === 0) medal = '🥇';
-            if (index === 1) medal = '🥈';
-            if (index === 2) medal = '🥉';
-
-            if (type === 'xp') description += `**${index + 1}.** ${medal} <@${user.userId}>\n↳ **Level ${user.level}** • \`${user.xp.toLocaleString()} XP\`\n\n`;
-            if (type === 'messages') description += `**${index + 1}.** ${medal} <@${user.userId}>\n↳ \`${user.messages.toLocaleString()} Messages\`\n\n`;
-            if (type === 'vc') description += `**${index + 1}.** ${medal} <@${user.userId}>\n↳ \`${formatVcTime(user.vc_time)}\` in Voice\n\n`;
+            const rankNum = index + 1;
+            if (type === 'xp') description += `**#${rankNum}** <@${user.userId}>\n↳ Level ${user.level} • \`${user.xp.toLocaleString()} XP\`\n\n`;
+            if (type === 'messages') description += `**#${rankNum}** <@${user.userId}>\n↳ \`${user.messages.toLocaleString()} Messages\`\n\n`;
+            if (type === 'vc') description += `**#${rankNum}** <@${user.userId}>\n↳ \`${formatVcTime(user.vc_time)}\` in Voice\n\n`;
         });
     }
 
     const embed = new EmbedBuilder()
         .setColor(color)
         .setAuthor({ name: `${guild.name} • Community Leaderboard`, iconURL: guild.iconURL({ dynamic: true }) || undefined })
-        .setTitle(`🏆 Server Leaderboard: ${title}`)
+        .setTitle(`Server Leaderboard: ${title}`)
         .setDescription(description)
         .setThumbnail(guild.iconURL({ dynamic: true }))
         .setFooter({ text: `${guild.name} • Mina Leveling Engine`, iconURL: guild.iconURL() || undefined })
         .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('lb_xp').setLabel('XP Rank').setStyle(type === 'xp' ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('✨'),
-        new ButtonBuilder().setCustomId('lb_messages').setLabel('Messages').setStyle(type === 'messages' ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('💬'),
-        new ButtonBuilder().setCustomId('lb_vc').setLabel('Voice Time').setStyle(type === 'vc' ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🎙️')
+        new ButtonBuilder().setCustomId('lb_xp').setLabel('XP Rank').setStyle(type === 'xp' ? ButtonStyle.Success : ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('lb_messages').setLabel('Messages').setStyle(type === 'messages' ? ButtonStyle.Success : ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('lb_vc').setLabel('Voice Time').setStyle(type === 'vc' ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 
     return { embeds: [embed], components: [row] };

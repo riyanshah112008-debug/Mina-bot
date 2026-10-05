@@ -108,14 +108,14 @@ const commands = [
 
             const embed = new EmbedBuilder()
                 .setColor(config.EMBED_COLORS.PRIMARY)
-                .setAuthor({ name: `${target.username}'s Rank & Level`, iconURL: target.displayAvatarURL({ dynamic: true }) })
+                .setAuthor({ name: `${target.username} — Rank & Level`, iconURL: target.displayAvatarURL({ dynamic: true }) })
                 .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 256 }))
                 .addFields(
-                    { name: '👑 Level', value: `\`Level ${doc.level}\``, inline: true },
-                    { name: '✨ XP Progress', value: `\`${doc.xp} / ${neededXp} XP\``, inline: true },
-                    { name: '💰 Net Worth', value: `\`$${(doc.wallet + doc.bank).toLocaleString()}\``, inline: true }
+                    { name: 'Level', value: `\`Level ${doc.level}\``, inline: true },
+                    { name: 'XP Progress', value: `\`${doc.xp} / ${neededXp} XP\``, inline: true },
+                    { name: 'Net Worth', value: `\`$${(doc.wallet + doc.bank).toLocaleString()}\``, inline: true }
                 )
-                .setFooter({ text: 'Starry Leveling Engine • Prefix: ,' })
+                .setFooter({ text: `${config.BOT_NAME || 'Mina'} Leveling System • Prefix: ,` })
                 .setTimestamp();
 
             return ctx.reply({ embeds: [embed] });
@@ -140,16 +140,15 @@ const commands = [
 
             const top = await EcoUser.find({ guildId: ctx.guild.id }).sort({ [type]: -1 }).limit(10).lean();
 
-            if (top.length === 0) return ctx.reply('📭 Leaderboard is empty for this server.');
+            if (top.length === 0) return ctx.reply('Leaderboard is empty for this server.');
 
             const list = top.map((u, i) => {
-                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `\`#${i + 1}\``;
-                return `${medal} <@${u.userId}> — **Level ${u.level}** (\`${u.xp} XP\`) | **$${(u.wallet + u.bank).toLocaleString()}**`;
+                return `**#${i + 1}** <@${u.userId}> — **Level ${u.level}** (\`${u.xp} XP\`) | **$${(u.wallet + u.bank).toLocaleString()}**`;
             }).join('\n');
 
             const embed = new EmbedBuilder()
                 .setColor(config.EMBED_COLORS.ECONOMY)
-                .setTitle(`🏆 ${ctx.guild.name} Top Leaderboard`)
+                .setTitle(`${ctx.guild.name} Top Leaderboard`)
                 .setDescription(list)
                 .setFooter({ text: 'Rankings update in real-time • Prefix: ,' })
                 .setTimestamp();
