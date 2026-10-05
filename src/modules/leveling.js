@@ -116,9 +116,9 @@ function buildLevelUpEmbed(user, newLevel, newXp, guild, customSettings = null) 
         .setTitle(titleText.slice(0, 256))
         .setDescription(descText.slice(0, 4000))
         .addFields(
-            { name: '⭐ New Level', value: `\`\`\`ansi\n\u001b[1;36mLevel ${newLevel}\u001b[0m\n\`\`\``, inline: true },
-            { name: '📊 Total XP', value: `\`\`\`ansi\n\u001b[1;33m${newXp.toLocaleString()} XP\u001b[0m\n\`\`\``, inline: true },
-            { name: '🎯 Next Target', value: `\`\`\`ansi\n\u001b[1;32m${Math.round(nextLevelXp).toLocaleString()} XP\u001b[0m\n\`\`\``, inline: true }
+            { name: '⭐ Level Reached', value: `**Level ${newLevel}**`, inline: true },
+            { name: '📊 Total Experience', value: `**${newXp.toLocaleString()}** XP`, inline: true },
+            { name: '🎯 Next Target', value: `**${Math.round(nextLevelXp).toLocaleString()}** XP`, inline: true }
         )
         .setFooter({ text: footerText.slice(0, 2048), iconURL: guild?.iconURL({ dynamic: true }) })
         .setTimestamp();
@@ -243,7 +243,7 @@ async function getLevelControlPanel(guildId, client) {
 
     const panelEmbed = new EmbedBuilder()
         .setColor(isEnabled ? colorDisplay : '#ED4245')
-        .setTitle('📊 Starry Leveling Engine • Server Control Panel')
+        .setTitle('🌸 Mina Leveling Engine • Server Control Center')
         .setDescription(
             `Configure leveling rewards and design custom level-up announcement cards for your server.\n\n` +
             `**🌐 System State:** ${isEnabled ? '🟢 **Enabled (Active)**' : '🔴 **Disabled (Suspended)**'}\n` +
@@ -290,26 +290,37 @@ async function buildRankEmbed(targetUser, userData, guild) {
     const levelXpNeeded = Math.max(1, nextLevelXp - currentLevelBaseXp);
     const userLevelXp = Math.max(0, userData.xp - currentLevelBaseXp);
     
-    const progressPercent = Math.min(Math.round((userLevelXp / levelXpNeeded) * 10), 10);
-    const progressBar = '🟩'.repeat(progressPercent) + '⬛'.repeat(10 - progressPercent);
+    const pct = Math.min(100, Math.max(0, Math.round((userLevelXp / levelXpNeeded) * 100)));
+    const filledCount = Math.min(12, Math.max(0, Math.round((pct / 100) * 12)));
+    const progressBar = '▰'.repeat(filledCount) + '▱'.repeat(12 - filledCount);
 
     const higherUsers = await LevelUser.countDocuments({ guildId: guild.id, xp: { $gt: userData.xp } }).catch(() => 0);
     const rankPos = higherUsers + 1;
 
     return new EmbedBuilder()
         .setColor('#5865F2')
-        .setAuthor({ name: `${targetUser.username}'s Rank & Stats`, iconURL: targetUser.displayAvatarURL({ dynamic: true }) })
-        .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 256 }))
-        .addFields(
-            { name: '👑 Rank Position', value: `\`\`\`ansi\n\u001b[1;33m#${rankPos}\u001b[0m\n\`\`\``, inline: true },
-            { name: '✨ Current Level', value: `\`\`\`ansi\n\u001b[1;36mLevel ${userData.level}\u001b[0m\n\`\`\``, inline: true },
-            { name: '📊 Total XP', value: `\`\`\`ansi\n\u001b[1;32m${userData.xp.toLocaleString()} XP\u001b[0m\n\`\`\``, inline: true },
-            { name: '💬 Messages Sent', value: `\`${(userData.messages || 0).toLocaleString()}\``, inline: true },
-            { name: '🎙️ Voice Time', value: `\`${formatVcTime(userData.vc_time)}\``, inline: true },
-            { name: '\u200b', value: '\u200b', inline: true }, 
-            { name: `📈 Progress to Level ${userData.level + 1}`, value: `${progressBar} (${Math.round((userLevelXp / levelXpNeeded) * 100)}%)\n\`${userData.xp.toLocaleString()} / ${Math.round(nextLevelXp).toLocaleString()} XP\`` }
+        .setAuthor({ 
+            name: `${targetUser.username}'s Rank & Progression`, 
+            iconURL: targetUser.displayAvatarURL({ dynamic: true }) 
+        })
+        .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 512 }))
+        .setDescription(
+            `>>> **Server Standing & Progression**\n` +
+            `• **Server Rank:** **#${rankPos}**\n` +
+            `• **Current Level:** **Level ${userData.level}**\n` +
+            `• **Total Experience:** **${userData.xp.toLocaleString()}** XP`
         )
-        .setFooter({ text: guild.name, iconURL: guild.iconURL() })
+        .addFields(
+            { name: '💬 Messages Sent', value: `\`${(userData.messages || 0).toLocaleString()}\``, inline: true },
+            { name: '🎙️ Voice Active', value: `\`${formatVcTime(userData.vc_time)}\``, inline: true },
+            { name: '🎯 Next Level Target', value: `\`Level ${userData.level + 1}\``, inline: true },
+            { 
+                name: `📈 Progress to Level ${userData.level + 1} (${pct}%)`, 
+                value: `${progressBar}\n\`${userData.xp.toLocaleString()} / ${Math.round(nextLevelXp).toLocaleString()} XP\` (*${Math.max(0, Math.round(nextLevelXp - userData.xp)).toLocaleString()} XP needed*)`, 
+                inline: false 
+            }
+        )
+        .setFooter({ text: `${guild.name} • Mina Leveling System`, iconURL: guild.iconURL() || undefined })
         .setTimestamp();
 }
 
@@ -320,7 +331,7 @@ async function buildLeaderboardData(guildId, guild, type = 'xp') {
 
     if (type === 'xp') {
         topUsers = await LevelUser.find({ guildId }).sort({ xp: -1 }).limit(10);
-        title = 'Top XP Earners'; color = '#FFD700';
+        title = 'Top Experience Leaders'; color = '#FFD700';
     } else if (type === 'messages') {
         topUsers = await LevelUser.find({ guildId }).sort({ messages: -1 }).limit(10);
         title = 'Most Active Chatters'; color = '#00BFFF';
@@ -347,10 +358,11 @@ async function buildLeaderboardData(guildId, guild, type = 'xp') {
 
     const embed = new EmbedBuilder()
         .setColor(color)
+        .setAuthor({ name: `${guild.name} • Community Leaderboard`, iconURL: guild.iconURL({ dynamic: true }) || undefined })
         .setTitle(`🏆 Server Leaderboard: ${title}`)
         .setDescription(description)
         .setThumbnail(guild.iconURL({ dynamic: true }))
-        .setFooter({ text: guild.name, iconURL: guild.iconURL() })
+        .setFooter({ text: `${guild.name} • Mina Leveling Engine`, iconURL: guild.iconURL() || undefined })
         .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const config = require("../../config");
 
 module.exports = {
@@ -45,12 +45,21 @@ module.exports = {
     const bannerUrl = fullUser.bannerURL({ dynamic: true, size: 1024 });
 
     const embed = new EmbedBuilder()
-      .setColor(config.theme.primary)
+      .setColor(config.theme?.primary || config.EMBED_COLORS?.PRIMARY || "#5865F2")
+      .setAuthor({
+        name: `${fullUser.tag || fullUser.username} • Profile Visuals`,
+        iconURL: fullUser.displayAvatarURL({ dynamic: true })
+      })
       .setTitle(`🎨 Banner for ${fullUser.tag || fullUser.username}`)
+      .setDescription(`[Open Full Resolution](${bannerUrl})`)
       .setImage(bannerUrl)
-      .setDescription(`[Direct Link](${bannerUrl})`)
+      .setFooter({ text: `${config.BOT_NAME || "Mina"} Utility • High-Resolution Render` })
       .setTimestamp();
 
-    return context.reply({ embeds: [embed] });
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setLabel("Open in Browser").setStyle(ButtonStyle.Link).setURL(bannerUrl)
+    );
+
+    return context.reply({ embeds: [embed], components: [row] });
   },
 };

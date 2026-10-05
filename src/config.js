@@ -3,6 +3,11 @@
 // ==========================================
 
 module.exports = {
+    // Bot Branding & Identity
+    BOT_NAME: 'Mina',
+    BOT_TAGLINE: 'Intelligent Community, Moderation & Music Suite',
+    BOT_VERSION: '2.0.0',
+
     // Fixed comma prefix by default across the entire bot
     DEFAULT_PREFIX: ',',
     PREFIX: ',',

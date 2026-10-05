@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const config = require("../../config");
 
 module.exports = {
@@ -36,14 +36,31 @@ module.exports = {
     const png = targetUser.displayAvatarURL({ extension: "png", size: 1024 });
     const jpg = targetUser.displayAvatarURL({ extension: "jpg", size: 1024 });
     const webp = targetUser.displayAvatarURL({ extension: "webp", size: 1024 });
+    const dynamicUrl = targetUser.displayAvatarURL({ dynamic: true, size: 1024 });
+    const isAnimated = Boolean(targetUser.avatar && targetUser.avatar.startsWith("a_"));
+
+    let desc = `[PNG](${png}) • [JPG](${jpg}) • [WEBP](${webp})`;
+    if (isAnimated) {
+      const gif = targetUser.displayAvatarURL({ extension: "gif", size: 1024 });
+      desc += ` • [GIF](${gif})`;
+    }
 
     const embed = new EmbedBuilder()
-      .setColor(config.theme.primary)
+      .setColor(config.theme?.primary || config.EMBED_COLORS?.PRIMARY || "#5865F2")
+      .setAuthor({
+        name: `${targetUser.tag || targetUser.username} • Profile Visuals`,
+        iconURL: dynamicUrl
+      })
       .setTitle(`🖼️ Avatar for ${targetUser.tag || targetUser.username}`)
-      .setDescription(`[PNG](${png}) | [JPG](${jpg}) | [WEBP](${webp})`)
-      .setImage(targetUser.displayAvatarURL({ dynamic: true, size: 1024 }))
+      .setDescription(desc)
+      .setImage(dynamicUrl)
+      .setFooter({ text: `${config.BOT_NAME || "Mina"} Utility • High-Resolution Render` })
       .setTimestamp();
 
-    return context.reply({ embeds: [embed] });
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setLabel("Open in Browser").setStyle(ButtonStyle.Link).setURL(dynamicUrl)
+    );
+
+    return context.reply({ embeds: [embed], components: [row] });
   },
 };

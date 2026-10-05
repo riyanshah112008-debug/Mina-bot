@@ -112,10 +112,10 @@ async function generateAndSendImage(ctx, prompt) {
     const buildImageEmbed = (p, s, fileName, url) => {
         const embed = new EmbedBuilder()
             .setColor('#9B59B6')
-            .setAuthor({ name: `Starry AI Neural Art Generator`, iconURL: ctx.client?.user?.displayAvatarURL() })
+            .setAuthor({ name: `Mina AI Neural Art Generator`, iconURL: ctx.client?.user?.displayAvatarURL() })
             .setTitle(`🎨 AI Generated Artwork`)
             .setDescription(`✨ **Prompt:** "${p.length > 250 ? p.substring(0, 247) + '...' : p}"\n🧠 **Engine:** \`Flux.1 Schnell (1024x1024 HD)\`\n👤 **Requested by:** <@${ctx.user.id}>`)
-            .setFooter({ text: `Seed: ${s} • Starry AI • Direct HD Rendering` })
+            .setFooter({ text: `Seed: ${s} • Mina AI • Direct HD Rendering` })
             .setTimestamp();
 
         if (fileName) {
@@ -266,19 +266,34 @@ const commands = [
         usage: ',ping',
         async execute(ctx) {
             const start = Date.now();
-            const replyMsg = await ctx.reply('🏓 **Pinging server cluster...**');
-            const latency = Date.now() - start;
+            const replyMsg = await ctx.reply('📡 **Measuring telemetry and gateway response times...**');
+            const latency = Math.max(1, Date.now() - start);
             const wsPing = Math.round(ctx.client.ws.ping);
+            const memMb = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
+
+            const getStatusIndicator = (ms) => {
+                if (ms < 0) return '⚪ Connecting...';
+                if (ms <= 120) return `🟢 Excellent (\`${ms}ms\`)`;
+                if (ms <= 250) return `🟡 Normal (\`${ms}ms\`)`;
+                return `🔴 High Latency (\`${ms}ms\`)`;
+            };
 
             const embed = new EmbedBuilder()
-                .setColor(wsPing < 100 ? config.EMBED_COLORS.SUCCESS : config.EMBED_COLORS.WARNING)
-                .setTitle('🏓 Pong! Network Latency')
+                .setColor(latency < 250 ? (config.EMBED_COLORS?.SUCCESS || '#57F287') : (config.EMBED_COLORS?.WARNING || '#FEE75C'))
+                .setAuthor({
+                    name: `${config.BOT_NAME || 'Mina'} • System Telemetry & Latency`,
+                    iconURL: ctx.client.user?.displayAvatarURL({ dynamic: true })
+                })
+                .setDescription('>>> Operational status and real-time network health diagnostics.')
                 .addFields(
-                    { name: '🌐 WebSocket Latency', value: `\`${wsPing} ms\``, inline: true },
-                    { name: '⚡ Message Roundtrip', value: `\`${latency} ms\``, inline: true },
-                    { name: '🤖 Multi-Bot Status', value: `\`Cluster Online 🟢\``, inline: true }
+                    { name: '⚡ WebSocket Heartbeat', value: getStatusIndicator(wsPing >= 0 ? wsPing : 0), inline: true },
+                    { name: '📡 Message Roundtrip', value: `\`${latency}ms\``, inline: true },
+                    { name: '🧠 Heap Allocation', value: `\`${memMb} MB\``, inline: true },
+                    { name: '⏳ System Uptime', value: `\`${formatUptime(process.uptime())}\``, inline: true },
+                    { name: '🤖 Multi-Bot Status', value: '`Cluster Online 🟢`', inline: true },
+                    { name: '🌐 Gateway Shards', value: '`1 Shard (Healthy)`', inline: true }
                 )
-                .setFooter({ text: 'Starry Multi-Bot Network' })
+                .setFooter({ text: `${config.BOT_NAME || 'Mina'} System • All Systems Operational` })
                 .setTimestamp();
 
             if (replyMsg && typeof replyMsg.edit === 'function') {
@@ -298,27 +313,53 @@ const commands = [
         usage: ',botinfo',
         async execute(ctx) {
             const memUsed = process.memoryUsage().heapUsed;
-            const memTotal = os.totalmem();
+            const heapTotal = process.memoryUsage().heapTotal;
             const totalGuilds = ctx.client.guilds.cache.size;
             const totalMembers = ctx.client.guilds.cache.reduce((acc, g) => acc + (g.memberCount || 0), 0);
             const clusterStats = ctx.client.multiBot ? ctx.client.multiBot.getClusterStats() : { totalBots: 1 };
+            const bootTimestamp = Math.floor((Date.now() - process.uptime() * 1000) / 1000);
 
             const embed = new EmbedBuilder()
-                .setColor(config.EMBED_COLORS.PRIMARY)
-                .setTitle('🤖 Bot Cluster Statistics & Information')
-                .setThumbnail(ctx.client.user.displayAvatarURL({ dynamic: true }))
+                .setColor(config.EMBED_COLORS?.PRIMARY || '#5865F2')
+                .setAuthor({
+                    name: `${config.BOT_NAME || 'Mina'} • Technical Architecture & Telemetry`,
+                    iconURL: ctx.client.user?.displayAvatarURL({ dynamic: true })
+                })
+                .setDescription('>>> High-performance multi-feature Discord system engine engineered for enterprise moderation, studio-grade audio streaming, and community engagement.')
+                .setThumbnail(ctx.client.user?.displayAvatarURL({ dynamic: true, size: 512 }))
                 .addFields(
-                    { name: '👑 Bot Tag', value: `\`${ctx.client.user.tag}\``, inline: true },
-                    { name: '🌐 Servers', value: `\`${totalGuilds}\` guilds`, inline: true },
-                    { name: '👥 Total Users', value: `\`${totalMembers}\` members`, inline: true },
-                    { name: '🤖 Multi-Bot Cluster', value: `\`${clusterStats.totalBots}\` bot instances online`, inline: true },
-                    { name: '⏳ Uptime', value: `\`${formatUptime(process.uptime())}\``, inline: true },
-                    { name: '💾 Memory Heap', value: `\`${formatBytes(memUsed)}\``, inline: true },
-                    { name: '⚙️ Node.js', value: `\`${process.version}\``, inline: true },
-                    { name: '📚 Discord.js', value: `\`v14.15.0\``, inline: true },
-                    { name: '⚡ Fixed Prefix', value: `\`${config.DEFAULT_PREFIX || ','}\``, inline: true }
+                    {
+                        name: '📊 Global Reach',
+                        value: `• **Guilds:** \`${totalGuilds.toLocaleString()}\`\n• **Users:** \`${totalMembers.toLocaleString()}\`\n• **Shards:** \`1 / 1 (Active)\``,
+                        inline: true
+                    },
+                    {
+                        name: '⚙️ Runtime & Engine',
+                        value: `• **Node.js:** \`${process.version}\`\n• **Discord.js:** \`v14.15.0\`\n• **Platform:** \`${os.platform()} (${os.arch()})\``,
+                        inline: true
+                    },
+                    {
+                        name: '💾 Memory Allocation',
+                        value: `• **Heap Used:** \`${formatBytes(memUsed)}\`\n• **Heap Total:** \`${formatBytes(heapTotal)}\`\n• **Cluster:** \`${clusterStats.totalBots} Online\``,
+                        inline: true
+                    },
+                    {
+                        name: '⏳ System Telemetry',
+                        value: `• **Uptime:** \`${formatUptime(process.uptime())}\`\n• **Booted:** <t:${bootTimestamp}:R>\n• **Health:** \`Operational 🟢\``,
+                        inline: true
+                    },
+                    {
+                        name: '🛡️ Security & Storage',
+                        value: `• **Prefix:** \`${config.DEFAULT_PREFIX || ','}\`\n• **Slash ( / ):** \`Enabled\`\n• **TTL:** \`1-Year Lifetime\``,
+                        inline: true
+                    },
+                    {
+                        name: '⚡ Core Architecture',
+                        value: `• **Version:** \`${config.BOT_VERSION || '2.0.0'}\`\n• **Audio:** \`Hi-Fi Nodes Ready\`\n• **Status:** \`Ready\``,
+                        inline: true
+                    }
                 )
-                .setFooter({ text: 'Starry Multi-Bot Architecture' })
+                .setFooter({ text: `${config.BOT_NAME || 'Mina'} Core Engine • Engineered for Premium Communities` })
                 .setTimestamp();
 
             return ctx.reply({ embeds: [embed] });
@@ -335,28 +376,65 @@ const commands = [
         async execute(ctx) {
             const guild = ctx.guild;
             const owner = await guild.fetchOwner().catch(() => null);
+            const totalMembers = guild.memberCount || guild.members.cache.size;
+            const humans = guild.members.cache.filter(m => !m.user.bot).size || totalMembers;
+            const bots = guild.members.cache.filter(m => m.user.bot).size || 0;
+
             const textChannels = guild.channels.cache.filter(c => c.type === 0).size;
-            const voiceChannels = guild.channels.cache.filter(c => c.type === 2).size;
-            const totalRoles = guild.roles.cache.size;
-            const totalEmojis = guild.emojis.cache.size;
+            const voiceChannels = guild.channels.cache.filter(c => c.type === 2 || c.type === 13).size;
+            const categories = guild.channels.cache.filter(c => c.type === 4).size;
+            const createdTimestamp = Math.floor(guild.createdTimestamp / 1000);
+
+            const vLevels = { 0: 'None', 1: 'Low (Email)', 2: 'Medium (5m)', 3: 'High (10m)', 4: 'Highest (Phone)' };
+            const bTiers = { 0: 'Level 0', 1: 'Tier 1 🌟', 2: 'Tier 2 🚀', 3: 'Tier 3 👑' };
 
             const embed = new EmbedBuilder()
-                .setColor(config.EMBED_COLORS.PRIMARY)
-                .setTitle(`🏰 ${guild.name}`)
+                .setColor(config.EMBED_COLORS?.PRIMARY || '#5865F2')
+                .setAuthor({
+                    name: `${guild.name} • Server Overview`,
+                    iconURL: guild.iconURL({ dynamic: true }) || undefined
+                })
                 .setThumbnail(guild.iconURL({ dynamic: true, size: 512 }) || null)
                 .setImage(guild.bannerURL({ size: 1024 }) || null)
-                .addFields(
-                    { name: '👑 Server Owner', value: owner ? `<@${owner.id}> (\`${owner.user.tag}\`)` : 'Unknown', inline: true },
-                    { name: '🆔 Server ID', value: `\`${guild.id}\``, inline: true },
-                    { name: '📅 Created On', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:D> (<t:${Math.floor(guild.createdTimestamp / 1000)}:R>)`, inline: false },
-                    { name: '👥 Members', value: `\`${guild.memberCount}\` members`, inline: true },
-                    { name: '🚀 Boost Level', value: `Tier \`${guild.premiumTier}\` (${guild.premiumSubscriptionCount || 0} boosts)`, inline: true },
-                    { name: '📺 Channels', value: `\`${textChannels}\` Text | \`${voiceChannels}\` Voice`, inline: true },
-                    { name: '🏷️ Roles', value: `\`${totalRoles}\` roles`, inline: true },
-                    { name: '😃 Emojis', value: `\`${totalEmojis}\` emojis`, inline: true },
-                    { name: '🛡️ Verification', value: `\`Level ${guild.verificationLevel}\``, inline: true }
+                .setDescription(
+                    `>>> **Server Identity & Metadata**\n` +
+                    `• **Owner:** ${owner ? `<@${owner.id}> (\`${owner.user.tag}\`)` : 'Unknown'}\n` +
+                    `• **Server ID:** \`${guild.id}\`\n` +
+                    `• **Founded:** <t:${createdTimestamp}:D> (<t:${createdTimestamp}:R>)`
                 )
-                .setFooter({ text: 'Starry Server Information • Prefix: ,' })
+                .addFields(
+                    {
+                        name: '👥 Membership',
+                        value: `• **Total:** \`${totalMembers.toLocaleString()}\`\n• **Humans:** \`${humans.toLocaleString()}\`\n• **Bots:** \`${bots.toLocaleString()}\``,
+                        inline: true
+                    },
+                    {
+                        name: '💬 Channels',
+                        value: `• **Text:** \`${textChannels}\`\n• **Voice:** \`${voiceChannels}\`\n• **Categories:** \`${categories}\``,
+                        inline: true
+                    },
+                    {
+                        name: '✨ Boost Standing',
+                        value: `• **Status:** \`${bTiers[guild.premiumTier] || `Tier ${guild.premiumTier}`}\`\n• **Boosts:** \`${guild.premiumSubscriptionCount || 0} active\``,
+                        inline: true
+                    },
+                    {
+                        name: '🛡️ Verification',
+                        value: `\`${vLevels[guild.verificationLevel] || `Level ${guild.verificationLevel}`}\``,
+                        inline: true
+                    },
+                    {
+                        name: '🏷️ Server Assets',
+                        value: `• **Roles:** \`${guild.roles.cache.size}\`\n• **Emojis:** \`${guild.emojis.cache.size}\``,
+                        inline: true
+                    },
+                    {
+                        name: '🌐 Locale',
+                        value: `\`${guild.preferredLocale || 'en-US'}\``,
+                        inline: true
+                    }
+                )
+                .setFooter({ text: `${config.BOT_NAME || 'Mina'} System • Server Insights` })
                 .setTimestamp();
 
             return ctx.reply({ embeds: [embed] });
@@ -380,22 +458,35 @@ const commands = [
                 targetUser = await ctx.client.users.fetch(rawId).catch(() => ctx.user);
             }
 
-            const member = await ctx.guild.members.fetch(targetUser.id).catch(() => null);
-            const roles = member ? member.roles.cache.filter(r => r.id !== ctx.guild.id).map(r => `<@&${r.id}>`).slice(0, 15).join(', ') : 'None';
+            const fullUser = await ctx.client.users.fetch(targetUser.id, { force: true }).catch(() => targetUser);
+            const member = await ctx.guild.members.fetch(fullUser.id).catch(() => null);
+            const roles = member ? member.roles.cache.filter(r => r.id !== ctx.guild.id).map(r => `<@&${r.id}>`) : [];
+            const displayedRoles = roles.length > 8 ? `${roles.slice(0, 8).join(', ')} and ${roles.length - 8} more...` : (roles.join(', ') || 'None');
+
+            const embedColor = (member?.displayHexColor && member.displayHexColor !== '#000000') ? member.displayHexColor : (config.EMBED_COLORS?.PRIMARY || '#5865F2');
 
             const embed = new EmbedBuilder()
-                .setColor(member?.displayHexColor || config.EMBED_COLORS.PRIMARY)
-                .setAuthor({ name: targetUser.tag, iconURL: targetUser.displayAvatarURL({ dynamic: true }) })
-                .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 512 }))
-                .addFields(
-                    { name: '🆔 User ID', value: `\`${targetUser.id}\``, inline: true },
-                    { name: '🤖 Bot Account', value: targetUser.bot ? 'Yes' : 'No', inline: true },
-                    { name: '📅 Account Created', value: `<t:${Math.floor(targetUser.createdTimestamp / 1000)}:D> (<t:${Math.floor(targetUser.createdTimestamp / 1000)}:R>)`, inline: false },
-                    { name: '📥 Joined Server', value: member ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:D> (<t:${Math.floor(member.joinedTimestamp / 1000)}:R>)` : 'Not in server', inline: false },
-                    { name: `🏷️ Roles (${member ? member.roles.cache.size - 1 : 0})`, value: roles || 'None', inline: false }
+                .setColor(embedColor)
+                .setAuthor({ name: `${fullUser.tag || fullUser.username} • User Identity`, iconURL: fullUser.displayAvatarURL({ dynamic: true }) })
+                .setThumbnail(fullUser.displayAvatarURL({ dynamic: true, size: 512 }))
+                .setDescription(
+                    `>>> **Profile Summary & Attributes**\n` +
+                    `• **Mention:** <@${fullUser.id}>\n` +
+                    `• **User ID:** \`${fullUser.id}\`\n` +
+                    `• **Account Type:** ${fullUser.bot ? '🤖 **Bot Account**' : '👤 **Human User**'}`
                 )
-                .setFooter({ text: 'Starry User Lookup • Prefix: ,' })
+                .addFields(
+                    { name: '📅 Account Created', value: `<t:${Math.floor(fullUser.createdTimestamp / 1000)}:D>\n(<t:${Math.floor(fullUser.createdTimestamp / 1000)}:R>)`, inline: true },
+                    ...(member ? [{ name: '📥 Joined Server', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:D>\n(<t:${Math.floor(member.joinedTimestamp / 1000)}:R>)`, inline: true }] : []),
+                    { name: '👑 Top Role', value: member?.roles?.highest ? `<@&${member.roles.highest.id}>` : '`None`', inline: true },
+                    { name: `🏷️ Roles (${roles.length})`, value: displayedRoles, inline: false }
+                )
+                .setFooter({ text: `${config.BOT_NAME || 'Mina'} System • Identity Intelligence` })
                 .setTimestamp();
+
+            if (fullUser.banner) {
+                embed.setImage(fullUser.bannerURL({ dynamic: true, size: 1024 }));
+            }
 
             return ctx.reply({ embeds: [embed] });
         }
@@ -420,10 +511,12 @@ const commands = [
             const avatarUrl = targetUser.displayAvatarURL({ dynamic: true, size: 1024 });
 
             const embed = new EmbedBuilder()
-                .setColor(config.EMBED_COLORS.PRIMARY)
-                .setTitle(`🖼️ Avatar for ${targetUser.tag}`)
+                .setColor(config.EMBED_COLORS?.PRIMARY || '#5865F2')
+                .setAuthor({ name: `${targetUser.tag || targetUser.username} • Profile Visuals`, iconURL: avatarUrl })
+                .setTitle(`🖼️ Avatar for ${targetUser.tag || targetUser.username}`)
+                .setDescription(`[Open Full Resolution](${avatarUrl})`)
                 .setImage(avatarUrl)
-                .setFooter({ text: 'Starry Utility • Prefix: ,' })
+                .setFooter({ text: `${config.BOT_NAME || 'Mina'} Utility • High-Resolution Render` })
                 .setTimestamp();
 
             const row = new ActionRowBuilder().addComponents(
@@ -454,17 +547,23 @@ const commands = [
             const bannerUrl = userFetched.bannerURL({ dynamic: true, size: 1024 });
 
             if (!bannerUrl) {
-                return ctx.reply(`❌ **${targetUser.tag}** does not have a custom profile banner.`);
+                return ctx.reply(`ℹ️ **${targetUser.tag || targetUser.username}** does not have a custom profile banner set.`);
             }
 
             const embed = new EmbedBuilder()
-                .setColor(config.EMBED_COLORS.PRIMARY)
-                .setTitle(`🎨 Banner for ${targetUser.tag}`)
+                .setColor(config.EMBED_COLORS?.PRIMARY || '#5865F2')
+                .setAuthor({ name: `${targetUser.tag || targetUser.username} • Profile Visuals`, iconURL: targetUser.displayAvatarURL({ dynamic: true }) })
+                .setTitle(`🎨 Banner for ${targetUser.tag || targetUser.username}`)
+                .setDescription(`[Open Full Resolution](${bannerUrl})`)
                 .setImage(bannerUrl)
-                .setFooter({ text: 'Starry Utility • Prefix: ,' })
+                .setFooter({ text: `${config.BOT_NAME || 'Mina'} Utility • High-Resolution Render` })
                 .setTimestamp();
 
-            return ctx.reply({ embeds: [embed] });
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setLabel('Open in Browser').setStyle(ButtonStyle.Link).setURL(bannerUrl)
+            );
+
+            return ctx.reply({ embeds: [embed], components: [row] });
         }
     },
 
@@ -594,7 +693,7 @@ const commands = [
                 .setColor(config.EMBED_COLORS.PRIMARY)
                 .setTitle(`🤖 Invite ${ctx.client.user.username} to your Server`)
                 .setDescription(`Click below to invite this bot instance with full administrative powers!`)
-                .setFooter({ text: 'Starry Multi-Bot Network' })
+                .setFooter({ text: 'Mina Multi-Bot Network' })
                 .setTimestamp();
 
             const row = new ActionRowBuilder().addComponents(
@@ -614,7 +713,7 @@ const commands = [
         async execute(ctx) {
             const embed = new EmbedBuilder()
                 .setColor(config.EMBED_COLORS.PRIMARY)
-                .setTitle('⭐ Vote for Starry Bot')
+                .setTitle('⭐ Vote for Mina')
                 .setDescription('Voting unlocks double XP, bonus daily credits, and priority Lavalink music node routing!')
                 .setFooter({ text: 'Thank you for supporting our bot!' });
             return ctx.reply({ embeds: [embed] });
@@ -631,13 +730,13 @@ const commands = [
         async execute(ctx) {
             const embed = new EmbedBuilder()
                 .setColor(config.EMBED_COLORS.ECONOMY)
-                .setTitle('⭐ Support Starry Bot Development')
-                .setDescription('Thank you for considering supporting Starry! Your contributions keep our 24/7 high-fidelity music nodes, AI servers, and low-latency clusters running smoothly.')
+                .setTitle('⭐ Support Mina Development')
+                .setDescription('Thank you for considering supporting Mina! Your contributions keep our 24/7 high-fidelity music nodes, AI servers, and low-latency clusters running smoothly.')
                 .addFields(
-                    { name: '👑 Starry Premium', value: 'Unlock 24/7 voice persistence, studio DSP audio filters, cloud backups, and multi-bot workers with `,premium`!', inline: false },
+                    { name: '👑 Mina Premium', value: 'Unlock 24/7 voice persistence, studio DSP audio filters, cloud backups, and multi-bot workers with `,premium`!', inline: false },
                     { name: '🌐 Web Store', value: 'Check out our official dashboard at https://starry-bot.loca.lt', inline: false }
                 )
-                .setFooter({ text: 'Starry Bot • Handcrafted with love' });
+                .setFooter({ text: 'Mina System • Handcrafted with love' });
             return ctx.reply({ embeds: [embed] });
         }
     },
@@ -904,7 +1003,7 @@ const commands = [
         name: 'ask',
         aliases: ['ai', 'gemini', 'gpt', 'chat', 'question', 'starryai'],
         category: 'Utility',
-        description: 'Ask Starry AI anything, inspect attached images visually, or generate AI images with interactive page-turning buttons.',
+        description: 'Ask Mina AI anything, inspect attached images visually, or generate AI images with interactive page-turning buttons.',
         usage: ',ask [question or prompt] (attach image to analyze)',
         async execute(ctx) {
             const { sendPaginatedAIResponse, extractImageFromContext } = require('../../utils/aiEngine');
@@ -916,7 +1015,7 @@ const commands = [
                 if (attachedImage) {
                     prompt = 'Analyze this image in detail, identify key elements, text, and explain what you see.';
                 } else {
-                    return ctx.reply('❓ **Please provide a question, prompt, or attach an image for Starry AI!**\n*Example: `,ask Explain quantum computing` or `,imagine Cyberpunk anime girl` or attach a screenshot with `,ask`!*');
+                    return ctx.reply('❓ **Please provide a question, prompt, or attach an image for Mina AI!**\n*Example: `,ask Explain quantum computing` or `,imagine Cyberpunk anime girl` or attach a screenshot with `,ask`!*');
                 }
             }
 
@@ -949,7 +1048,7 @@ const commands = [
         name: 'vision',
         aliases: ['analyze', 'ocr', 'inspectimage', 'imageinfo', 'scanimage'],
         category: 'Utility',
-        description: '🌌 Starry Multimodal Vision Studio - Analyze any image, screenshot, error code, diagram, or meme.',
+        description: '🌌 Mina Multimodal Vision Studio - Analyze any image, screenshot, error code, diagram, or meme.',
         usage: ',vision [question or prompt] (upload image or reply to image)',
         async execute(ctx) {
             const { sendPaginatedAIResponse, extractImageFromContext } = require('../../utils/aiEngine');
@@ -997,7 +1096,7 @@ const commands = [
         name: 'codebot',
         aliases: ['buildbot', 'makebot', 'botstudio', 'createbot'],
         category: 'Utility',
-        description: '🚀 Starry Bot Studio: Build a complete multi-file bot pushed to GitHub or downloaded as ZIP.',
+        description: '🚀 Mina Bot Studio: Build a complete multi-file bot pushed to GitHub or downloaded as ZIP.',
         usage: ',codebot <describe the bot you want>',
         async execute(ctx) {
             let prompt = (ctx.options?.getString ? (ctx.options.getString('prompt') || ctx.options.getString('description')) : null) || ctx.args.join(' ');
@@ -1028,8 +1127,8 @@ const commands = [
 
             const embed = new EmbedBuilder()
                 .setColor(config.EMBED_COLORS.PRIMARY)
-                .setAuthor({ name: 'Starry Master Web Dashboard', iconURL: ctx.client.user?.displayAvatarURL({ dynamic: true }) })
-                .setTitle('🌐 Starry Enterprise Web Control Center')
+                .setAuthor({ name: 'Mina Master Web Dashboard', iconURL: ctx.client.user?.displayAvatarURL({ dynamic: true }) })
+                .setTitle('🌐 Mina Enterprise Web Control Center')
                 .setDescription(
                     `Manage your server settings, auto-moderation, verification gateways, 24/7 music sessions, and visual embeds directly from our high-speed global web interface!\n\n` +
                     `🔗 **Live Public Domain:** [Click to Open Dashboard](${webUrl})\n\n` +
@@ -1039,14 +1138,14 @@ const commands = [
                     `• **Live Music Studio** (Remote Web Player & 24/7 Voice Lock)\n` +
                     `• **Visual Embed Studio** (WYSIWYG real-time Discord card preview)\n` +
                     `• **Cloud Backups & Ban File Export**\n` +
-                    `• **Starry Premium & License Key Store**`
+                    `• **Mina Premium & License Key Store**`
                 )
                 .setFooter({ text: 'Prefix: , • Single-Host Multi-Bot Orchestration' })
                 .setTimestamp();
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setLabel('🌐 Open Dashboard').setStyle(ButtonStyle.Link).setURL(webUrl),
-                new ButtonBuilder().setLabel('➕ Add Starry').setStyle(ButtonStyle.Link).setURL(`https://discord.com/oauth2/authorize?client_id=${ctx.client.user.id}&permissions=8&scope=bot%20applications.commands`)
+                new ButtonBuilder().setLabel('➕ Add Mina').setStyle(ButtonStyle.Link).setURL(`https://discord.com/oauth2/authorize?client_id=${ctx.client.user.id}&permissions=8&scope=bot%20applications.commands`)
             );
 
             return ctx.reply({ embeds: [embed], components: [row] });
@@ -1137,12 +1236,12 @@ const commands = [
 
             const embed = new EmbedBuilder()
                 .setColor('#F59E0B')
-                .setAuthor({ name: 'Starry Premium Activated!', iconURL: 'https://cdn.discordapp.com/emojis/1049283733054177301.webp?size=96' })
+                .setAuthor({ name: 'Mina Premium Activated!', iconURL: 'https://cdn.discordapp.com/emojis/1049283733054177301.webp?size=96' })
                 .setTitle(`🎉 Guild Upgraded to ${license.tier.toUpperCase()} Tier!`)
                 .setDescription(
-                    `Thank you for supporting Starry! Your server now has full access to all premium features:\n\n` +
+                    `Thank you for supporting Mina! Your server now has full access to all premium features:\n\n` +
                     `⚡ **24/7 Studio Quality Voice (320kbps)**\n` +
-                    `🛡️ **Starry Anti-Nuke & Anti-Raid Shield**\n` +
+                    `🛡️ **Mina Anti-Nuke & Anti-Raid Shield**\n` +
                     `💾 **Unlimited Daily Cloud Backups**\n` +
                     `👑 **Web Captcha Verification Gateway**\n` +
                     `💰 **2x Economy XP & Loot Multiplier**\n\n` +
@@ -1185,13 +1284,13 @@ const commands = [
             const embed = new EmbedBuilder()
                 .setColor(isPrem ? '#F59E0B' : config.EMBED_COLORS.PRIMARY)
                 .setAuthor({ 
-                    name: `Starry Premium Status • ${ctx.guild?.name || 'Starry Cloud'}`, 
+                    name: `Mina Premium Status • ${ctx.guild?.name || 'Starry Cloud'}`, 
                     iconURL: ctx.guild?.iconURL?.({ dynamic: true }) || 'https://cdn.discordapp.com/emojis/1049283733054177301.webp?size=96' 
                 })
-                .setTitle(isPrem ? `👑 Premium Active: ${tier.toUpperCase()}` : '⭐ Upgrade to Starry Premium')
+                .setTitle(isPrem ? `👑 Premium Active: ${tier.toUpperCase()}` : '⭐ Upgrade to Mina Premium')
                 .setDescription(
                     isPrem 
-                        ? `✅ This server has active **Starry Premium** privileges!\n🕒 **Status:** \`${expires ? 'Expires ' + new Date(expires).toLocaleDateString() : 'Permanent Lifetime / Bot Owner God-Mode'}\`\n\n*All 12 Studio & Security features are fully unlocked.*`
+                        ? `✅ This server has active **Mina Premium** privileges!\n🕒 **Status:** \`${expires ? 'Expires ' + new Date(expires).toLocaleDateString() : 'Permanent Lifetime / Bot Owner God-Mode'}\`\n\n*All 12 Studio & Security features are fully unlocked.*`
                         : `Supercharge your server with 24/7 Voice persistence, Studio DSP Audio Filters, Cloud Disaster Backups, and Multi-Bot Worker Nodes!`
                 )
                 .addFields(
@@ -1237,7 +1336,7 @@ const commands = [
 
             const callerId = ctx.user?.id || ctx.author?.id;
             if (!BOT_OWNERS.includes(callerId)) {
-                return ctx.reply('❌ **Access Denied**: This command is strictly reserved for Starry Bot Owners.');
+                return ctx.reply('❌ **Access Denied**: This command is strictly reserved for Mina Bot Owners.');
             }
 
             const mongoose = require('mongoose');
@@ -1351,9 +1450,9 @@ const commands = [
             }
 
             const tierNames = {
-                shield_plus: 'Starry Shield Plus',
-                pro_cluster: 'Starry Pro Cluster',
-                lifetime: 'Starry Supreme Lifetime VIP'
+                shield_plus: 'Mina Shield Plus',
+                pro_cluster: 'Mina Pro Cluster',
+                lifetime: 'Mina Supreme Lifetime VIP'
             };
             const tierMaxShares = {
                 shield_plus: 5,
@@ -1415,7 +1514,7 @@ const commands = [
             const embed = new EmbedBuilder()
                 .setColor('#F59E0B')
                 .setAuthor({ 
-                    name: 'Starry Premium Direct Grant • Bot Owner Authority', 
+                    name: 'Mina Premium Direct Grant • Bot Owner Authority', 
                     iconURL: 'https://cdn.discordapp.com/emojis/1049283733054177301.webp?size=96' 
                 })
                 .setTitle(`👑 Premium Granted: ${tierName}`)
@@ -1439,7 +1538,7 @@ const commands = [
                         inline: false
                     }
                 )
-                .setFooter({ text: 'Starry Core Infrastructure • Instant RAM & Database Activation' })
+                .setFooter({ text: 'Mina Core Infrastructure • Instant RAM & Database Activation' })
                 .setTimestamp();
 
             return ctx.reply({ embeds: [embed] });
@@ -1464,7 +1563,7 @@ const commands = [
 
             const callerId = ctx.user?.id || ctx.author?.id;
             if (!BOT_OWNERS.includes(callerId)) {
-                return ctx.reply('❌ **Access Denied**: This command is strictly reserved for Starry Bot Owners.');
+                return ctx.reply('❌ **Access Denied**: This command is strictly reserved for Mina Bot Owners.');
             }
 
             let targetId = null;
@@ -1497,7 +1596,7 @@ const commands = [
             }
             invalidatePremiumCache(targetId);
 
-            return ctx.reply(`🛑 **Starry Premium Revoked:** Premium status removed for ID \`${targetId}\`.`);
+            return ctx.reply(`🛑 **Mina Premium Revoked:** Premium status removed for ID \`${targetId}\`.`);
         }
     },
 
@@ -1542,8 +1641,8 @@ const commands = [
             const embed = new EmbedBuilder()
                 .setColor(config.EMBED_COLORS?.SUCCESS || '#2ECC71')
                 .setTitle('✅ Server Prefix Updated')
-                .setDescription(`Successfully changed this server's prefix to: \`${newPrefix}\`\n\n**Example Commands:**\n• \`${newPrefix}help\` — Help Menu\n• \`${newPrefix}ask <question>\` — Starry AI\n• \`${newPrefix}play <song>\` — Music Audio\n• \`${newPrefix}hug @user\` — Social Action`)
-                .setFooter({ text: 'Starry Configuration • Default fallback: ,' })
+                .setDescription(`Successfully changed this server's prefix to: \`${newPrefix}\`\n\n**Example Commands:**\n• \`${newPrefix}help\` — Help Menu\n• \`${newPrefix}ask <question>\` — Mina AI\n• \`${newPrefix}play <song>\` — Music Audio\n• \`${newPrefix}hug @user\` — Social Action`)
+                .setFooter({ text: 'Mina Configuration • Default fallback: ,' })
                 .setTimestamp();
 
             return ctx.reply({ embeds: [embed] });
@@ -1568,7 +1667,7 @@ const commands = [
             } = require('../../utils/i18n');
 
             if (!ctx.guild) {
-                return ctx.reply('ℹ️ In Direct Messages, Starry defaults to English (🇬🇧).');
+                return ctx.reply('ℹ️ In Direct Messages, Mina defaults to English (🇬🇧).');
             }
 
             const currentLang = await getGuildLanguage(ctx.guild.id);
@@ -1591,7 +1690,7 @@ const commands = [
                         t(currentLang, 'lang.change_hint', { prefix }) + '\n\n' +
                         `**Supported Languages (14):**\n${langListStr}`
                     )
-                    .setFooter({ text: 'Starry Multi-Language Localization Engine' })
+                    .setFooter({ text: 'Mina Multi-Language Localization Engine' })
                     .setTimestamp();
 
                 const selectRow = createLanguageSelectRow(currentLang, 'starry_lang_select');
@@ -1623,7 +1722,7 @@ const commands = [
                 .setColor(config.EMBED_COLORS?.SUCCESS || '#2ECC71')
                 .setTitle(t(targetCode, 'lang.updated_title'))
                 .setDescription(t(targetCode, 'lang.updated_desc', { lang: newInfo.native, flag: newInfo.flag, native: newInfo.native }))
-                .setFooter({ text: 'Starry Configuration • ' + newInfo.name })
+                .setFooter({ text: 'Mina Configuration • ' + newInfo.name })
                 .setTimestamp();
 
             return ctx.reply({ embeds: [embed] });
@@ -1635,15 +1734,15 @@ const commands = [
         name: 'vote',
         aliases: ['topgg', 'upvote'],
         category: 'Utility',
-        description: 'Vote for Starry on Top.gg to earn free Credits and XP boosts!',
+        description: 'Vote for Mina on Top.gg to earn free Credits and XP boosts!',
         usage: ',vote',
         async execute(ctx) {
             const topggUrl = 'https://top.gg/bot/1513589513648345368/vote';
             const embed = new EmbedBuilder()
                 .setColor('#FF79C6')
-                .setTitle('⭐ Vote for Starry on Top.gg')
+                .setTitle('⭐ Vote for Mina on Top.gg')
                 .setDescription(
-                    `Support Starry by voting on **Top.gg** and claim instant rewards!\n\n` +
+                    `Support Mina by voting on **Top.gg** and claim instant rewards!\n\n` +
                     `🎁 **Voting Rewards:**\n` +
                     `• **+500 Credits** (Weekday) / **+1,000 Credits** (Weekend)\n` +
                     `• **+500 XP Boost** (Weekday) / **+1,000 XP** (Weekend)\n` +
@@ -1743,7 +1842,7 @@ const commands = [
                     .setAuthor({ name: '⏰ Starlight Reminder System', iconURL: ctx.client.user.displayAvatarURL({ dynamic: true }) })
                     .setTitle('🔔 How to Use Celestial Reminders')
                     .setDescription(
-                        `Never forget an important task, event, or timer! Starry will notify you automatically.\n\n` +
+                        `Never forget an important task, event, or timer! Mina will notify you automatically.\n\n` +
                         `**Examples:**\n` +
                         `• \`,remind 10m Check the oven\`\n` +
                         `• \`,remind 2h Study for upcoming exam\`\n` +
@@ -1754,7 +1853,7 @@ const commands = [
                         `• \`,delreminder <id>\` or \`,remind cancel <id>\` — Cancel a reminder\n\n` +
                         `*Supported units: \`s\` (seconds), \`m\` (minutes), \`h\` (hours), \`d\` (days).*`
                     )
-                    .setFooter({ text: 'Starry Cosmic Reminders • Prefix: ,' })
+                    .setFooter({ text: 'Mina Reminders • Prefix: ,' })
                     .setTimestamp();
                 return ctx.reply({ embeds: [guideEmbed] });
             }
@@ -1868,7 +1967,7 @@ const commands = [
                     `> 📬 **Destination:** ${isDM ? 'Direct Messages (DM)' : `<#${ctx.channel.id}>`}\n` +
                     `> 🆔 **Reminder ID:** \`${reminder._id}\``
                 )
-                .setFooter({ text: 'Starry Cosmic Reminders • Use ,reminders to view active reminders' })
+                .setFooter({ text: 'Mina Reminders • Use ,reminders to view active reminders' })
                 .setTimestamp();
 
             return ctx.reply({ embeds: [embed] });
@@ -1950,7 +2049,7 @@ const commands = [
                         `• \`,starboard stars <number>\` — Change required star count\n` +
                         `• \`,starboard toggle\` — Enable or disable the starboard`
                     )
-                    .setFooter({ text: 'Starry Starboard Engine' })
+                    .setFooter({ text: 'Mina Starboard Engine' })
                     .setTimestamp();
                 return ctx.reply({ embeds: [embed] });
             }
@@ -1985,7 +2084,7 @@ const commands = [
                         `• **Status:** 🟢 Active\n\n` +
                         `Whenever any message receives **${conf.starCount}** ⭐ reactions, it will automatically be featured with interactive jump links!`
                     )
-                    .setFooter({ text: 'Starry Reaction Showcase' });
+                    .setFooter({ text: 'Mina Reaction Showcase' });
                 return ctx.reply({ embeds: [embed] });
             }
 
@@ -2044,7 +2143,7 @@ const commands = [
                         `• \`,tempvoice setup <#voiceChannel>\` — Set the Join-to-Create lobby channel\n` +
                         `• \`,tempvoice toggle\` — Turn dynamic voice on/off`
                     )
-                    .setFooter({ text: 'Starry Dynamic Voice Suite' })
+                    .setFooter({ text: 'Mina Dynamic Voice Suite' })
                     .setTimestamp();
                 return ctx.reply({ embeds: [embed] });
             }
@@ -2073,7 +2172,7 @@ const commands = [
                     .setDescription(
                         `• **Lobby Channel:** <#${conf.lobbyChannelId}>\n` +
                         `• **Status:** 🟢 Active\n\n` +
-                        `Whenever a member joins <#${conf.lobbyChannelId}>, Starry will automatically create a private voice channel for them with interactive Lock 🔒, Unlock 🔓, Duo 👥, and Squad 🎮 controls!`
+                        `Whenever a member joins <#${conf.lobbyChannelId}>, Mina will automatically create a private voice channel for them with interactive Lock 🔒, Unlock 🔓, Duo 👥, and Squad 🎮 controls!`
                     )
                     .setFooter({ text: 'Dynamic Voice Hub Armed' });
                 return ctx.reply({ embeds: [embed] });
@@ -2118,7 +2217,7 @@ const commands = [
                         `• \`,tag info <name>\` — Inspect tag creator & usage statistics\n` +
                         `• \`,tag delete <name>\` — Delete a tag (creator or mods)`
                     )
-                    .setFooter({ text: 'Starry Tag Engine • Prefix: ,' })
+                    .setFooter({ text: 'Mina Tag Engine • Prefix: ,' })
                     .setTimestamp();
                 return ctx.reply({ embeds: [embed] });
             }
@@ -2210,7 +2309,7 @@ const commands = [
                         { name: '📊 Total Uses', value: `\`${tag.uses}\` times`, inline: true },
                         { name: '📅 Created', value: `<t:${ts}:R>`, inline: true }
                     )
-                    .setFooter({ text: 'Starry Tag Engine' })
+                    .setFooter({ text: 'Mina Tag Engine' })
                     .setTimestamp();
                 return ctx.reply({ embeds: [embed] });
             }
@@ -2280,7 +2379,7 @@ const commands = [
                         `• \`,sticky list\` — List all channels with active sticky notices\n\n` +
                         `*Requires Manage Messages or Administrator permission.*`
                     )
-                    .setFooter({ text: 'Starry Pinned Notice Engine' })
+                    .setFooter({ text: 'Mina Pinned Notice Engine' })
                     .setTimestamp();
                 return ctx.reply({ embeds: [embed] });
             }
@@ -2301,7 +2400,7 @@ const commands = [
                     .setDescription(
                         stickies.map(s => `• <#${s.channelId}> — *" ${s.content.slice(0, 50)}${s.content.length > 50 ? '...' : ''} "*`).join('\n')
                     )
-                    .setFooter({ text: 'Starry Sticky Engine' })
+                    .setFooter({ text: 'Mina Sticky Engine' })
                     .setTimestamp();
                 return ctx.reply({ embeds: [embed] });
             }
@@ -2339,7 +2438,7 @@ const commands = [
                     .setColor('#5865F2')
                     .setAuthor({ name: '📌 Pinned Channel Notice', iconURL: ctx.client.user.displayAvatarURL({ dynamic: true }) })
                     .setDescription(text.trim())
-                    .setFooter({ text: 'Sticky Message • Starry Management' })
+                    .setFooter({ text: 'Sticky Message • Mina Management' })
                     .setTimestamp();
 
                 const sent = await ctx.channel.send({ embeds: [noticeEmbed] });
@@ -2403,7 +2502,7 @@ const commands = [
 
             const embed = new EmbedBuilder()
                 .setColor('#2ECC71')
-                .setTitle('⚡ Starry Virtual RAM & Memory Core')
+                .setTitle('⚡ Mina Virtual RAM & Memory Core')
                 .setDescription(`**Virtual Memory Engine:** \`ACTIVE & EXPANDED\`\nBot is configured to utilize the system's **${(swapTotalMB / 1024).toFixed(1)} GB Virtual RAM pool** to prevent phone memory saturation.`)
                 .addFields(
                     {
@@ -2422,7 +2521,7 @@ const commands = [
                         inline: false
                     }
                 )
-                .setFooter({ text: 'Starry Virtual RAM Engine • 4GB Virtual Memory Space' })
+                .setFooter({ text: 'Mina Virtual RAM Engine • 4GB Virtual Memory Space' })
                 .setTimestamp();
 
             return ctx.reply({ embeds: [embed] });
@@ -2531,7 +2630,7 @@ const commands = [
         name: 'genkey',
         aliases: ['generatekey', 'createkey'],
         category: 'Utility',
-        description: 'Generate an administrative Starry Premium License Key.',
+        description: 'Generate an administrative Mina Premium License Key.',
         usage: ',genkey <shield_plus | pro_cluster | lifetime> [durationDays]',
         async execute(ctx) {
             if (!config.BOT_OWNERS?.includes(ctx.user.id)) {

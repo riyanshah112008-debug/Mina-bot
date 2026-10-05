@@ -1,21 +1,26 @@
+// ==========================================
+// 🌸 MINA EXECUTIVE HELP & DISPATCH HUB
+// File Path: src/utils/helpHelper.js
+// Professional Command Directory, Select Menus, & Visual Embeds
+// ==========================================
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const config = require('../config');
 
 const BASE_HELP_CATEGORIES = [
-    { id: 'music', label: 'Music & Hi-Fi Audio (37)', desc: 'Playback, Autoplay, Spotify, DSP filters, 24/7 & controller', emoji: '🎵' },
-    { id: 'mod', label: 'Moderation & AutoMod (45+)', desc: 'AutoMod for emojis & links, bans, mutes, lockdowns & nukes', emoji: '🛡️' },
-    { id: 'booster', label: 'Booster Studio & Shared Roles (4)', desc: 'Custom roles, shared booster perks & administration', emoji: '🚀' },
-    { id: 'util', label: 'Utility & AI Innovations (50+)', desc: 'Spark AI, Astral Portal, Pulse, Code Studio & Gazette', emoji: '🛠️' },
-    { id: 'social', label: 'Social & Expressions (44)', desc: 'Hug, kiss, slap, anime GIFs, interactions & counters', emoji: '🎭' },
-    { id: 'eco', label: 'Economy & RPG Adventure (32)', desc: 'Passport, beg, scavenge, heists, crates, shop & mining', emoji: '💰' },
-    { id: 'game', label: 'Cosmic Arcade & Boss Raids (12)', desc: 'Co-op World Boss Raids, Blackjack, Mines & Wordle', emoji: '🎮' },
-    { id: 'sys', label: 'Multi-Bot & Systems (26)', desc: 'Multi-bot cluster, treasure chests, giveaways & tickets', emoji: '🤖' }
+    { id: 'music', label: 'Music & Hi-Fi Audio (37)', desc: 'Playback, Autoplay, Spotify, DSP filters & 24/7 Voice', emoji: '🎵' },
+    { id: 'mod', label: 'Moderation & Security (45+)', desc: 'AutoMod shield, bans, mutes, lockdowns & audit logs', emoji: '🛡️' },
+    { id: 'booster', label: 'Vanity & Custom Colors (10)', desc: 'Optical hex blends, zero-boost roles & booster perks', emoji: '🎨' },
+    { id: 'util', label: 'Utility & Server Tools (50+)', desc: 'AI assistant, reminders, poll, weather, math & info', emoji: '⚙️' },
+    { id: 'social', label: 'Anime Socials & Actions (44)', desc: 'Hugs, kisses, anime GIFs & shared interaction counters', emoji: '🌸' },
+    { id: 'eco', label: 'Economy & Leveling (32)', desc: 'XP ranks, leaderboards, wallet, daily, work & shop', emoji: '💎' },
+    { id: 'game', label: 'Arcade & Community Games (12)', desc: 'Boss raids, blackjack, trivia, coinflip & wordle', emoji: '🎮' },
+    { id: 'sys', label: 'Systems & Administration (26)', desc: 'Welcome/goodbye cards, reaction roles, tickets & logs', emoji: '🤖' }
 ];
 
 const NSFW_CATEGORY_INFO = {
     id: 'nsfw',
     label: 'Mature & Anime NSFW (21)',
-    desc: 'Anime waifus, nekos, ecchi art & mature social actions',
+    desc: 'Anime waifus, ecchi art galleries & mature interactions',
     emoji: '🔞'
 };
 
@@ -30,187 +35,176 @@ function buildCategoryEmbed(catId, customPrefix, isNsfw = false) {
     const prefix = customPrefix || config.DEFAULT_PREFIX || ',';
     const embed = new EmbedBuilder()
         .setColor(config.EMBED_COLORS.PRIMARY)
-        .setFooter({ text: `Starry Master Bot • Slash Commands (/) • Prefix (${prefix}) Owner-Only` })
+        .setAuthor({ name: 'Mina • Intelligent Discord Suite', iconURL: 'https://cdn.discordapp.com/emojis/1090333200787382342.webp' })
+        .setFooter({ text: `Mina System • Slash Commands (/) • Server Prefix: ${prefix}` })
         .setTimestamp();
 
     if (catId === 'music') {
-        embed.setTitle('🎵 Music & Hi-Fi Audio Suite (45 Commands)')
+        embed.setColor(config.EMBED_COLORS.MUSIC || '#1DB954')
+            .setTitle('🎵 Music & Hi-Fi Audio Suite')
             .setDescription(
-                `**Playback & Controls:**\n` +
-                `\`${prefix}play\`, \`${prefix}pause\`, \`${prefix}resume\`, \`${prefix}skip\`, \`${prefix}stop\`, \`${prefix}queue\`, \`${prefix}nowplaying\`, \`${prefix}volume\`, \`${prefix}loop\`, \`${prefix}shuffle\`, \`${prefix}seek\`, \`${prefix}replay\`, \`${prefix}previous\`, \`${prefix}jump\`, \`${prefix}move\`, \`${prefix}clear\`, \`${prefix}remove\`, \`${prefix}speed\`, \`${prefix}join\`, \`${prefix}247\`\n\n` +
-                `**📻 Smart Autoplay & Spotify Integration:**\n` +
-                `• \`${prefix}autoplay\` (or \`${prefix}ap\`) — Seamless continuous playback using Spotify & YouTube recommendation engine\n` +
-                `• \`${prefix}spotify\` (or \`${prefix}sp\`) — Link personal Spotify account, save custom playlists & 1-click voice stream\n` +
-                `• \`${prefix}setup\` — Deploy the dedicated interactive Music Controller request channel\n` +
-                `• \`${prefix}callstarry\` — Summon a free multi-bot worker to your voice channel\n\n` +
-                `**🎛️ Studio DSP Audio Filters (15 Presets):**\n` +
-                `\`${prefix}bass\` *(True Subwoofer Physical Vibration)*, \`${prefix}8d\`, \`${prefix}nightcore\`, \`${prefix}daycore\`, \`${prefix}vaporwave\`, \`${prefix}lofi\`, \`${prefix}reverb\`, \`${prefix}karaoke\`, \`${prefix}surround\`, \`${prefix}electronic\`, \`${prefix}soft\`, \`${prefix}radio\`, \`${prefix}treble\`, \`${prefix}pop\`, \`${prefix}filter <name>\`, \`${prefix}clearfilters\`\n\n` +
-                `**Panels & Lyrics:**\n` +
-                `\`${prefix}djpanel\`, \`${prefix}lyrics\`, \`${prefix}grab\``
+                `>>> Studio-grade lossless audio streaming powered by Lavalink v4 cluster with Spotify & YouTube integration.\n\n` +
+                `**🎛️ Playback & Queue Controls:**\n` +
+                `\`${prefix}play <song>\` • \`${prefix}search <query>\` • \`${prefix}pause\` • \`${prefix}resume\` • \`${prefix}skip\` • \`${prefix}stop\` • \`${prefix}queue\` • \`${prefix}nowplaying\` • \`${prefix}volume <1-100>\` • \`${prefix}loop\` • \`${prefix}shuffle\` • \`${prefix}seek <time>\` • \`${prefix}replay\` • \`${prefix}clear\` • \`${prefix}join\` • \`${prefix}247\`\n\n` +
+                `**📻 Autoplay & Smart Recommendations:**\n` +
+                `• \`${prefix}autoplay\` (or \`${prefix}ap\`) — Automatic continuous stream based on Spotify & YouTube algorithms\n` +
+                `• \`${prefix}spotify\` (or \`${prefix}sp\`) — Connect your Spotify account & stream saved playlists with 1 click\n` +
+                `• \`${prefix}setup\` — Create the dedicated interactive Music Controller desk\n` +
+                `• \`${prefix}djpanel\` — Open real-time DJ control panel with filter toggles\n\n` +
+                `**🎚️ Lossless DSP Filters (15 Presets):**\n` +
+                `\`${prefix}bass\` *(Physical Subwoofer)* • \`${prefix}8d\` • \`${prefix}nightcore\` • \`${prefix}daycore\` • \`${prefix}vaporwave\` • \`${prefix}lofi\` • \`${prefix}karaoke\` • \`${prefix}clearfilters\``
             );
     } else if (catId === 'mod') {
-        embed.setTitle('🛡️ Moderation & AutoMod Suite (45+ Commands)')
+        embed.setColor(config.EMBED_COLORS.DANGER || '#ED4245')
+            .setTitle('🛡️ Moderation & Enterprise Security')
             .setDescription(
-                `**🤖 Channel AutoMod Pro (Links & Emojis):**\n` +
-                `• \`${prefix}automod\` (or \`${prefix}am\`) — Toggle link & emoji spam protection per channel with 1-year interactive buttons\n` +
-                `• \`${prefix}antilink\` — Instant enable/disable link protection for specific channels\n` +
-                `• \`${prefix}antiemoji\` — Instant enable/disable 5+ emoji spam filter for specific channels\n` +
-                `• \`${prefix}ignore\` / \`${prefix}unignore\` — Exclude or re-activate channel automod filtering\n\n` +
-                `**Punishments & Enforcement:**\n` +
-                `\`${prefix}ban\`, \`${prefix}unban\`, \`${prefix}softban\`, \`${prefix}tempban\`, \`${prefix}kick\`, \`${prefix}mute\`, \`${prefix}unmute\`, \`${prefix}warn\`, \`${prefix}warnings\`, \`${prefix}clearwarns\`, \`${prefix}delwarn\`\n\n` +
+                `>>> Advanced moderation suite with role hierarchy verification, audit logs, and proactive anti-raid defenses.\n\n` +
+                `**🤖 Channel AutoMod Shield:**\n` +
+                `• \`${prefix}automod\` — Interactive control dashboard to toggle link, invite & emoji spam protection\n` +
+                `• \`${prefix}antilink\` — Instant channel link protection\n` +
+                `• \`${prefix}antiemoji\` — Excessive emoji spam prevention\n` +
+                `• \`${prefix}ignore\` / \`${prefix}unignore\` — Channel automod bypass management\n\n` +
+                `**⚖️ Sanctions & Enforcement:**\n` +
+                `\`${prefix}ban <@user> [reason]\` • \`${prefix}unban <id>\` • \`${prefix}kick <@user>\` • \`${prefix}timeout <@user> <time>\` • \`${prefix}untimeout <@user>\` • \`${prefix}warn <@user>\` • \`${prefix}warnings <@user>\` • \`${prefix}clearwarns <@user>\` • \`${prefix}delwarn <caseId>\`\n\n` +
                 `**🚨 Emergency Raid Lockdown & Recovery:**\n` +
                 `• \`${prefix}emergency-lockdown\` — Instant zero-delay freeze on all text channels\n` +
-                `• \`${prefix}emergency-nuke\` — Emergency quarantine, clone and cleanse channel\n` +
-                `• \`${prefix}emergency-secure\` — Multi-threat lockdown & anti-raid quarantine\n` +
-                `• \`${prefix}emergency-unban\` — Automated mass-unban recovery suite\n\n` +
-                `**Channel & Member Management:**\n` +
-                `\`${prefix}purge\`, \`${prefix}purgeuser\`, \`${prefix}purgelinks\`, \`${prefix}purgebot\`, \`${prefix}slowmode\`, \`${prefix}lock\`, \`${prefix}unlock\`, \`${prefix}lockdown\`, \`${prefix}unlockdown\`, \`${prefix}nuke\`, \`${prefix}hide\`, \`${prefix}unhide\`, \`${prefix}setnick\`, \`${prefix}role\`, \`${prefix}addrole\`, \`${prefix}removerole\`, \`${prefix}roleall\`, \`${prefix}autorole\`\n\n` +
-                `**Voice Moderation & Cases:**\n` +
-                `\`${prefix}vckick\`, \`${prefix}vcmute\`, \`${prefix}vcunmute\`, \`${prefix}vcmod\`, \`${prefix}modpanel\`, \`${prefix}case\`, \`${prefix}editcase\`, \`${prefix}modstats\`, \`${prefix}modleaderboard\`, \`${prefix}banfile\`, \`${prefix}preban\``
+                `• \`${prefix}emergency-nuke\` — Fast quarantine, clone, and cleanse compromised channels\n` +
+                `• \`${prefix}emergency-secure\` — Multi-threat anti-raid lockdown\n\n` +
+                `**🧹 Channel & Member Management:**\n` +
+                `\`${prefix}purge <amount>\` • \`${prefix}slowmode <seconds>\` • \`${prefix}lock\` • \`${prefix}unlock\` • \`${prefix}nuke\` • \`${prefix}role <@user> <@role>\` • \`${prefix}autorole\``
             );
     } else if (catId === 'booster') {
-        embed.setTitle('🚀 Vanity Studio & Zero-Boost Name Colors')
+        embed.setColor('#FF73FA')
+            .setTitle('🎨 Vanity Studio & Optical Name Colors')
             .setDescription(
-                `**🎨 Zero-Boost Name Colors & Optical Hex Blends:**\n` +
-                `• \`${prefix}color blend <#Hex1> <#Hex2> [ratio%]\` — Blend two hex colors optically (Zero server boosts needed!)\n` +
-                `• \`${prefix}color presets\` — Browse 26 hand-crafted aesthetic blend palettes\n` +
-                `• \`${prefix}color <#HexCode>\` — Apply a solid custom hex color role\n` +
-                `• \`${prefix}color random\` — Generate and equip a random vibrant blend\n` +
-                `• \`${prefix}color preview <#Hex1> [#Hex2]\` — Preview color blend & WCAG contrast\n` +
-                `• \`${prefix}color info\` / \`${prefix}color remove\` — View active role or reset to default\n\n` +
-                `**🌟 Server Booster Vanity & Shared Roles:**\n` +
-                `• \`${prefix}boosterrole\` (or \`${prefix}br\`) — Create, edit color/icon/name, delete, or share your custom role with friends!\n` +
-                `• \`${prefix}boostperks\` — Inspect your active boosting tier, tenure, and shared role recipients.\n\n` +
-                `**⚙️ Administrator Controls:**\n` +
-                `• \`${prefix}color config\` — Configure color role system access and hierarchy anchor.\n` +
-                `• \`${prefix}boosteradmin\` — Configure booster share slots and sync rules.\n` +
-                `• \`${prefix}boost-setup\` — Configure booster announcements and VIP perks.`
+                `>>> Zero-boost optical color blending and VIP server booster customization suites.\n\n` +
+                `**🌈 Zero-Boost Name Colors (No Boosts Needed!):**\n` +
+                `• \`${prefix}color blend <#Hex1> <#Hex2> [ratio%]\` — Blend two hex colors optically with WCAG contrast guarantee\n` +
+                `• \`${prefix}color presets\` — 26 hand-crafted aesthetic blend palettes (Cyberpunk, Sunset, Sakura)\n` +
+                `• \`${prefix}color <#HexCode>\` — Apply a solid vibrant hex color\n` +
+                `• \`${prefix}color random\` — Generate and equip a random vibrant color blend\n` +
+                `• \`${prefix}color info\` • \`${prefix}color remove\` — View active custom role or reset to default\n\n` +
+                `**💎 Server Booster Perks & Shared Roles:**\n` +
+                `• \`${prefix}boosterrole\` (or \`${prefix}br\`) — Create and customize your personal booster role (Color, Icon, Name)\n` +
+                `• \`${prefix}boostperks\` — Inspect your active boosting tier and shared role slots\n` +
+                `• \`${prefix}boost-setup\` — Configure booster announcements and VIP welcome cards`
             );
     } else if (catId === 'util') {
-        embed.setTitle('🛠️ Utility & AI Server Innovations (50+ Commands)')
+        embed.setColor(config.EMBED_COLORS.PRIMARY || '#5865F2')
+            .setTitle('⚙️ General Utility & AI Innovations')
             .setDescription(
-                `**🌟 Cutting-Edge Starry Innovations:**\n` +
-                `• 💬 **Chat Reviver Spark:** \`${prefix}spark\` (or \`${prefix}revive\`, \`${prefix}deadchat\`) *(AI high-engagement discussions)*\n` +
-                `• 🌌 **Astral Portals:** \`${prefix}portal\` (or \`${prefix}wormhole\`) *(Live cross-server chat bridges)*\n` +
-                `• 💓 **Server Pulse:** \`${prefix}pulse\` (or \`${prefix}vibe\`) *(Circadian server vibe, retention & health analytics)*\n` +
-                `• 🧑‍💻 **Code Studio:** \`${prefix}code-studio\` (or \`${prefix}review\`) *(Multi-agent automated code audit & architect)*\n` +
-                `• 🗞️ **Starlight Gazette:** \`${prefix}gazette\` (or \`${prefix}digest\`) *(Autonomous AI community newspaper & recap)*\n` +
-                `• ⏳ **Server Chronos:** \`${prefix}chronos\` (or \`${prefix}goldenhour\`) *(Activity forecast heatmaps)*\n` +
-                `• 🛡️ **CyberSec Pentest:** \`${prefix}pentest\` (or \`${prefix}audit\`) *(White-hat security vulnerability scan)*\n` +
-                `• 📰 **Channel Catch-Up:** \`${prefix}catchup\` (or \`${prefix}tldr\`) *(AI chat recap & DM executive briefing)*\n\n` +
-                `**Core Server Tools:**\n` +
-                `\`${prefix}help\`, \`${prefix}ahelp\`, \`${prefix}ping\`, \`${prefix}botinfo\`, \`${prefix}serverinfo\`, \`${prefix}userinfo\`, \`${prefix}whois\`, \`${prefix}avatar\`, \`${prefix}banner\`, \`${prefix}membercount\`, \`${prefix}roles\`, \`${prefix}emojis\`, \`${prefix}steal\`, \`${prefix}invite\`, \`${prefix}vote\`, \`${prefix}premium\`, \`${prefix}addpremium\`, \`${prefix}delpremium\`, \`${prefix}uptime\`, \`${prefix}afk\`, \`${prefix}translate\`, \`${prefix}calculator\`, \`${prefix}poll\`, \`${prefix}announce\`, \`${prefix}embed\`, \`${prefix}say\`, \`${prefix}snipe\`, \`${prefix}editsnipe\`, \`${prefix}setlogs\`, \`${prefix}setupwelcome\`, \`${prefix}setupgoodbye\`, \`${prefix}imagine\`, \`${prefix}nitroclaims\`, \`${prefix}remind\`, \`${prefix}starboard\`, \`${prefix}tempvoice\`, \`${prefix}tag\`, \`${prefix}tags\`, \`${prefix}sticky\`, \`${prefix}vram\`, \`${prefix}redeem\`, \`${prefix}approveorder\`, \`${prefix}orders\`, \`${prefix}genkey\``
+                `>>> High-speed utility, artificial intelligence tools, and server diagnostics.\n\n` +
+                `**✨ Artificial Intelligence:**\n` +
+                `• \`${prefix}ai <prompt>\` — Conversational AI with multi-turn intelligence & vision support\n` +
+                `• \`${prefix}vision <attachment>\` — Multimodal visual analysis of images, charts, and error logs\n` +
+                `• \`${prefix}image <prompt>\` — Generate AI artwork and creative visual concepts\n` +
+                `• \`${prefix}spark\` (or \`${prefix}revive\`) — AI-driven conversation starter for quiet channels\n\n` +
+                `**📊 Server & User Intelligence:**\n` +
+                `\`${prefix}ping\` • \`${prefix}botinfo\` • \`${prefix}serverinfo\` • \`${prefix}userinfo\` • \`${prefix}avatar [@user]\` • \`${prefix}banner [@user]\` • \`${prefix}membercount\` • \`${prefix}emojis\` • \`${prefix}roles\`\n\n` +
+                `**🛠️ Productivity & Server Tools:**\n` +
+                `\`${prefix}afk [status]\` • \`${prefix}poll <question>\` • \`${prefix}remind <time> <task>\` • \`${prefix}steal <emojis>\` • \`${prefix}translate <lang> <text>\` • \`${prefix}calculator <expr>\` • \`${prefix}snipe\` • \`${prefix}editsnipe\` • \`${prefix}sticky\``
             );
     } else if (catId === 'social') {
-        embed.setTitle('🎭 Social Actions & Anime Expressions (44 Commands)')
+        embed.setColor(config.EMBED_COLORS.SOCIAL || '#FF79C6')
+            .setTitle('🌸 Anime Social Actions & Expressions')
             .setDescription(
-                `**Targeted Member Interactions (Anime GIFs + Counter):**\n` +
-                `\`${prefix}hug\`, \`${prefix}kiss\`, \`${prefix}slap\`, \`${prefix}pat\`, \`${prefix}cuddle\`, \`${prefix}bite\`, \`${prefix}poke\`, \`${prefix}punch\`, \`${prefix}tickle\`, \`${prefix}feed\`, \`${prefix}lick\`, \`${prefix}highfive\`, \`${prefix}wave\`, \`${prefix}handshake\`, \`${prefix}handhold\`, \`${prefix}bonk\`, \`${prefix}yeet\`, \`${prefix}boop\`, \`${prefix}kill\`, \`${prefix}spank\`, \`${prefix}wink\`, \`${prefix}suck\`, \`${prefix}pinch\`, \`${prefix}smack\`, \`${prefix}nom\`, \`${prefix}bully\`, \`${prefix}baka\`, \`${prefix}shoot\`\n\n` +
-                `**Solo Expressions & Fun:**\n` +
-                `\`${prefix}sleep\`, \`${prefix}wakeup\`, \`${prefix}cry\`, \`${prefix}laugh\`, \`${prefix}dance\`, \`${prefix}blush\`, \`${prefix}pout\`, \`${prefix}smile\`, \`${prefix}stare\`, \`${prefix}cheer\`, \`${prefix}smug\`, \`${prefix}sip\`, \`${prefix}shrug\`, \`${prefix}bleh\`, \`${prefix}clap\`, \`${prefix}social\`\n\n` +
-                `*All social interaction buttons feature persistent 1-year lifetime!*`
+                `>>> Express emotions or share anime interactions with friends. All shared actions track cumulative counters!\n\n` +
+                `**👥 Targeted Interactions (With GIF & Reciprocation Button):**\n` +
+                `\`${prefix}hug @user\` • \`${prefix}kiss @user\` • \`${prefix}pat @user\` • \`${prefix}slap @user\` • \`${prefix}cuddle @user\` • \`${prefix}bite @user\` • \`${prefix}poke @user\` • \`${prefix}feed @user\` • \`${prefix}highfive @user\` • \`${prefix}handhold @user\` • \`${prefix}bonk @user\` • \`${prefix}yeet @user\`\n\n` +
+                `**🎭 Solo Expressions & Reactions:**\n` +
+                `\`${prefix}dance\` • \`${prefix}cry\` • \`${prefix}laugh\` • \`${prefix}blush\` • \`${prefix}smile\` • \`${prefix}cheer\` • \`${prefix}sleep\` • \`${prefix}sip\` • \`${prefix}smug\` • \`${prefix}shrug\` • \`${prefix}bleh\`\n\n` +
+                `*Tip: You can reply directly to any message and type \`${prefix}hug\` to interact!*`
             );
     } else if (catId === 'eco') {
-        embed.setTitle('💰 Economy & RPG Adventure Suite (32 Commands)')
+        embed.setColor(config.EMBED_COLORS.ECONOMY || '#F39C12')
+            .setTitle('💎 Economy, Wealth & Leveling Suite')
             .setDescription(
-                `**Starlight Passport & Balances:**\n` +
-                `\`${prefix}profile\` (or \`${prefix}p\`), \`${prefix}balance\` (or \`${prefix}bal\`), \`${prefix}rank\`, \`${prefix}leaderboard\`, \`${prefix}deposit\`, \`${prefix}withdraw\`, \`${prefix}pay\`, \`${prefix}setbio\`, \`${prefix}setlevel\`\n\n` +
-                `**Adventure, Scavenging & Jobs:**\n` +
-                `• \`${prefix}beg\` — Beg traveling cosmic merchants\n` +
-                `• \`${prefix}search\` — Scavenge celestial locations (Nebula, Satellites, Craters)\n` +
-                `• \`${prefix}crime\` — Attempt high-risk planetary heists\n` +
-                `• \`${prefix}fish\` — Deep-space cosmic fishing\n` +
-                `• \`${prefix}mine\` — Asteroid mining for valuable minerals\n` +
-                `• \`${prefix}work\`, \`${prefix}daily\`, \`${prefix}weekly\`\n\n` +
-                `**Market, Inventory & Romance:**\n` +
-                `\`${prefix}shop\`, \`${prefix}buy\`, \`${prefix}sell\`, \`${prefix}inventory\`, \`${prefix}crate\`, \`${prefix}gamble\`, \`${prefix}slots\`, \`${prefix}rob\`, \`${prefix}pet\`, \`${prefix}marry\`, \`${prefix}divorce\`, \`${prefix}ship\``
+                `>>> Complete server engagement economy with XP progression, cash balances, and prestige.\n\n` +
+                `**📈 Server Leveling System:**\n` +
+                `• \`${prefix}rank [@user]\` — View your current level, total XP, and progress bar\n` +
+                `• \`${prefix}leaderboard\` (or \`${prefix}lb\`) — View top server members by XP, messages, or voice\n` +
+                `• \`${prefix}leveling\` — Open the server-wide leveling configuration dashboard\n` +
+                `• \`${prefix}leveling toggle\` — Enable or disable XP accumulation\n\n` +
+                `**💰 Economy & Career:**\n` +
+                `\`${prefix}balance\` • \`${prefix}daily\` • \`${prefix}work\` • \`${prefix}pay <@user> <amount>\` • \`${prefix}profile\` • \`${prefix}inventory\` • \`${prefix}shop\` • \`${prefix}buy <item>\` • \`${prefix}marry <@user>\` • \`${prefix}divorce\` • \`${prefix}ship <@user1> [@user2]\``
             );
     } else if (catId === 'game') {
-        embed.setTitle('🎮 Cosmic Arcade & Boss Raids (12 Commands)')
+        embed.setColor('#9B59B6')
+            .setTitle('🎮 Arcade & Community Games')
             .setDescription(
-                `**⚔️ Server-Wide Co-op Raids:**\n` +
-                `• \`${prefix}raid\` (or \`${prefix}boss\`, \`${prefix}bossraid\`) — Summon or battle ancient server World Bosses with cooperative mechanics & legendary loot!\n\n` +
-                `**Card & Casino Games:**\n` +
-                `• \`${prefix}blackjack\` (or \`${prefix}bj\`) — Full 21-card blackjack with Hit, Stand & Double Down buttons\n` +
-                `• \`${prefix}highlow\` (or \`${prefix}hl\`) — Predict higher or lower for multiplying stardust\n` +
-                `• \`${prefix}spin\` (or \`${prefix}wheel\`) — Animated celestial wheel of fortune\n\n` +
-                `**Arcade & Logic Challenges:**\n` +
-                `• \`${prefix}mines\` — 3x3 interactive minefield grid: reveal stars, avoid black holes, cash out!\n` +
-                `• \`${prefix}wordle\` — Secret 5-letter starlight word challenge\n` +
-                `• \`${prefix}trivia\` — Timed 4-choice trivia quiz with rewards\n` +
-                `• \`${prefix}tictactoe\` (or \`${prefix}ttt\`) — Interactive 3x3 PvP duel\n` +
-                `• \`${prefix}rps\` — Rock-Paper-Scissors against AI or members\n\n` +
-                `**Casual & Mystic:**\n` +
-                `• \`${prefix}coinflip\`, \`${prefix}roll\`, \`${prefix}8ball\``
+                `>>> Interactive multiplayer games, casino duels, and cooperative world boss raids.\n\n` +
+                `**⚔️ Cooperative World Boss Raids:**\n` +
+                `• \`${prefix}raid\` — Summon or join active server boss battles with real-time damage counters and loot\n\n` +
+                `**🎲 Arcade & Card Games:**\n` +
+                `• \`${prefix}blackjack\` (or \`${prefix}bj\`) — Casino 21 with Hit, Stand, and Double Down\n` +
+                `• \`${prefix}trivia\` — Interactive timed 4-option trivia quiz\n` +
+                `• \`${prefix}rps <choice>\` — Rock-Paper-Scissors with member challenge buttons\n` +
+                `• \`${prefix}coinflip\` • \`${prefix}dice\` • \`${prefix}8ball <question>\``
             );
     } else if (catId === 'sys') {
-        embed.setTitle('🤖 Multi-Bot & Systems Management (26 Commands)')
+        embed.setColor('#3498DB')
+            .setTitle('🤖 Systems & Server Architecture')
             .setDescription(
-                `**Multi-Bot Architecture & Clustering:**\n` +
-                `• \`${prefix}multibot\` — Inspect active worker bots, voice delegate states, and cluster health\n` +
-                `• \`${prefix}telemetry\` — Real-time performance, cluster latency & sharding analytics\n\n` +
-                `**Treasure Chests & Engagement:**\n` +
-                `• \`${prefix}chest\` — Open and view your cosmic chests\n` +
-                `• \`${prefix}chestdrop\` — Manually trigger a wild drop in the channel\n` +
-                `• \`${prefix}chest-setup\` — Deploy auto-spawning chest drop systems\n` +
-                `• \`${prefix}chest-toggle\` — Enable or disable chest drops per channel\n\n` +
-                `**Automated Giveaways & Tickets:**\n` +
-                `\`${prefix}giveaway\`, \`${prefix}reroll\`, \`${prefix}gend\`, \`${prefix}ticketsetup\`, \`${prefix}applysetup\`, \`${prefix}verify-setup\`, \`${prefix}confessionsetup\`, \`${prefix}setupcount\`\n\n` +
-                `**Backups & Visual Branding:**\n` +
-                `\`${prefix}backup\`, \`${prefix}restore\`, \`${prefix}embedtheme\`, \`${prefix}customizewelcome\`, \`${prefix}customizegoodbye\`, \`${prefix}customizelevels\``
+                `>>> Automated server infrastructure, onboarding, support portals, and visual customization.\n\n` +
+                `**🌟 Onboarding & Design:**\n` +
+                `• \`${prefix}setupwelcome <#channel>\` — Automated image welcome cards\n` +
+                `• \`${prefix}setupgoodbye <#channel>\` — Automated departure announcements\n` +
+                `• \`${prefix}customize\` — Visuality studio for welcome, goodbye & server embed theme\n` +
+                `• \`${prefix}autorole\` — Multi-role assignment on member join\n\n` +
+                `**🎫 Support Tickets & Verification:**\n` +
+                `• \`${prefix}ticketsetup\` — Deploy the interactive support ticket panel\n` +
+                `• \`${prefix}ticket close/claim/add/transcript\` — Manage open ticket channels\n` +
+                `• \`${prefix}verifysetup\` — Deploy human verification panel (Button / Captcha)\n` +
+                `• \`${prefix}videoverifysetup\` — VC-based video verification desk\n` +
+                `• \`${prefix}applysetup\` — Deploy staff & partnership application panel`
             );
     } else if (catId === 'nsfw') {
         if (!isNsfw) {
             embed.setColor('#ED4245')
-                .setTitle('🔒 Mature Commands are Hidden')
+                .setTitle('🔒 Age-Restricted Content')
                 .setDescription(
-                    `The Mature & NSFW module is **disabled** in this server or channel.\n\n` +
-                    `**How to Enable & View:**\n` +
-                    `1. **In Servers:** An Administrator must run \`${prefix}nsfw on\` inside a channel marked as **Age-Restricted (NSFW)** in Discord settings.\n` +
-                    `2. **In DMs:** Run \`${prefix}nsfw dms on\` in Direct Messages.\n` +
-                    `3. **Ask AI:** Run \`${prefix}nsfw info\` for an AI breakdown of features.`
+                    `>>> The Mature module requires an **Age-Restricted (NSFW)** channel.\n\n` +
+                    `To view these commands, enable Age-Restricted in Discord channel settings.`
                 );
             return embed;
         }
 
         embed.setColor('#FF1493')
-            .setTitle('🔞 Mature & Anime NSFW Commands (21 Commands)')
+            .setTitle('🔞 Mature & Anime NSFW Commands')
             .setDescription(
-                `**⚙️ Configuration & AI:**\n` +
-                `\`${prefix}nsfw on/off\`, \`${prefix}nsfw info\`, \`${prefix}nsfw dms on/off\`, \`${prefix}nsfwhelp\`\n\n` +
-                `**🌸 Anime & Waifu Art Galleries:**\n` +
-                `\`${prefix}waifu\`, \`${prefix}neko\`, \`${prefix}kitsune\`, \`${prefix}husbando\`, \`${prefix}trap\`, \`${prefix}ecchi\`, \`${prefix}hentai\`, \`${prefix}blowkiss\`\n\n` +
-                `**💋 Mature Anime Social Interactions:**\n` +
-                `\`${prefix}nsfwkiss\`, \`${prefix}nsfwhug\`, \`${prefix}spank\`, \`${prefix}nsfwlick\`, \`${prefix}nsfwtouch\`, \`${prefix}nsfwcuddle\`, \`${prefix}nsfwsuck\`, \`${prefix}nsfwpinch\`, \`${prefix}nsfwsmack\`\n\n` +
-                `*Strict Discord Age-Restricted channel verification active!*`
+                `>>> Age-restricted anime waifu art and mature interactions.\n\n` +
+                `\`${prefix}waifu\` • \`${prefix}neko\` • \`${prefix}ecchi\` • \`${prefix}hentai\` • \`${prefix}nsfwkiss\` • \`${prefix}nsfwhug\``
             );
     } else {
-        const totalCommands = isNsfw ? '270+' : '250+';
-        embed.setTitle('🌟 Manager Bot & Starry Supreme Command Hub')
+        const totalCount = isNsfw ? '270+' : '250+';
+        embed.setTitle('🌸 Mina • Executive Command Center')
             .setDescription(
-                `Welcome to the ultimate Discord multi-feature bot!\n` +
-                `• **Primary Interface:** **Slash Commands (\`/\`)** *(Type \`/\` to view autocomplete list)*\n` +
-                `• **Prefix Commands (\`${prefix}\`):** Reserved exclusively for **Bot Owners**\n` +
-                `• **Total Commands:** \`${totalCommands}\` across ${isNsfw ? '9' : '8'} specialized categories\n` +
-                `• **Multi-Bot Clustering:** Active and synchronized\n` +
-                `• **Embed Buttons Lifetime:** High persistence up to **1 Year**\n\n` +
-                `Select a category from the dropdown menu below or click the quick action buttons.`
+                `>>> Welcome to **Mina**, a high-performance Discord engine engineered for enterprise server moderation, studio-grade Hi-Fi music streaming, engaging anime socials, leveling systems, and community intelligence.\n\n` +
+                `**⚡ Interface & Execution:**\n` +
+                `• **Slash Commands:** \`/command\` *(Full autocomplete support)*\n` +
+                `• **Prefix Commands:** \`${prefix}command\` *(Dual prefix \`,\` and \`.\` active)*\n` +
+                `• **Interaction Engine:** Long-lived 1-Year interactive components\n\n` +
+                `**📊 System Health & Telemetry:**\n` +
+                `• **Cluster Status:** 🟢 All Systems Operational\n` +
+                `• **Available Commands:** \`${totalCount}\` across ${isNsfw ? '9' : '8'} specialized modules\n\n` +
+                `*Select a category from the dropdown menu below or click a quick-action button:*`
             )
             .addFields(
-                { name: '🎵 Music (37)', value: `\`${prefix}play\`, \`${prefix}autoplay\`, \`${prefix}spotify\``, inline: true },
-                { name: '🛡️ Moderation (40+)', value: `\`${prefix}ban\`, \`${prefix}lockdown\`, \`${prefix}modpanel\``, inline: true },
-                { name: '🚀 Vanity & Colors (6)', value: `\`${prefix}color\`, \`${prefix}boosterrole\`, \`${prefix}boostperks\``, inline: true },
-                { name: '🛠️ Utility (50+)', value: `\`${prefix}spark\`, \`${prefix}portal\`, \`${prefix}remind\``, inline: true },
-                { name: '🎮 Arcade (12)', value: `\`${prefix}raid\`, \`${prefix}blackjack\`, \`${prefix}mines\``, inline: true },
-                { name: '💰 Economy (32)', value: `\`${prefix}profile\`, \`${prefix}crime\`, \`${prefix}shop\``, inline: true },
-                { name: '🎭 Social (44)', value: `\`${prefix}hug\`, \`${prefix}kiss\`, \`${prefix}bonk\``, inline: true },
-                { name: '🤖 Systems (26)', value: `\`${prefix}multibot\`, \`${prefix}chest\`, \`${prefix}backup\``, inline: true }
+                { name: '🎵 Music (37)', value: `\`${prefix}play\`, \`${prefix}autoplay\`, \`${prefix}djpanel\``, inline: true },
+                { name: '🛡️ Moderation (45+)', value: `\`${prefix}ban\`, \`${prefix}automod\`, \`${prefix}purge\``, inline: true },
+                { name: '🎨 Vanity & Colors (10)', value: `\`${prefix}color\`, \`${prefix}boosterrole\`, \`${prefix}customize\``, inline: true },
+                { name: '⚙️ Utility & AI (50+)', value: `\`${prefix}ai\`, \`${prefix}ping\`, \`${prefix}remind\``, inline: true },
+                { name: '🌸 Socials (44)', value: `\`${prefix}hug\`, \`${prefix}kiss\`, \`${prefix}pat\``, inline: true },
+                { name: '💎 Economy & Leveling (32)', value: `\`${prefix}rank\`, \`${prefix}leveling\`, \`${prefix}leaderboard\``, inline: true },
+                { name: '🎮 Arcade (12)', value: `\`${prefix}raid\`, \`${prefix}blackjack\`, \`${prefix}trivia\``, inline: true },
+                { name: '🤖 Systems (26)', value: `\`${prefix}setupwelcome\`, \`${prefix}ticketsetup\`, \`${prefix}rr\``, inline: true }
             );
 
         if (isNsfw) {
-            embed.addFields({ name: '🔞 Mature & Anime (21)', value: `\`${prefix}nsfwkiss\`, \`${prefix}waifu\`, \`${prefix}nsfwhelp\``, inline: true });
+            embed.addFields({ name: '🔞 Mature & Anime (21)', value: `\`${prefix}waifu\`, \`${prefix}nsfwkiss\``, inline: true });
         }
     }
+
     return embed;
 }
 
@@ -220,24 +214,24 @@ function createHelpComponents(isNsfw = false) {
     const selectMenu = new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
             .setCustomId('help_select')
-            .setPlaceholder('📂 Choose a command category...')
+            .setPlaceholder('📂 Browse specialized command modules...')
             .addOptions([
-                { label: 'Overview / Home', description: 'Main bot dashboard and quick stats', value: 'home', emoji: '🏠' },
+                { label: 'Overview / Home Dashboard', description: 'Main command center and system statistics', value: 'home', emoji: '🌸' },
                 ...categories.map(c => ({ label: c.label, description: c.desc, value: c.id, emoji: c.emoji }))
             ])
     );
 
     const buttons = [
         new ButtonBuilder().setCustomId('help_btn_music').setLabel('Music').setEmoji('🎵').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('help_btn_mod').setLabel('Mod').setEmoji('🛡️').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('help_btn_booster').setLabel('Booster').setEmoji('🚀').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('help_btn_util').setLabel('Utility').setEmoji('🛠️').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('help_btn_mod').setLabel('Moderation').setEmoji('🛡️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('help_btn_eco').setLabel('Leveling & Eco').setEmoji('💎').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('help_btn_util').setLabel('Utility').setEmoji('⚙️').setStyle(ButtonStyle.Secondary)
     ];
 
     if (isNsfw) {
-        buttons.push(new ButtonBuilder().setCustomId('help_btn_nsfw').setLabel('NSFW').setEmoji('🔞').setStyle(ButtonStyle.Danger));
+        buttons.push(new ButtonBuilder().setCustomId('help_btn_nsfw').setLabel('Mature').setEmoji('🔞').setStyle(ButtonStyle.Danger));
     } else {
-        buttons.push(new ButtonBuilder().setCustomId('help_btn_eco').setLabel('Economy').setEmoji('💰').setStyle(ButtonStyle.Secondary));
+        buttons.push(new ButtonBuilder().setCustomId('help_btn_social').setLabel('Socials').setEmoji('🌸').setStyle(ButtonStyle.Secondary));
     }
 
     const buttonsRow = new ActionRowBuilder().addComponents(buttons);
