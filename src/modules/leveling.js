@@ -423,9 +423,10 @@ const levelingModule = (client) => {
         const guildId = message.guild.id;
         const rawContent = message.content.toLowerCase().trim();
 
-        const activePrefixes = Array.from(new Set([PREFIX, '.', ',', '!', '?'])).filter(Boolean);
-        const matchedPrefix = activePrefixes.find(p => rawContent.startsWith(p));
-        const isPrefix = Boolean(matchedPrefix);
+        const { getGuildPrefix } = require('./commandHandler');
+        const activePrefix = await getGuildPrefix(guildId);
+        const isPrefix = Boolean(activePrefix && rawContent.startsWith(activePrefix.toLowerCase()));
+        const matchedPrefix = isPrefix ? activePrefix : null;
         const isTrigger = rawContent.startsWith('starry ') || rawContent.startsWith('jarvis ') || message.mentions.has(client.user?.id);
 
         if (isPrefix || isTrigger) {

@@ -126,8 +126,11 @@ module.exports = (client) => {
     client.on('messageCreate', async (message) => {
         if (message.author.bot || !message.guild) return;
 
-        // Prefix Command (.setupcount #channel)
-        if (message.content.toLowerCase().startsWith(PREFIX + 'setupcount') || message.content.toLowerCase().startsWith(',setupcount')) {
+        // Prefix Command (setupcount #channel)
+        const { getGuildPrefix } = require('./commandHandler');
+        const activePrefix = await getGuildPrefix(message.guild.id);
+        const isSetupCmd = Boolean(activePrefix && message.content.toLowerCase().startsWith(activePrefix.toLowerCase() + 'setupcount'));
+        if (isSetupCmd) {
             if (!config.isBotOwner(message.author.id, client)) return;
             if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
 

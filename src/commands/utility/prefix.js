@@ -19,6 +19,10 @@ module.exports = {
     const guild = context.guild;
     const member = context.member;
 
+    if (!guild) {
+      return context.reply({ content: "❌ This command can only be used in a server.", ephemeral: true });
+    }
+
     let newPrefix;
 
     if (isSlash) {
@@ -27,10 +31,10 @@ module.exports = {
       newPrefix = args && args[0] ? args[0] : null;
     }
 
-    const settings = db.getGuildSettings(guild.id);
+    const { getGuildPrefix, setCachedPrefix } = require("../../modules/commandHandler");
+    const currentPrefix = await getGuildPrefix(guild.id);
 
     if (!newPrefix) {
-      const currentPrefix = settings.prefix || config.prefix;
       return context.reply({
         embeds: [
           new EmbedBuilder()
@@ -41,8 +45,10 @@ module.exports = {
       });
     }
 
-    // Changing prefix requires ManageGuild or Administrator
-    if (!member.permissions.has(PermissionFlagsBits.ManageGuild)) {
+    // Changing prefix requires ManageGuild or Administrator or Bot Owner
+    const isOwner = config.isBotOwner ? config.isBotOwner(member?.id || context.user?.id, client) : false;
+    const hasPerms = member?.permissions?.has(PermissionFlagsBits.ManageGuild) || member?.permissions?.has(PermissionFlagsBits.Administrator) || isOwner;
+    if (!hasPerms) {
       return context.reply({ content: "❌ You need the `Manage Server` permission to change the prefix.", ephemeral: true });
     }
 
@@ -50,7 +56,7 @@ module.exports = {
       return context.reply({ content: "❌ Prefix length cannot exceed 5 characters.", ephemeral: true });
     }
 
-    db.updateGuildSettings(guild.id, { prefix: newPrefix });
+    setCachedPrefix(guild.id, newPrefix);
 
     const embed = new EmbedBuilder()
       .setColor(config.theme.success)

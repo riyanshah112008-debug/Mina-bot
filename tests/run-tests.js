@@ -882,6 +882,35 @@ async function runAll() {
     assert.ok(setlevelCmd.aliases.includes("setlvl"));
   });
 
+  // Test 23: Strict Guild Prefix Isolation & Synchronization
+  console.log("\n📁 23. Strict Guild Prefix Isolation & Synchronization");
+  await asyncIt("Enforces strict custom prefix and prevents default prefix collisions", async () => {
+    const { getGuildPrefix, setCachedPrefix, guildPrefixCache } = require("../src/modules/commandHandler");
+    const testGuildA = "test_guild_prefix_a_" + Date.now();
+    const testGuildB = "test_guild_prefix_b_" + Date.now();
+
+    // Guild A defaults to ','
+    const prefixA = await getGuildPrefix(testGuildA);
+    assert.strictEqual(prefixA, ",", "Default prefix must be comma");
+
+    // Guild B sets prefix to '.'
+    setCachedPrefix(testGuildB, ".");
+    const prefixB = await getGuildPrefix(testGuildB);
+    assert.strictEqual(prefixB, ".", "Prefix for Guild B must be dot");
+
+    // Verify cache has Guild B as '.' and not ','
+    assert.strictEqual(guildPrefixCache.get(testGuildB), ".");
+
+    // Verify updating Guild B to '!'
+    setCachedPrefix(testGuildB, "!");
+    const prefixBUpdated = await getGuildPrefix(testGuildB);
+    assert.strictEqual(prefixBUpdated, "!");
+    assert.strictEqual(guildPrefixCache.get(testGuildB), "!");
+
+    // Guild A still has ','
+    assert.strictEqual(await getGuildPrefix(testGuildA), ",");
+  });
+
   // Test Summary
   console.log("\n=========================================");
   console.log(`🌸 Test Suite Finished: ${passed} Passed, ${failed} Failed`);

@@ -445,8 +445,9 @@ const commands = [
                 return ctx.reply('❌ Permission denied.');
             }
             const limit = parseInt(ctx.args[0]) || 50;
-            const fetched = await ctx.channel.messages.fetch({ limit: Math.min(limit, 100) });
-            const botMsgs = fetched.filter(m => m.author.bot || m.content.startsWith(','));
+            const { getGuildPrefix } = require('../../modules/commandHandler');
+            const p = ctx.guild ? await getGuildPrefix(ctx.guild.id) : ',';
+            const botMsgs = fetched.filter(m => m.author.bot || (p && m.content.startsWith(p)));
             const deleted = await ctx.channel.bulkDelete(botMsgs, true);
             return ctx.reply(`🤖 **Purged ${deleted.size} bot messages.**`);
         }

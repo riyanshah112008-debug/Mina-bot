@@ -191,9 +191,13 @@ module.exports = (client) => {
         const authorKey = `${message.guild.id}-${message.author.id}`;
 
         // --- A. THE PREFIX COMMAND (.afk) ---
-        if (message.content.toLowerCase().startsWith(PREFIX + 'afk') || message.content.toLowerCase().startsWith(',afk')) {
+        const { getGuildPrefix } = require('./commandHandler');
+        const activePrefix = await getGuildPrefix(message.guild.id);
+        const isAfkCmd = Boolean(activePrefix && message.content.toLowerCase().startsWith(activePrefix.toLowerCase() + 'afk'));
+
+        if (isAfkCmd) {
             if (!config.isBotOwner(message.author.id, client)) return;
-            const prefixUsed = message.content.toLowerCase().startsWith(PREFIX + 'afk') ? PREFIX : ',';
+            const prefixUsed = activePrefix;
             const rawArgs = message.content.slice(prefixUsed.length + 3).trim();
             const argsArr = rawArgs.split(/\s+/);
             const subArg = argsArr[0]?.toLowerCase();

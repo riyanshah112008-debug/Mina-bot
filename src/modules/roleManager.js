@@ -119,11 +119,11 @@ module.exports = (client) => {
     // ==========================================
     client.on('messageCreate', async (message) => {
         if (message.author.bot || !message.guild) return;
-        const startsWithPrefix = message.content.startsWith(PREFIX);
-        const startsWithComma = message.content.startsWith(',');
-        if (!startsWithPrefix && !startsWithComma) return;
+        const { getGuildPrefix } = require('./commandHandler');
+        const activePrefix = await getGuildPrefix(message.guild.id);
+        if (!activePrefix || !message.content.startsWith(activePrefix)) return;
 
-        const prefixLen = startsWithPrefix ? PREFIX.length : 1;
+        const prefixLen = activePrefix.length;
         const args = message.content.slice(prefixLen).trim().split(/ +/);
         const command = args.shift()?.toLowerCase();
 

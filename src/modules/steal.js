@@ -123,7 +123,10 @@ module.exports = (client) => {
     };
     // Prefix Trigger (.steal) - Works in servers where bot is present
     client.on('messageCreate', async message => {
-        if (message.author.bot || (!message.content.startsWith(PREFIX + 'steal') && !message.content.startsWith(',steal'))) return;
+        if (message.author.bot || !message.guild) return;
+        const { getGuildPrefix } = require('./commandHandler');
+        const activePrefix = await getGuildPrefix(message.guild.id);
+        if (!activePrefix || !message.content.toLowerCase().startsWith(activePrefix.toLowerCase() + 'steal')) return;
         if (!config.isBotOwner(message.author.id, client)) return;
         const target = message.reference ? await message.channel.messages.fetch(message.reference.messageId).catch(() => message) : message;
         await runStealUI(target.content + message.content, target.stickers, message.member, message.guild, (p) => message.reply(p), message.author);

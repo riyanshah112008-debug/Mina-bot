@@ -26,30 +26,69 @@ const User = require('../models/User');
 const guildPrefixCache = new Map();
 
 async function getGuildPrefix(guildId) {
-    if (!guildId) return ',';
+    if (!guildId) return config.DEFAULT_PREFIX || ',';
     if (guildPrefixCache.has(guildId)) return guildPrefixCache.get(guildId);
+
+    let resolvedPrefix = null;
+
+    // 1. Try MongoDB ServerSettings
     try {
         const mongoose = require('mongoose');
-        if (!mongoose.connection || mongoose.connection.readyState !== 1) {
-            guildPrefixCache.set(guildId, ',');
-            return ',';
+        if (mongoose.connection && mongoose.connection.readyState === 1) {
+            const ServerSettings = require('../models/ServerSettings');
+            const settings = await Promise.race([
+                ServerSettings.findOne({ guildId }).select('prefix').lean(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000))
+            ]);
+            if (settings?.prefix) {
+                resolvedPrefix = settings.prefix;
+            }
         }
-        const ServerSettings = require('../models/ServerSettings');
-        const settings = await Promise.race([
-            ServerSettings.findOne({ guildId }).select('prefix').lean(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000))
-        ]);
-        const p = settings?.prefix || ',';
-        guildPrefixCache.set(guildId, p);
-        return p;
-    } catch (e) {
-        guildPrefixCache.set(guildId, ',');
-        return ',';
+    } catch (e) {}
+
+    // 2. Fallback to local JSON store (mina-store.json)
+    if (!resolvedPrefix) {
+        try {
+            const db = require('../utils/database');
+            if (db && typeof db.getGuildSettings === 'function') {
+                const local = db.getGuildSettings(guildId);
+                if (local?.prefix && local.prefix !== '?') {
+                    resolvedPrefix = local.prefix;
+                }
+            }
+        } catch (e) {}
     }
+
+    const finalPrefix = resolvedPrefix || config.DEFAULT_PREFIX || ',';
+    guildPrefixCache.set(guildId, finalPrefix);
+    return finalPrefix;
 }
 
 function setCachedPrefix(guildId, prefix) {
-    if (guildId) guildPrefixCache.set(guildId, prefix || ',');
+    if (!guildId) return;
+    const finalPrefix = prefix || config.DEFAULT_PREFIX || ',';
+    guildPrefixCache.set(guildId, finalPrefix);
+
+    // Sync to local JSON database
+    try {
+        const db = require('../utils/database');
+        if (db && typeof db.updateGuildSettings === 'function') {
+            db.updateGuildSettings(guildId, { prefix: finalPrefix });
+        }
+    } catch (e) {}
+
+    // Sync to MongoDB ServerSettings
+    try {
+        const mongoose = require('mongoose');
+        if (mongoose.connection && mongoose.connection.readyState === 1) {
+            const ServerSettings = require('../models/ServerSettings');
+            ServerSettings.findOneAndUpdate(
+                { guildId },
+                { $set: { prefix: finalPrefix } },
+                { upsert: true }
+            ).catch(() => {});
+        }
+    } catch (e) {}
 }
 
 // 🛡️ Global Anti-Duplicate Execution Sets (Guarantees exactly 1 response per message/interaction)
@@ -271,8 +310,9 @@ class CommandRegistry {
                 const musicController = require('./musicController');
                 if (musicController.isRequestChannel(message.guild.id, message.channel.id)) {
                     if (!isPrimary) return;
+                    const activePrefix = await getGuildPrefix(message.guild.id);
                     const raw = message.content.trim();
-                    if (!raw.startsWith(',') && !raw.startsWith('.') && !raw.startsWith('?')) {
+                    if (!raw.startsWith(activePrefix)) {
                         return musicController.handleSongRequest(message, client);
                     }
                 }
@@ -310,55 +350,47 @@ class CommandRegistry {
                     commandBody = clusterMatch[2].trim();
                     matchedPrefix = 's' + botIndex;
                 } 
-                // C. Single Comma (,) Default Prefix & Custom Server Prefix
+                // C. Single Prefix Matching (Guild Prefix or DM Fallback)
                 else {
                     if (content.startsWith('<@')) return;
                     if (!isPrimary) return; // Standard prefix handled EXCLUSIVELY by primary bot! Secondary worker bots never respond here!
 
-                    const guildId = message.guild?.id;
-                    if (content.startsWith(',')) {
-                        matchedPrefix = ',';
-                        commandBody = content.slice(1).trim();
-                    } else if (content.startsWith('.')) {
-                        matchedPrefix = '.';
-                        commandBody = content.slice(1).trim();
-                    } else if (content.startsWith('?')) {
-                        matchedPrefix = '?';
-                        commandBody = content.slice(1).trim();
-                    } else if (content.startsWith('!')) {
-                        matchedPrefix = '!';
-                        commandBody = content.slice(1).trim();
-                    } else if (guildId) {
+                    if (message.guild) {
+                        const guildId = message.guild.id;
                         const activePrefix = guildPrefixCache.has(guildId) 
                             ? guildPrefixCache.get(guildId) 
                             : await getGuildPrefix(guildId);
 
-                        if (activePrefix && !['.', ',', '?', '!'].includes(activePrefix) && content.startsWith(activePrefix)) {
+                        if (activePrefix && content.startsWith(activePrefix)) {
                             matchedPrefix = activePrefix;
                             commandBody = content.slice(activePrefix.length).trim();
                         } else {
-                            return; // Not a command
-                        }
-                    } else if (!message.guild) {
-                        const firstWord = content.toLowerCase().split(/\s+/)[0];
-                        const isCmd = this.commands.has(firstWord) || this.aliases.has(firstWord);
-                        if (isCmd) {
-                            matchedPrefix = '';
-                            commandBody = content;
-                        } else {
-                            // In DMs, talk directly with Starry AI without needing a prefix
-                            matchedPrefix = '';
-                            commandBody = 'ask ' + content;
+                            return; // Strictly ignore: Not a command for Mina!
                         }
                     } else {
-                        return; // Not a command
+                        const defaultPrefix = config.DEFAULT_PREFIX || ',';
+                        if (content.startsWith(defaultPrefix)) {
+                            matchedPrefix = defaultPrefix;
+                            commandBody = content.slice(defaultPrefix.length).trim();
+                        } else {
+                            const firstWord = content.toLowerCase().split(/\s+/)[0];
+                            const isCmd = this.commands.has(firstWord) || this.aliases.has(firstWord);
+                            if (isCmd) {
+                                matchedPrefix = '';
+                                commandBody = content;
+                            } else {
+                                // In DMs, talk directly with Starry AI without needing a prefix
+                                matchedPrefix = '';
+                                commandBody = 'ask ' + content;
+                            }
+                        }
                     }
                 }
             }
 
             if (!commandBody) {
                 if (matchedPrefix === '@') {
-                    const p = message.guild ? await getGuildPrefix(message.guild.id) : ',';
+                    const p = message.guild ? await getGuildPrefix(message.guild.id) : (config.DEFAULT_PREFIX || ',');
                     const ping = Math.round(client.ws.ping || 0);
                     const embed = new EmbedBuilder()
                         .setColor('#9B59B6')
@@ -367,7 +399,7 @@ class CommandRegistry {
                         .setDescription(
                             `I am **Starry** (Astraea), your all-in-one AI assistant, music streamer, and server guardian!\n\n` +
                             `• **Slash Commands:** Type \`/\` to browse all commands (e.g. \`/help\`, \`/play\`, \`/ask\`)\n` +
-                            `• **Prefix Commands:** \`${p}\` *(Reserved exclusively for Bot Owners)*\n` +
+                            `• **Prefix Commands:** \`${p}\`\n` +
                             `• **AI Assistant:** Mention me with any question or use \`/ask <prompt>\` (you can attach images!)\n` +
                             `• **Gateway Latency:** \`${ping}ms\`\n` +
                             `• **Music & Hi-Fi:** High-Fidelity 24/7 playback with 15 studio filters`
@@ -437,11 +469,11 @@ class CommandRegistry {
                     await executeSafely(command, ctx, client, resolvedName);
                 }
             } catch (err) {
-                console.error(`❌ Error executing prefix command ,${resolvedName}:`, err);
+                console.error(`❌ Error executing prefix command ${matchedPrefix || ''}${resolvedName}:`, err);
                 const isTimeout = err.message && err.message.includes('Timed Out');
                 const replyText = isTimeout
-                    ? `⚠️ **Command Timed Out:** \`,${resolvedName}\` took too long to respond. Please try again in a moment.`
-                    : `⚠️ An error occurred while executing \`,${resolvedName}\`: \`${err.message}\``;
+                    ? `⚠️ **Command Timed Out:** \`${matchedPrefix || ''}${resolvedName}\` took too long to respond. Please try again in a moment.`
+                    : `⚠️ An error occurred while executing \`${matchedPrefix || ''}${resolvedName}\`: \`${err.message}\``;
                 await ctx.reply(replyText).catch(() => {});
             }
         });

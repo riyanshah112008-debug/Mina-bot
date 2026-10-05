@@ -511,8 +511,10 @@ class MusicControllerEngine {
         const content = message.content.trim();
         if (!content) return;
 
-        // Allow prefix command bypasses (e.g. ,setup, ,deletecontroller)
-        if (content.startsWith(',') || content.startsWith('.')) return;
+        // Allow prefix command bypasses (e.g. setup, deletecontroller)
+        const { getGuildPrefix } = require('./commandHandler');
+        const activePrefix = await getGuildPrefix(message.guild.id);
+        if (activePrefix && content.startsWith(activePrefix)) return;
 
         // Instantly delete user message to keep the channel clean
         message.delete().catch(() => {});

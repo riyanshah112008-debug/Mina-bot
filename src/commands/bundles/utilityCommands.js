@@ -761,6 +761,12 @@ const commands = [
         usage: ',afk [reason]',
         async execute(ctx) {
             const reason = ctx.args.join(' ') || 'AFK (Away From Keyboard)';
+            try {
+                const db = require('../../utils/database');
+                if (ctx.guild && db && typeof db.setUserAfk === 'function') {
+                    db.setUserAfk(ctx.guild.id, ctx.user.id, reason);
+                }
+            } catch (e) {}
             return ctx.reply(`💤 **${ctx.user.username} is now AFK:** ${reason}`);
         }
     },

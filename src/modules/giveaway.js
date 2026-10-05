@@ -201,8 +201,16 @@ module.exports = (client) => {
     client.on('messageCreate', async (message) => {
         if (message.author.bot || !message.guild) return;
 
-        // PREFIX REROLL COMMAND (.reroll <message_id> [winners])
-        if (message.content.toLowerCase().startsWith(PREFIX + 'reroll') || message.content.toLowerCase().startsWith(PREFIX + 'giveaway reroll') || message.content.toLowerCase().startsWith(',reroll') || message.content.toLowerCase().startsWith(',giveaway reroll')) {
+        const { getGuildPrefix } = require('./commandHandler');
+        const activePrefix = await getGuildPrefix(message.guild.id);
+        if (!activePrefix) return;
+
+        const lowerContent = message.content.toLowerCase();
+        const isReroll = lowerContent.startsWith(activePrefix.toLowerCase() + 'reroll') || lowerContent.startsWith(activePrefix.toLowerCase() + 'giveaway reroll');
+        const isGiveaway = lowerContent.startsWith(activePrefix.toLowerCase() + 'giveaway');
+
+        // PREFIX REROLL COMMAND
+        if (isReroll) {
             if (!config.isBotOwner(message.author.id, client)) return;
             if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
                 return message.reply('❌ You need **Administrator** permissions to reroll giveaways.').catch(() => {});
@@ -212,7 +220,7 @@ module.exports = (client) => {
             const messageId = args.find(a => /^\d{17,20}$/.test(a));
 
             if (!messageId) {
-                return message.reply('🔹 **Usage:** `.reroll <message_id> [winners]`\n*Example:* `.reroll 123456789012345678 1`').catch(() => {});
+                return message.reply(`🔹 **Usage:** \`${activePrefix}reroll <message_id> [winners]\`\n*Example:* \`${activePrefix}reroll 123456789012345678 1\``).catch(() => {});
             }
 
             let winners = 1;
@@ -223,16 +231,16 @@ module.exports = (client) => {
             return message.reply(response).catch(() => {});
         }
 
-        // PREFIX START GIVEAWAY COMMAND (.giveaway <duration> [winners] <prize>)
-        if (message.content.toLowerCase().startsWith(PREFIX + 'giveaway') || message.content.toLowerCase().startsWith(',giveaway')) {
+        // PREFIX START GIVEAWAY COMMAND
+        if (isGiveaway) {
             if (!config.isBotOwner(message.author.id, client)) return;
             if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
                 return message.reply('❌ You need **Administrator** permissions to start a giveaway.').catch(() => {});
             }
 
-            const args = message.content.slice(PREFIX.length + 8).trim().split(/ +/);
+            const args = message.content.slice(activePrefix.length + 8).trim().split(/ +/);
             if (args.length < 2) {
-                return message.reply('🔹 **Usage:** `.giveaway <duration> [winners] <prize>`\n*Example:* `.giveaway 10m 1 Discord Nitro`').catch(() => {});
+                return message.reply(`🔹 **Usage:** \`${activePrefix}giveaway <duration> [winners] <prize>\`\n*Example:* \`${activePrefix}giveaway 10m 1 Discord Nitro\``).catch(() => {});
             }
 
             const duration = args[0];

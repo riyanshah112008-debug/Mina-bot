@@ -237,21 +237,21 @@ function translatorModule(client, app) {
     // 3. PREFIX COMMAND (.translate)
     client.on(Events.MessageCreate, async (message) => {
         if (message.author.bot || !message.guild) return;
-        const startsWithPrefix = message.content.toLowerCase().startsWith(PREFIX + 'translate');
-        const startsWithComma = message.content.toLowerCase().startsWith(',translate');
-        if (!startsWithPrefix && !startsWithComma) return;
+        const { getGuildPrefix } = require('./commandHandler');
+        const activePrefix = await getGuildPrefix(message.guild.id);
+        if (!activePrefix || !message.content.toLowerCase().startsWith(activePrefix.toLowerCase() + 'translate')) return;
         if (!config.isBotOwner(message.author.id, client)) return;
 
         if (typeof client.isPremium === 'function' && !client.isPremium(message.guild.id)) {
-            return message.reply('❌ **Translator is a Premium feature!** Use `.activatepremium` to upgrade.').catch(() => {});
+            return message.reply(`❌ **Translator is a Premium feature!** Use \`${activePrefix}activatepremium\` to upgrade.`).catch(() => {});
         }
 
-        const prefixLen = startsWithPrefix ? (PREFIX.length + 9) : 10;
+        const prefixLen = activePrefix.length + 9;
         const args = message.content.slice(prefixLen).trim().split(/ +/);
         const requestedLang = args.shift(); 
         let text = args.join(' '); 
 
-        if (!requestedLang) return message.reply('🔹 **Usage:** `.translate <language> <text>`\n*Tip: Reply to any message with `.translate en` to translate it!*');
+        if (!requestedLang) return message.reply(`🔹 **Usage:** \`${activePrefix}translate <language> <text>\`\n*Tip: Reply to any message with \`${activePrefix}translate en\` to translate it!*`);
         
         if (!text && message.reference) {
             const repliedMessage = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
