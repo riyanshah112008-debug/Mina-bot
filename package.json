@@ -48,6 +48,6 @@
     "shoukaku": "^4.3.0",
     "spotify-url-info": "^3.3.3",
     "tweetnacl": "^1.0.3",
-    "undici": "^6.19.8"
+    "undici": "^8.11.2"
   }
 }
