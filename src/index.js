@@ -352,7 +352,8 @@ const client = new Client({
         GatewayIntentBits.GuildVoiceStates,
         GatewayIntentBits.GuildModeration,
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.DirectMessages
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.GuildPresences
     ],
     partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User, Partials.GuildMember],
     failIfNotExists: false,
@@ -781,6 +782,7 @@ const MODULE_INITIALIZERS = [
     { name: 'Starry Protocol', fn: () => require('./modules/starry.js')(client, app) },
     { name: 'Boost Tracker', fn: () => require('./modules/boostTracker.js')(client, app) },
     { name: 'Booster Synergy Engine', fn: () => require('./modules/boosterRoleEngine.js')(client, app) },
+    { name: 'Media Perms Engine', fn: () => require('./modules/mediaPermsEngine.js')(client, app) },
     { name: 'Color Role Engine', fn: () => require('./modules/colorRoleEngine.js')(client, app) },
     { name: 'Truth or Dare', fn: () => require('./modules/truthOrDare.js')(client, app) },
     { name: 'Support Tickets', fn: () => {

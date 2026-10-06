@@ -435,6 +435,7 @@ function setupDashboardRoutes(app, client) {
                 if (p && payload.music.is247 !== undefined) p.is247 = payload.music.is247;
             }
             if (payload.tickets) settings.tickets = { ...settings.tickets.toObject(), ...payload.tickets };
+            if (payload.mediaPerms) settings.mediaPerms = { ...settings.mediaPerms?.toObject(), ...payload.mediaPerms };
 
             await settings.save();
             res.json({ success: true, message: 'Settings saved successfully!', settings });

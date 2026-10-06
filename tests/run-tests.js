@@ -911,6 +911,90 @@ async function runAll() {
     assert.strictEqual(await getGuildPrefix(testGuildA), ",");
   });
 
+  // Test 24: Pic & GIF Permissions Engine (Invite Status & Booster Rewards)
+  console.log("\n📁 24. Pic & GIF Permissions Engine (Invite Status & Booster Rewards)");
+  await asyncIt("Validates Pic & GIF perms engine, invite status verification, and booster perks", async () => {
+    const { engine: mediaEngine } = require("../src/modules/mediaPermsEngine");
+    assert.ok(mediaEngine, "MediaPermsEngine must exist");
+
+    const testGuildId = "test_media_guild_" + Date.now();
+    const settings = await mediaEngine.getGuildSettings(testGuildId);
+    assert.strictEqual(settings.enabled, true, "Media perms should be enabled by default");
+    assert.strictEqual(settings.boosterPerk, true, "Booster perk should be enabled by default");
+    assert.strictEqual(settings.requireOnline, true, "Require online should be true by default");
+
+    // Configure a vanity invite
+    await mediaEngine.updateGuildSettings(testGuildId, { inviteUrl: "discord.gg/friendbase" });
+    const updated = await mediaEngine.getGuildSettings(testGuildId);
+    assert.strictEqual(updated.inviteUrl, "discord.gg/friendbase");
+
+    const mockGuild = {
+      id: testGuildId,
+      name: "Test Guild",
+      vanityURLCode: "friendbase",
+      roles: { cache: new Map() }
+    };
+
+    // Case 1: Server Booster -> eligible even if offline and without invite
+    const boosterMember = {
+      id: "booster_user_1",
+      user: { id: "booster_user_1", bot: false },
+      guild: mockGuild,
+      premiumSince: new Date(),
+      roles: { cache: new Map() }
+    };
+    const boosterCheck = await mediaEngine.checkMemberEligibility(boosterMember, { status: "offline", activities: [] });
+    assert.strictEqual(boosterCheck.eligible, true, "Server Booster must be eligible unconditionally");
+    assert.strictEqual(boosterCheck.isBooster, true);
+
+    // Case 2: Online with Server Invite in custom status -> eligible
+    const statusSupporterMember = {
+      id: "supporter_user_2",
+      user: { id: "supporter_user_2", bot: false },
+      guild: mockGuild,
+      premiumSince: null,
+      roles: { cache: new Map() }
+    };
+    const onlineWithInvitePresence = {
+      status: "online",
+      activities: [
+        { type: 4, name: "Custom Status", state: "Join discord.gg/friendbase today!" }
+      ]
+    };
+    const supporterCheck = await mediaEngine.checkMemberEligibility(statusSupporterMember, onlineWithInvitePresence);
+    assert.strictEqual(supporterCheck.eligible, true, "Online member with invite in status must be eligible");
+    assert.strictEqual(supporterCheck.hasInvite, true);
+    assert.strictEqual(supporterCheck.isOnline, true);
+
+    // Case 3: Offline with Server Invite -> NOT eligible (must be online)
+    const offlineWithInvitePresence = {
+      status: "offline",
+      activities: [
+        { type: 4, name: "Custom Status", state: "Join discord.gg/friendbase today!" }
+      ]
+    };
+    const offlineCheck = await mediaEngine.checkMemberEligibility(statusSupporterMember, offlineWithInvitePresence);
+    assert.strictEqual(offlineCheck.eligible, false, "Offline member must not be eligible");
+
+    // Case 4: Online without Server Invite -> NOT eligible
+    const onlineNoInvitePresence = {
+      status: "online",
+      activities: [
+        { type: 4, name: "Custom Status", state: "Playing games" }
+      ]
+    };
+    const noInviteCheck = await mediaEngine.checkMemberEligibility(statusSupporterMember, onlineNoInvitePresence);
+    assert.strictEqual(noInviteCheck.eligible, false, "Online member without invite in status must not be eligible");
+
+    // Case 5: Verify mediaCommands bundle export
+    const mediaCommands = require("../src/commands/bundles/mediaCommands");
+    const picPermsCmd = mediaCommands.find(c => c.name === "picperms");
+    assert.ok(picPermsCmd, "picperms command must exist");
+    assert.ok(picPermsCmd.aliases.includes("mediaperms"));
+    assert.ok(picPermsCmd.aliases.includes("gifperms"));
+    assert.strictEqual(typeof picPermsCmd.execute, "function");
+  });
+
   // Test Summary
   console.log("\n=========================================");
   console.log(`🌸 Test Suite Finished: ${passed} Passed, ${failed} Failed`);

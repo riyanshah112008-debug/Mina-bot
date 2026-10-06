@@ -109,6 +109,15 @@ function getGuildSettings(guildId) {
         mentionLimit: 5,
         badWords: [],
       },
+      media_perms: {
+        enabled: true,
+        roleId: null,
+        inviteUrl: null,
+        requireOnline: true,
+        allowIdleDnd: false,
+        boosterPerk: true,
+        logChannelId: null,
+      },
       updatedAt: new Date().toISOString(),
     };
     scheduleSave();

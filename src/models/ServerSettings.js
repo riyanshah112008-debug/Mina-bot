@@ -131,6 +131,17 @@ const serverSettingsSchema = new mongoose.Schema({
         anchorRoleId: { type: String, default: '' },      // Upper boundary role in hierarchy
         allowEveryone: { type: Boolean, default: true },   // Whether all members can use without booster status
         allowedRoles: { type: [String], default: [] }      // Specific roles allowed if allowEveryone is false
+    },
+
+    // 📸 Pic & GIF Permissions (Status Invite & Booster Reward Engine)
+    mediaPerms: {
+        enabled: { type: Boolean, default: true },
+        roleId: { type: String, default: '' },            // Role to grant
+        inviteUrl: { type: String, default: '' },         // Custom invite code or URL (e.g. discord.gg/xxx)
+        requireOnline: { type: Boolean, default: true },  // Must have status 'online'
+        allowIdleDnd: { type: Boolean, default: false },  // If false, strictly 'online'. If true, 'online', 'idle', 'dnd'
+        boosterPerk: { type: Boolean, default: true },    // Automatically grant to server boosters
+        logChannelId: { type: String, default: '' }       // Optional log channel
     }
 }, { timestamps: true });
 
