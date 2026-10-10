@@ -305,12 +305,28 @@ const defaultNodes = [
         retryDelay: 3000
     },
     {
-        name: 'Node-2-Ajieblogs-NonSSL',
-        url: 'lava-v4.ajieblogs.eu.org:80',
-        auth: 'https://dsc.gg/ajidevserver',
-        secure: false,
-        retryAmount: 5,
-        retryDelay: 5000
+        name: 'Node-2-Serenetia-V4-SSL',
+        url: 'lavalinkv4.serenetia.com:443',
+        auth: 'https://seretia.link/discord',
+        secure: true,
+        retryAmount: 10,
+        retryDelay: 3000
+    },
+    {
+        name: 'Node-3-TriniumHost-SSL',
+        url: 'lavalink-v4.triniumhost.com:443',
+        auth: 'free',
+        secure: true,
+        retryAmount: 10,
+        retryDelay: 3000
+    },
+    {
+        name: 'Node-4-MilloHost-SSL',
+        url: 'lava-v4.millohost.my.id:443',
+        auth: 'https://discord.gg/mjS5J2K3ep',
+        secure: true,
+        retryAmount: 10,
+        retryDelay: 3000
     }
 ];
 
@@ -1201,7 +1217,8 @@ function createMusicManager(client) {
 
     manager.on('playerException', async (player, track, exception) => {
         console.warn(`⚠️ [Music Player Exception] Guild ${player?.guildId}:`, exception?.message || exception || 'Node failover event');
-        if (player && player.queue && player.queue.length > 0) {
+        const isFatal = exception?.severity === 'fault' || exception?.severity === 'FATAL' || (exception?.message && (exception.message.includes('Load failed') || exception.message.includes('not available')));
+        if (isFatal && player && player.queue && player.queue.length > 0) {
             player.skip();
         }
     });

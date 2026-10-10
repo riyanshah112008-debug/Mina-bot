@@ -31,6 +31,26 @@ try:
 except:
     pass
 
+import threading
+
+def _bg_cache_track(source_url, vid_id):
+    if not vid_id or not source_url:
+        return
+    try:
+        out_tmpl = os.path.join(CACHE_DIR, f"{vid_id}.%(ext)s")
+        download_opts = {
+            'format': 'bestaudio/ba/b',
+            'outtmpl': out_tmpl,
+            'quiet': True,
+            'no_warnings': True,
+            'js_runtimes': {'node': {}},
+            'socket_timeout': 15
+        }
+        with yt_dlp.YoutubeDL(download_opts) as dl:
+            dl.download([source_url])
+    except Exception:
+        pass
+
 ydl_track_opts = {
     'format': 'bestaudio/ba/b',
     'quiet': True,
@@ -38,6 +58,7 @@ ydl_track_opts = {
     'noplaylist': True,
     'default_search': 'ytsearch1',
     'extractor_args': {'youtube': {'player_client': ['android', 'ios', 'web']}},
+    'js_runtimes': {'node': {}},
     'socket_timeout': 10
 }
 
@@ -46,6 +67,7 @@ ydl_playlist_opts = {
     'quiet': True,
     'no_warnings': True,
     'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+    'js_runtimes': {'node': {}},
     'socket_timeout': 12
 }
 
@@ -156,10 +178,22 @@ for line in sys.stdin:
                     video = None
 
             if video and video.get('url'):
+                vid_id = video.get('id') or ''
+                cached_file = None
+                if vid_id:
+                    matches = glob.glob(os.path.join(CACHE_DIR, f"{vid_id}.*"))
+                    if matches and os.path.isfile(matches[0]) and os.path.getsize(matches[0]) > 50000:
+                        cached_file = matches[0]
+
+                if not cached_file and vid_id:
+                    target_source = video.get('webpage_url') or query
+                    threading.Thread(target=_bg_cache_track, args=(target_source, vid_id), daemon=True).start()
+
                 resp = {
                     'id': req_id,
                     'status': 'ok',
                     'url': video.get('url'),
+                    'file': cached_file,
                     'title': video.get('title'),
                     'duration': video.get('duration'),
                     'headers': video.get('http_headers') or {}

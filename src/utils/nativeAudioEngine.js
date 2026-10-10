@@ -103,6 +103,17 @@ FILTER_ARGS.mellow = FILTER_ARGS.soft;
 FILTER_ARGS.relax = FILTER_ARGS.soft;
 FILTER_ARGS.vintage = FILTER_ARGS.radio;
 
+function getFilterArgs(filterName, volumePercent = 100) {
+    const rawFilter = (filterName && FILTER_ARGS[filterName]) ? FILTER_ARGS[filterName] : FILTER_ARGS.empowering;
+    const volScale = Math.max(0.05, Math.min(2.0, (volumePercent || 100) / 100));
+    const filterStr = rawFilter[1];
+    const adjustedFilterStr = filterStr.replace(/volume=([0-9.]+)/, (match, baseVol) => {
+        const adjustedVol = (parseFloat(baseVol) * volScale).toFixed(2);
+        return `volume=${adjustedVol}`;
+    });
+    return ['-af', adjustedFilterStr];
+}
+
 let scClientId = null;
 let lastTokenRefresh = 0;
 
@@ -384,10 +395,11 @@ class StarryGuildPlayer {
         this.disconnectTimeout = null;
         this._isSeeking = false;
 
-        // Initialize Discord.js AudioPlayer with Play on no-subscriber behavior
+        // Initialize Discord.js AudioPlayer with Play on no-subscriber behavior and high jitter tolerance
         this.player = createAudioPlayer({
             behaviors: {
-                noSubscriber: NoSubscriberBehavior.Play
+                noSubscriber: NoSubscriberBehavior.Play,
+                maxMissedFrames: 250
             }
         });
         this.connection = null;
@@ -442,6 +454,11 @@ class StarryGuildPlayer {
             this.connection.state.status === VoiceConnectionStatus.Disconnected;
 
         if (isDead) {
+            try {
+                const kPlayer = this.client?.manager?.getPlayer(this.guildId);
+                if (kPlayer) kPlayer.destroy();
+            } catch (_) {}
+
             this.connection = joinVoiceChannel({
                 channelId: this.voiceChannel.id,
                 guildId: this.guildId,
@@ -545,16 +562,23 @@ class StarryGuildPlayer {
     }
 
     createFilteredResource(streamOrPath, isFile = false, customHeaders = null) {
-        const activeFilter = (this.filter && FILTER_ARGS[this.filter]) 
-            ? FILTER_ARGS[this.filter] 
-            : FILTER_ARGS.empowering;
+        const activeFilter = getFilterArgs(this.filter, this.volume);
 
         try {
             if (isFile) {
                 const isUrl = typeof streamOrPath === 'string' && (streamOrPath.startsWith('http://') || streamOrPath.startsWith('https://'));
                 let inputArgs = [];
                 if (isUrl) {
-                    inputArgs.push('-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5');
+                    inputArgs.push(
+                        '-reconnect', '1',
+                        '-reconnect_streamed', '1',
+                        '-reconnect_at_eof', '1',
+                        '-reconnect_delay_max', '3',
+                        '-rw_timeout', '15000000',
+                        '-buffer_size', '2048k',
+                        '-analyzeduration', '0',
+                        '-probesize', '65536'
+                    );
                     if (customHeaders && typeof customHeaders === 'object' && Object.keys(customHeaders).length > 0) {
                         const headerStr = Object.entries(customHeaders).map(([k, v]) => `${k}: ${v}`).join('\r\n') + '\r\n';
                         inputArgs.push('-headers', headerStr);
@@ -570,43 +594,43 @@ class StarryGuildPlayer {
                     args: [
                         ...inputArgs,
                         ...activeFilter,
-                        '-f', 's16le',
-                        '-ar', '48000',
-                        '-ac', '2'
+                        '-c:a', 'libopus',
+                        '-b:a', '128k',
+                        '-vbr', 'on',
+                        '-f', 'opus'
                     ]
                 });
                 ffmpeg.on('error', err => console.warn('⚠️ [FFmpeg File Filter Notice]:', err.message || err));
                 return createAudioResource(ffmpeg, {
-                    inputType: StreamType.Raw,
-                    inlineVolume: true
+                    inputType: StreamType.OggOpus
                 });
             } else {
                 const ffmpeg = new prism.FFmpeg({
                     args: [
                         '-analyzeduration', '0',
+                        '-probesize', '65536',
                         '-loglevel', '0',
                         '-i', 'pipe:0',
                         ...activeFilter,
-                        '-f', 's16le',
-                        '-ar', '48000',
-                        '-ac', '2'
+                        '-c:a', 'libopus',
+                        '-b:a', '128k',
+                        '-vbr', 'on',
+                        '-f', 'opus'
                     ]
                 });
                 ffmpeg.on('error', err => console.warn('⚠️ [FFmpeg Stream Filter Notice]:', err.message || err));
                 if (typeof streamOrPath.on === 'function') {
                     streamOrPath.on('error', err => console.warn('⚠️ [Input Audio Stream Notice]:', err.message || err));
                 }
-                const piped = streamOrPath.pipe(ffmpeg);
-                return createAudioResource(piped, {
-                    inputType: StreamType.Raw,
-                    inlineVolume: true
+                streamOrPath.pipe(ffmpeg);
+                return createAudioResource(ffmpeg, {
+                    inputType: StreamType.OggOpus
                 });
             }
         } catch (e) {
             console.warn('⚠️ [Audio Filter Fallback]:', e.message || e);
             return createAudioResource(streamOrPath, {
-                inputType: isFile ? StreamType.Arbitrary : StreamType.Arbitrary,
-                inlineVolume: true
+                inputType: isFile ? StreamType.Arbitrary : StreamType.Arbitrary
             });
         }
     }
@@ -947,8 +971,9 @@ class StarryGuildPlayer {
 
     setVolume(vol) {
         this.volume = Math.max(0, Math.min(200, vol));
-        if (this.audioResource && this.audioResource.volume) {
-            this.audioResource.volume.setVolume(this.volume / 100);
+        if (this.currentTrack && this.isPlaying) {
+            const currentPosSec = Math.max(0, Math.floor(this.position / 1000));
+            this.seekTo(currentPosSec).catch(() => {});
         }
         try { require('../modules/musicController').update(this.guildId, this.client); } catch (e) {}
     }
@@ -987,31 +1012,25 @@ class StarryGuildPlayer {
             }
 
             if (file && fs.existsSync(file)) {
-                const activeFilter = (this.filter && FILTER_ARGS[this.filter]) 
-                    ? FILTER_ARGS[this.filter] 
-                    : FILTER_ARGS.empowering;
+                const activeFilter = getFilterArgs(this.filter, this.volume);
 
                 const ffmpeg = new prism.FFmpeg({
                     args: [
                         '-ss', seconds.toString(),
                         '-i', file,
                         ...activeFilter,
-                        '-f', 's16le',
-                        '-ar', '48000',
-                        '-ac', '2'
+                        '-c:a', 'libopus',
+                        '-b:a', '128k',
+                        '-vbr', 'on',
+                        '-f', 'opus'
                     ]
                 });
 
                 const audioResource = createAudioResource(ffmpeg, {
-                    inputType: StreamType.Raw,
-                    inlineVolume: true
+                    inputType: StreamType.OggOpus
                 });
 
                 this.audioResource = audioResource;
-                if (this.audioResource.volume) {
-                    this.audioResource.volume.setVolume(this.volume / 100);
-                }
-
                 this._isSeeking = true;
                 this.player.play(this.audioResource);
                 this.paused = false;
@@ -1031,9 +1050,6 @@ class StarryGuildPlayer {
                     if (stream && stream.stream) {
                         const audioResource = this.createFilteredResource(stream.stream, false);
                         this.audioResource = audioResource;
-                        if (this.audioResource.volume) {
-                            this.audioResource.volume.setVolume(this.volume / 100);
-                        }
                         this._isSeeking = true;
                         this.player.play(this.audioResource);
                         this.paused = false;

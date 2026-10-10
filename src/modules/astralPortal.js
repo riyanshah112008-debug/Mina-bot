@@ -12,6 +12,7 @@ const {
     PermissionFlagsBits,
     ChannelType 
 } = require('discord.js');
+const mongoose = require('mongoose');
 const AstralPortal = require('../models/AstralPortal');
 
 // Fast In-Memory Router: channelId -> portalDoc

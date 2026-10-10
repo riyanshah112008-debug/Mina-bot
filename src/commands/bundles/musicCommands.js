@@ -147,6 +147,11 @@ const commands = [
                         throw new Error(`Lavalink could not resolve "${query}". Falling back to Native Audio Engine.`);
                     }
 
+                    try {
+                        const nPlayer = StarryAudioEngine.getPlayer(ctx.guild.id, targetClient);
+                        if (nPlayer && !nPlayer.destroyed) nPlayer.destroy();
+                    } catch (_) {}
+
                     let player = manager.getPlayer(ctx.guild.id);
                     if (!player) {
                         player = await manager.createPlayer({
