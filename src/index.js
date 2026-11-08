@@ -44,8 +44,11 @@ client.once(Events.ClientReady, async ready => {
   }
 });
 client.on(Events.InteractionCreate, async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-  try { await commandModule.execute(interaction); }
+  try {
+    if (interaction.isButton() || interaction.isModalSubmit()) return await commandModule.handleComponent(interaction);
+    if (!interaction.isChatInputCommand()) return;
+    await commandModule.execute(interaction);
+  }
   catch (error) {
     console.error('[Mina] Command error:', error);
     const payload = { content: 'Command failed. Check bot permissions and role hierarchy.', ephemeral: true };
