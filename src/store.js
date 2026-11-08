@@ -15,6 +15,7 @@ const defaults = () => ({
   trusted: [],
   logChannelId: null,
   quarantineRoleId: null,
+  verification: { enabled: false, verifiedRoleId: null, quarantineRoleId: null },
   lockdown: { active: false, changed: [] }
 });
 let cache = {};
@@ -41,7 +42,7 @@ function get(guildId) {
   for (const key of Object.keys(base)) {
     if (cfg[key] === undefined) cfg[key] = base[key];
   }
-  for (const group of ['antiNuke','antiRaid','automod','lockdown']) {
+  for (const group of ['antiNuke','antiRaid','automod','verification','lockdown']) {
     cfg[group] = { ...base[group], ...(cfg[group] || {}) };
   }
   if (!Array.isArray(cfg.trusted)) cfg.trusted = [];
