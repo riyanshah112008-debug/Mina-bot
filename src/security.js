@@ -66,7 +66,8 @@ async function handleDestructiveAudit(entry, label) {
   const cfg = store.get(guild.id);
   if (!cfg.enabled || !cfg.antiNuke.enabled) return;
   const executor = entry.executor;
-  if (!executor || executor.bot || isTrusted(cfg, executor.id, guild)) return;
+  if (!executor || isTrusted(cfg, executor.id, guild)) return;
+  if (entry.action === AuditLogEvent.RoleUpdate && !(entry.changes || []).some(change => change.key === 'permissions')) return;
 
   if (entry.action === AuditLogEvent.BotAdd && entry.targetId) {
     const addedBot = await guild.members.fetch(entry.targetId).catch(() => null);
@@ -94,23 +95,27 @@ async function handleDestructiveAudit(entry, label) {
 }
 async function onJoin(member) {
   const cfg = store.get(member.guild.id);
-  if (!cfg.enabled || !cfg.antiRaid.enabled || isTrusted(cfg, member.id, member.guild)) return;
+  if (!cfg.enabled || isTrusted(cfg, member.id, member.guild)) return;
+  const age = Date.now() - member.user.createdTimestamp;
+  const verification = cfg.verification || {};
+  const quarantineId = verification.enabled ? (verification.quarantineRoleId || cfg.quarantineRoleId) : (age < cfg.antiRaid.minAccountAgeMs ? cfg.quarantineRoleId : null);
+  let quarantined = false;
+  if (quarantineId) {
+    const role = await member.guild.roles.fetch(quarantineId).catch(() => null);
+    if (role && member.manageable && !member.roles.cache.has(role.id)) {
+      quarantined = await member.roles.add(role, verification.enabled ? 'Mina verification gate: new member' : 'Mina anti-raid: young account').then(() => true).catch(() => false);
+    }
+  }
+  if (age < cfg.antiRaid.minAccountAgeMs && cfg.antiRaid.enabled) {
+    await log(member.guild, '🛡️ New-account gate: ' + member.user.tag + ' joined with a young account.' + (quarantined ? ' Quarantine role applied.' : ' Review member manually.'));
+  } else if (verification.enabled) {
+    await log(member.guild, '🔐 Verification required for ' + member.user.tag + (quarantined ? '; quarantine role applied.' : '; check role hierarchy.'));
+  }
+  if (!cfg.antiRaid.enabled) return;
   const now = Date.now();
   const list = recentTimes(joinBuckets, member.guild.id, now, cfg.antiRaid.windowMs);
   list.push(now);
   joinBuckets.set(member.guild.id, list);
-  const age = now - member.user.createdTimestamp;
-  if (age < cfg.antiRaid.minAccountAgeMs) {
-    let quarantined = false;
-    if (cfg.quarantineRoleId) {
-      const role = await member.guild.roles.fetch(cfg.quarantineRoleId).catch(() => null);
-      if (role && member.manageable) {
-        quarantined = await member.roles.add(role, 'Mina anti-raid: account younger than configured age').then(() => true).catch(() => false);
-      }
-    }
-    await log(member.guild, '🛡️ New-account gate: ' + member.user.tag +
-      ' joined with a young account.' + (quarantined ? ' Quarantine role applied.' : ' Review member manually.'));
-  }
   if (list.length >= cfg.antiRaid.joinLimit) {
     await lockdown(member.guild, 'Join-raid threshold reached (' + list.length + ' joins in ' + Math.round(cfg.antiRaid.windowMs / 1000) + 's).');
   }
@@ -157,10 +162,9 @@ async function onMessage(message) {
 }
 module.exports = {
   onJoin, onMessage, lockdown, restoreLockdown, log,
-  handleDestructiveAudit,
+  handleDestructiveAudit, isSuspiciousLink,
   auditTypes: [
     [AuditLogEvent.ChannelDelete, 'channel deletion'],
-    [AuditLogEvent.ChannelUpdate, 'channel update or permission change'],
     [AuditLogEvent.ChannelOverwriteCreate, 'channel overwrite creation'],
     [AuditLogEvent.ChannelOverwriteUpdate, 'channel overwrite update'],
     [AuditLogEvent.ChannelOverwriteDelete, 'channel overwrite deletion'],
