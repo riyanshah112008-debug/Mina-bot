@@ -28,8 +28,10 @@ const commands = [
 
 async function execute(interaction) {
   if (!interaction.inGuild()) return interaction.reply({ content: 'Use this command in a server.', ephemeral: true });
-  const { commandName: name, guild, member } = interaction;
-  if (['security','lockdown','unlock'].includes(name) && !member.permissions.has(PermissionFlagsBits.Administrator)) {
+  const { commandName: name, guild } = interaction;
+  const actor = await guild.members.fetch(interaction.user.id).catch(() => null);
+  if (!actor) return interaction.reply({ content: 'Could not resolve your server membership.', ephemeral: true });
+  if (['security','lockdown','unlock'].includes(name) && !interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
     return interaction.reply({ content: 'Administrator permission required.', ephemeral: true });
   }
   if (name === 'security') {
@@ -49,22 +51,33 @@ async function execute(interaction) {
     if (sub === 'whitelist-remove') store.update(guild.id, c => { c.trusted = c.trusted.filter(id => id !== interaction.options.getUser('user').id); });
     return interaction.reply({ content: 'Security settings saved.', ephemeral: true });
   }
-  if (name === 'lockdown') { await security.lockdown(guild, 'Manually activated by ' + interaction.user.tag); return interaction.reply({ content: 'Lockdown activated.', ephemeral: true }); }
-  if (name === 'unlock') { await security.restoreLockdown(guild); return interaction.reply({ content: 'Lockdown recovery completed.', ephemeral: true }); }
+  if (name === 'lockdown') {
+    await security.lockdown(guild, 'Manually activated by ' + interaction.user.tag);
+    return interaction.reply({ content: 'Lockdown activated.', ephemeral: true });
+  }
+  if (name === 'unlock') {
+    await security.restoreLockdown(guild);
+    return interaction.reply({ content: 'Lockdown recovery completed.', ephemeral: true });
+  }
   const user = interaction.options.getUser('user');
   const target = await guild.members.fetch(user.id).catch(() => null);
   if (!target) return interaction.reply({ content: 'Member not found.', ephemeral: true });
-  if (target.id === guild.ownerId || target.roles.highest.position >= member.roles.highest.position) return interaction.reply({ content: 'Cannot moderate this member because of Discord role hierarchy.', ephemeral: true });
+  if (target.id === guild.ownerId || target.roles.highest.position >= actor.roles.highest.position) {
+    return interaction.reply({ content: 'Cannot moderate this member because of Discord role hierarchy.', ephemeral: true });
+  }
   const reason = interaction.options.getString('reason') || 'No reason provided';
   if (name === 'timeout') {
-    if (!member.permissions.has(PermissionFlagsBits.ModerateMembers)) return interaction.reply({ content: 'You need Moderate Members permission.', ephemeral: true });
+    if (!actor.permissions.has(PermissionFlagsBits.ModerateMembers)) return interaction.reply({ content: 'You need Moderate Members permission.', ephemeral: true });
     const minutes = interaction.options.getInteger('minutes');
+    if (!target.moderatable) return interaction.reply({ content: 'Mina cannot timeout this member. Check the bot role hierarchy and permissions.', ephemeral: true });
     await target.timeout(minutes * 60000, reason);
   } else if (name === 'kick') {
-    if (!member.permissions.has(PermissionFlagsBits.KickMembers)) return interaction.reply({ content: 'You need Kick Members permission.', ephemeral: true });
+    if (!actor.permissions.has(PermissionFlagsBits.KickMembers)) return interaction.reply({ content: 'You need Kick Members permission.', ephemeral: true });
+    if (!target.kickable) return interaction.reply({ content: 'Mina cannot kick this member. Check the bot role hierarchy and permissions.', ephemeral: true });
     await target.kick(reason);
   } else if (name === 'ban') {
-    if (!member.permissions.has(PermissionFlagsBits.BanMembers)) return interaction.reply({ content: 'You need Ban Members permission.', ephemeral: true });
+    if (!actor.permissions.has(PermissionFlagsBits.BanMembers)) return interaction.reply({ content: 'You need Ban Members permission.', ephemeral: true });
+    if (!target.bannable) return interaction.reply({ content: 'Mina cannot ban this member. Check the bot role hierarchy and permissions.', ephemeral: true });
     await target.ban({ reason });
   }
   return interaction.reply({ content: user.tag + ' action completed.', ephemeral: true });
