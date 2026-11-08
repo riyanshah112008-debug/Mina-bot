@@ -11,7 +11,7 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --test",
-    "check": "node --check src/index.js && node --check src/security.js && node --check src/store.js && node --check src/commands.js"
+    "check": "node --check src/index.js && node --check src/security.js && node --check src/store.js && node --check src/commands.js && node --check tests/security.test.js"
   },
   "dependencies": {
     "discord.js": "^14.19.3",
