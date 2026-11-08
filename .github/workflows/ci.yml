@@ -1,7 +1,7 @@
 name: Mina Bot CI
 on:
   push:
-    branches: [main, 'rebuild/**']
+    branches: [main, 'rebuild/**', 'security/**']
   pull_request:
     branches: [main]
 jobs:

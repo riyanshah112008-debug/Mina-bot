@@ -47,7 +47,7 @@ async function lockdown(guild, reason) {
 async function restoreLockdown(guild) {
   const cfg = store.get(guild.id);
   for (const item of cfg.lockdown.changed || []) {
-    const channel = guild.channels.cache.get(item.channelId);
+    const channel = guild.channels.cache.get(item.channelId) || await guild.channels.fetch(item.channelId).catch(() => null);
     if (!channel?.permissionOverwrites?.edit) continue;
     try {
       await channel.permissionOverwrites.edit(guild.roles.everyone, {
@@ -66,7 +66,19 @@ async function handleDestructiveAudit(entry, label) {
   const cfg = store.get(guild.id);
   if (!cfg.enabled || !cfg.antiNuke.enabled) return;
   const executor = entry.executor;
-  if (!executor || executor.bot || isTrusted(cfg, executor.id, guild)) return;
+  if (!executor || isTrusted(cfg, executor.id, guild)) return;
+  if (entry.action === AuditLogEvent.RoleUpdate && !(entry.changes || []).some(change => change.key === 'permissions')) return;
+
+  if (entry.action === AuditLogEvent.BotAdd && entry.targetId) {
+    const addedBot = await guild.members.fetch(entry.targetId).catch(() => null);
+    if (addedBot?.user.bot && addedBot.bannable) {
+      await addedBot.ban({ reason: 'Mina anti-nuke: bot added by an untrusted administrator' }).catch(() => null);
+      await log(guild, '🛑 Unauthorized bot addition: removed ' + addedBot.user.tag + ' (added by ' + executor.tag + ').');
+    } else {
+      await log(guild, '⚠️ Unauthorized bot addition detected, but Mina could not remove the bot. Check role hierarchy.');
+    }
+  }
+
   const key = guild.id + ':' + executor.id;
   const now = Date.now();
   const list = recentTimes(actionBuckets, key, now, cfg.antiNuke.windowMs);
@@ -75,24 +87,54 @@ async function handleDestructiveAudit(entry, label) {
   await log(guild, '⚠️ Anti-nuke: ' + executor.tag + ' performed ' + label + ' (' + list.length + '/' + cfg.antiNuke.limit + ').');
   if (list.length >= cfg.antiNuke.limit) {
     const member = await guild.members.fetch(executor.id).catch(() => null);
-    if (member?.moderatable) await member.timeout(60 * 60 * 1000, 'Mina anti-nuke threshold exceeded').catch(() => null);
+    if (member?.moderatable) {
+      await member.timeout(60 * 60 * 1000, 'Mina anti-nuke threshold exceeded').catch(() => null);
+    }
     if (cfg.antiNuke.lockdown) await lockdown(guild, 'Anti-nuke threshold exceeded for ' + executor.tag);
   }
 }
 async function onJoin(member) {
   const cfg = store.get(member.guild.id);
-  if (!cfg.enabled || !cfg.antiRaid.enabled || isTrusted(cfg, member.id, member.guild)) return;
+  if (!cfg.enabled || isTrusted(cfg, member.id, member.guild)) return;
+  const age = Date.now() - member.user.createdTimestamp;
+  const verification = cfg.verification || {};
+  const quarantineId = verification.enabled ? (verification.quarantineRoleId || cfg.quarantineRoleId) : (age < cfg.antiRaid.minAccountAgeMs ? cfg.quarantineRoleId : null);
+  let quarantined = false;
+  if (quarantineId) {
+    const role = await member.guild.roles.fetch(quarantineId).catch(() => null);
+    if (role && member.manageable && !member.roles.cache.has(role.id)) {
+      quarantined = await member.roles.add(role, verification.enabled ? 'Mina verification gate: new member' : 'Mina anti-raid: young account').then(() => true).catch(() => false);
+    }
+  }
+  if (age < cfg.antiRaid.minAccountAgeMs && cfg.antiRaid.enabled) {
+    await log(member.guild, '🛡️ New-account gate: ' + member.user.tag + ' joined with a young account.' + (quarantined ? ' Quarantine role applied.' : ' Review member manually.'));
+  } else if (verification.enabled) {
+    await log(member.guild, '🔐 Verification required for ' + member.user.tag + (quarantined ? '; quarantine role applied.' : '; check role hierarchy.'));
+  }
+  if (!cfg.antiRaid.enabled) return;
   const now = Date.now();
   const list = recentTimes(joinBuckets, member.guild.id, now, cfg.antiRaid.windowMs);
   list.push(now);
   joinBuckets.set(member.guild.id, list);
-  const age = now - member.user.createdTimestamp;
-  if (age < cfg.antiRaid.minAccountAgeMs) {
-    await log(member.guild, '🛡️ New-account gate: ' + member.user.tag + ' joined with an account younger than the configured minimum.');
-  }
   if (list.length >= cfg.antiRaid.joinLimit) {
     await lockdown(member.guild, 'Join-raid threshold reached (' + list.length + ' joins in ' + Math.round(cfg.antiRaid.windowMs / 1000) + 's).');
   }
+}
+function isSuspiciousLink(content, allowedDomains) {
+  const matches = content.match(/https?:\/\/[^\s<>]+/gi) || [];
+  const allowed = new Set(allowedDomains.map(x => x.toLowerCase().replace(/^www\./, '')));
+  for (const raw of matches) {
+    let url;
+    try { url = new URL(raw.replace(/[),.!?]+$/, '')); } catch { continue; }
+    const host = url.hostname.toLowerCase().replace(/^www\./, '');
+    if (allowed.has(host)) continue;
+    if (host.startsWith('xn--') || host.split('.').some(part => part.startsWith('xn--'))) return true;
+    if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(host)) return true;
+    if (/^(?:bit\.ly|tinyurl\.com|cutt\.ly|t\.co|is\.gd)$/i.test(host)) return true;
+    if (/(?:login|verify|wallet|nitro|gift|free|steamcommunity)/i.test(url.pathname) &&
+        /(?:discord|steam|nitro|wallet|account)/i.test(host)) return true;
+  }
+  return false;
 }
 async function onMessage(message) {
   if (!message.guild || message.author.bot || message.webhookId) return false;
@@ -108,24 +150,31 @@ async function onMessage(message) {
   const flood = list.length >= cfg.automod.messageLimit;
   const mentionSpam = list.reduce((sum, item) => sum + item.mentions, 0) >= cfg.automod.mentionLimit;
   const invite = cfg.automod.inviteFilter && /(?:discord\.gg\/|discord(?:app)?\.com\/invite\/)/i.test(message.content);
-  if (!(repeated || flood || mentionSpam || invite)) return false;
+  const maliciousLink = cfg.automod.linkFilter && isSuspiciousLink(message.content, cfg.automod.allowedDomains);
+  if (!(repeated || flood || mentionSpam || invite || maliciousLink)) return false;
   await message.delete().catch(() => null);
   if (message.member?.moderatable) {
-    await message.member.timeout(5 * 60 * 1000, 'Mina AutoMod: spam/raid filter').catch(() => null);
+    await message.member.timeout(5 * 60 * 1000, 'Mina AutoMod: spam or unsafe link filter').catch(() => null);
   }
   await log(message.guild, '🧹 AutoMod action on ' + message.author.tag + ': ' +
-    [repeated && 'repeated messages', flood && 'message flood', mentionSpam && 'mention spam', invite && 'server invite'].filter(Boolean).join(', '));
+    [repeated && 'repeated messages', flood && 'message flood', mentionSpam && 'mention spam', invite && 'server invite', maliciousLink && 'suspicious link'].filter(Boolean).join(', '));
   return true;
 }
 module.exports = {
   onJoin, onMessage, lockdown, restoreLockdown, log,
-  handleDestructiveAudit,
+  handleDestructiveAudit, isSuspiciousLink,
   auditTypes: [
     [AuditLogEvent.ChannelDelete, 'channel deletion'],
+    [AuditLogEvent.ChannelOverwriteCreate, 'channel overwrite creation'],
+    [AuditLogEvent.ChannelOverwriteUpdate, 'channel overwrite update'],
+    [AuditLogEvent.ChannelOverwriteDelete, 'channel overwrite deletion'],
     [AuditLogEvent.RoleDelete, 'role deletion'],
+    [AuditLogEvent.RoleUpdate, 'role update or permission change'],
     [AuditLogEvent.MemberBanAdd, 'member ban'],
     [AuditLogEvent.MemberKick, 'member kick'],
     [AuditLogEvent.WebhookCreate, 'webhook creation'],
-    [AuditLogEvent.WebhookDelete, 'webhook deletion']
+    [AuditLogEvent.WebhookUpdate, 'webhook update'],
+    [AuditLogEvent.WebhookDelete, 'webhook deletion'],
+    [AuditLogEvent.BotAdd, 'bot addition']
   ]
 };

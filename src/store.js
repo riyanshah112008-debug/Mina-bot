@@ -6,12 +6,16 @@ const dataDir = path.resolve(process.env.DATA_DIR || './data');
 const file = path.join(dataDir, 'guilds.json');
 const defaults = () => ({
   enabled: true,
-  antiNuke: { enabled: true, windowMs: 10000, limit: 3, lockdown: true },
+  antiNuke: { enabled: true, windowMs: 10000, limit: 3, lockdown: true, punish: 'timeout' },
   antiRaid: { enabled: true, windowMs: 15000, joinLimit: 8, minAccountAgeMs: 86400000 },
-  automod: { enabled: true, windowMs: 7000, messageLimit: 6, mentionLimit: 5, heatLimit: 100, inviteFilter: true },
+  automod: {
+    enabled: true, windowMs: 7000, messageLimit: 6, mentionLimit: 5,
+    inviteFilter: true, linkFilter: true, allowedDomains: []
+  },
   trusted: [],
   logChannelId: null,
   quarantineRoleId: null,
+  verification: { enabled: false, verifiedRoleId: null, quarantineRoleId: null },
   lockdown: { active: false, changed: [] }
 });
 let cache = {};
@@ -33,7 +37,17 @@ function save() {
 }
 function get(guildId) {
   if (!cache[guildId]) { cache[guildId] = defaults(); save(); }
-  return cache[guildId];
+  const cfg = cache[guildId];
+  const base = defaults();
+  for (const key of Object.keys(base)) {
+    if (cfg[key] === undefined) cfg[key] = base[key];
+  }
+  for (const group of ['antiNuke','antiRaid','automod','verification','lockdown']) {
+    cfg[group] = { ...base[group], ...(cfg[group] || {}) };
+  }
+  if (!Array.isArray(cfg.trusted)) cfg.trusted = [];
+  if (!Array.isArray(cfg.automod.allowedDomains)) cfg.automod.allowedDomains = [];
+  return cfg;
 }
 function update(guildId, updater) {
   const current = get(guildId);
