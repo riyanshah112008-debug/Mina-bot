@@ -1,9 +1,7 @@
 'use strict';
 require('dotenv').config();
-const {
-  Client, GatewayIntentBits, Partials, REST, Routes, Events,
-  PermissionFlagsBits
-} = require('discord.js');
+const http = require('node:http');
+const { Client, GatewayIntentBits, Partials, REST, Routes, Events } = require('discord.js');
 const store = require('./store');
 const security = require('./security');
 const commandModule = require('./commands');
@@ -22,6 +20,19 @@ const client = new Client({
   ],
   partials: [Partials.Channel, Partials.GuildMember, Partials.Message]
 });
+
+// Minimal JSON health endpoint for Render; this is not a website or dashboard.
+const port = Number(process.env.PORT || 10000);
+const healthServer = http.createServer((req, res) => {
+  if (req.url === '/health' || req.url === '/ping') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify({ status: 'ok', bot: client.isReady() ? 'online' : 'starting', uptime: process.uptime() }));
+  }
+  res.writeHead(404, { 'content-type': 'application/json' });
+  res.end(JSON.stringify({ error: 'Not found' }));
+});
+healthServer.listen(port, '0.0.0.0', () => console.log('[Mina] Health endpoint listening on ' + port));
+
 client.once(Events.ClientReady, async ready => {
   console.log('[Mina] Online as ' + ready.user.tag);
   try {
@@ -44,17 +55,16 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 client.on(Events.GuildMemberAdd, member => security.onJoin(member).catch(console.error));
 client.on(Events.MessageCreate, message => security.onMessage(message).catch(console.error));
-for (const [type, label] of security.auditTypes) {
-  client.on(Events.GuildAuditLogEntryCreate, entry => {
-    if (entry.action !== type || !entry.guild) return;
-    security.handleAudit(entry.guild, type, entry.targetId, label).catch(console.error);
-  });
-}
+client.on(Events.GuildAuditLogEntryCreate, entry => {
+  const item = security.auditTypes.find(([type]) => type === entry.action);
+  if (item) security.handleDestructiveAudit(entry, item[1]).catch(console.error);
+});
 client.on(Events.Error, error => console.error('[Mina] Discord client error:', error));
 process.on('unhandledRejection', error => console.error('[Mina] Unhandled rejection:', error));
 async function shutdown(signal) {
   console.log('[Mina] Received ' + signal + '; shutting down.');
   store.save();
+  healthServer.close();
   client.destroy();
   process.exit(0);
 }
