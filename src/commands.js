@@ -31,8 +31,31 @@ const musicCommand=new SlashCommandBuilder().setName('music').setDescription('Mu
 .addSubcommand(s=>s.setName('volume').setDescription('Set player volume').addIntegerOption(o=>o.setName('percent').setDescription('0–100').setMinValue(0).setMaxValue(100).setRequired(true)))
 .addSubcommand(s=>s.setName('loop').setDescription('Set repeat mode').addStringOption(o=>o.setName('mode').setDescription('Repeat mode').setRequired(true).addChoices({name:'Off',value:'off'},{name:'Track',value:'track'},{name:'Queue',value:'queue'})))
 .addSubcommand(s=>s.setName('shuffle').setDescription('Shuffle upcoming tracks')).addSubcommand(s=>s.setName('remove').setDescription('Remove a track by queue position').addIntegerOption(o=>o.setName('position').setDescription('Queue position').setMinValue(1).setRequired(true))).addSubcommand(s=>s.setName('clear').setDescription('Clear upcoming tracks'));
+const musicStandaloneCommands = [
+ new SlashCommandBuilder().setName('play').setDescription('Play a song or URL').addStringOption(o=>o.setName('query').setDescription('Song, artist or URL').setRequired(true).setMaxLength(500)),
+ new SlashCommandBuilder().setName('search').setDescription('Search music').addStringOption(o=>o.setName('query').setDescription('Song or artist').setRequired(true).setMaxLength(200)),
+ new SlashCommandBuilder().setName('pause').setDescription('Pause playback'),
+ new SlashCommandBuilder().setName('resume').setDescription('Resume playback'),
+ new SlashCommandBuilder().setName('skip').setDescription('Skip current track'),
+ new SlashCommandBuilder().setName('stop').setDescription('Stop and clear player'),
+ new SlashCommandBuilder().setName('queue').setDescription('Show music queue'),
+ new SlashCommandBuilder().setName('nowplaying').setDescription('Show current track'),
+ new SlashCommandBuilder().setName('volume').setDescription('Set volume').addIntegerOption(o=>o.setName('percent').setDescription('0 to 150').setMinValue(0).setMaxValue(150).setRequired(true)),
+ new SlashCommandBuilder().setName('loop').setDescription('Set repeat mode').addStringOption(o=>o.setName('mode').setDescription('Mode').setRequired(true).addChoices({name:'Off',value:'off'},{name:'Track',value:'track'},{name:'Queue',value:'queue'})),
+ new SlashCommandBuilder().setName('shuffle').setDescription('Shuffle queue'),
+ new SlashCommandBuilder().setName('clear').setDescription('Clear upcoming tracks'),
+ new SlashCommandBuilder().setName('remove').setDescription('Remove queue position').addIntegerOption(o=>o.setName('position').setDescription('Position').setMinValue(1).setRequired(true)),
+ new SlashCommandBuilder().setName('jump').setDescription('Jump to queue position').addIntegerOption(o=>o.setName('position').setDescription('Position').setMinValue(1).setRequired(true)),
+ new SlashCommandBuilder().setName('seek').setDescription('Seek to seconds').addNumberOption(o=>o.setName('seconds').setDescription('Seconds').setMinValue(0).setRequired(true)),
+ new SlashCommandBuilder().setName('filter').setDescription('Apply audio filter').addStringOption(o=>o.setName('name').setDescription('Filter').setRequired(true).addChoices(...['clear','bass','nightcore','daycore','8d','vaporwave','lofi','karaoke'].map(x=>({name:x,value:x})))),
+ new SlashCommandBuilder().setName('speed').setDescription('Set playback speed').addNumberOption(o=>o.setName('multiplier').setDescription('0.5 to 2').setMinValue(0.5).setMaxValue(2).setRequired(true)),
+ new SlashCommandBuilder().setName('autoplay').setDescription('Toggle autoplay'),
+ new SlashCommandBuilder().setName('join').setDescription('Join your voice channel'),
+ new SlashCommandBuilder().setName('previous').setDescription('Play previous track'),
+ new SlashCommandBuilder().setName('replay').setDescription('Replay current track')
+].map(c=>c.toJSON());
 const commands=[
-securityCommand.toJSON(),verificationCommand.toJSON(),new SlashCommandBuilder().setName('verify').setDescription('Start verification').toJSON(),musicCommand.toJSON(),
+securityCommand.toJSON(),verificationCommand.toJSON(),new SlashCommandBuilder().setName('verify').setDescription('Start verification').toJSON(),musicCommand.toJSON(),...musicStandaloneCommands,
 new SlashCommandBuilder().setName('spotify').setDescription('Search Spotify catalogue').addSubcommand(s=>s.setName('search').setDescription('Search for a track').addStringOption(o=>o.setName('query').setDescription('Track or artist').setRequired(true).setMaxLength(150))).toJSON(),
 new SlashCommandBuilder().setName('ping').setDescription('Check bot latency').toJSON(),
 new SlashCommandBuilder().setName('avatar').setDescription('Show a user avatar').addUserOption(o=>o.setName('user').setDescription('User').setRequired(false)).toJSON(),
@@ -90,7 +113,12 @@ async function execute(i,client,player){
  if(name==='security'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});return securityRun(i);}
  if(name==='verification'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});return verificationRun(i);}
  if(name==='verify'){const cfg=store.get(i.guildId);if(!cfg.verification.enabled)return i.reply({content:'Verification is not configured.',ephemeral:true});const button=new ButtonBuilder().setCustomId('mina_verify_start').setLabel('Start verification').setStyle(ButtonStyle.Success);return i.reply({content:'Press the button to start your verification challenge.',components:[new ActionRowBuilder().addComponents(button)],ephemeral:true});}
- if(name==='music'){const sub=i.options.getSubcommand();if(sub==='play')return music.play(i,player,i.options.getString('query'));if(sub==='queue')return music.showQueue(i,player);if(sub==='nowplaying')return music.nowPlaying(i,player);const value=sub==='volume'?i.options.getInteger('percent'):sub==='loop'?i.options.getString('mode'):sub==='remove'?i.options.getInteger('position'):null;return music.control(i,player,sub,value);}
+ if(name==='music'||['play','search','pause','resume','skip','stop','queue','nowplaying','volume','loop','shuffle','clear','remove','jump','seek','filter','speed','autoplay','join','previous','replay'].includes(name)){
+ const action=name==='music'?i.options.getSubcommand():name;
+ const value=action==='play'||action==='search'?i.options.getString('query'):action==='volume'?i.options.getInteger('percent'):action==='loop'?i.options.getString('mode'):action==='remove'||action==='jump'?i.options.getInteger('position'):action==='seek'?i.options.getNumber('seconds'):action==='filter'?i.options.getString('name'):action==='speed'?i.options.getNumber('multiplier'):null;
+ const ctx={isInteraction:true,guild:i.guild,member:i.member,channel:i.channel,user:i.user,deferReply:()=>i.deferReply(),editReply:p=>i.editReply(p),reply:p=>i.reply(p)};
+ return music.execute(ctx,player,action,value);
+}
  if(name==='spotify'){try{const tracks=await spotify.search(i.options.getString('query'),5);if(!tracks.length)return i.reply({content:'No Spotify tracks found.',ephemeral:true});const embed=new EmbedBuilder().setColor(0x1DB954).setTitle('Spotify search results').setDescription(tracks.map((t,n)=>(n+1)+'. **'+t.name+'** — '+t.artists.join(', ')+'\n[Open in Spotify]('+t.url+')').join('\n\n'));return i.reply({embeds:[embed],ephemeral:true});}catch(e){return i.reply({content:e.message+' Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to the environment.',ephemeral:true});}}
  if(['ping','avatar','userinfo','serverinfo','botinfo','calculate','poll','remind'].includes(name))return utilityRun(i,client);
  if(name==='lockdown'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});await security.lockdown(i.guild,'Manually activated by '+i.user.tag);return i.reply({content:'Lockdown activated.',ephemeral:true});}
