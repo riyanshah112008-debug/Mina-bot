@@ -159,8 +159,18 @@ async function autocomplete(interaction,client){
   const hasReadyNode=Boolean(client.manager?.shoukaku&&[...client.manager.shoukaku.nodes.values()].some(n=>n.state===1));
   let tracks=[];
   if(hasReadyNode){const result=await client.manager.search(focused,{requester:interaction.user});tracks=result?.tracks||[];}
-  if(!tracks.length){const result=await NovaBotAudioEngine.search(focused,interaction.user);tracks=result?.tracks||[];}
-  const choices=tracks.slice(0,25).map(track=>({name:[track.title,track.author].filter(Boolean).join(' — ').slice(0,100)||'Unknown track',value:String(track.uri||track.url||[track.author,track.title].filter(Boolean).join(' - ')||focused).slice(0,100)}));
+  // Merge the native multi-provider catalogue so autocomplete can surface Spotify,
+  // YouTube, SoundCloud, Deezer and Apple Music even while Lavalink is healthy.
+  const nativeSearch=await Promise.race([
+    NovaBotAudioEngine.search(focused,interaction.user).catch(()=>null),
+    new Promise(resolve=>setTimeout(()=>resolve(null),1800))
+  ]);
+  if(nativeSearch?.tracks?.length)tracks.push(...nativeSearch.tracks);
+  const seen=new Set();
+  const choices=tracks.filter(track=>{
+    const key=[track.title,track.author,track.sourceName||track.source].map(x=>String(x||'').toLowerCase()).join('|');
+    if(seen.has(key))return false;seen.add(key);return true;
+  }).slice(0,25).map(track=>({name:[track.title,track.author,track.sourceName||track.source].filter(Boolean).join(' — ').slice(0,100)||'Unknown track',value:String(track.uri||track.url||[track.author,track.title].filter(Boolean).join(' - ')||focused).slice(0,100)}));
   return interaction.respond(choices);
  }catch(error){console.warn('[NovaBot/NovaBot Music] Autocomplete failed:',error.message||error);return interaction.respond([]);}
 }
