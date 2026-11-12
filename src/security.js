@@ -1,5 +1,5 @@
 'use strict';
-const { AuditLogEvent, ChannelType } = require('discord.js');
+const { AuditLogEvent, ChannelType, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const store = require('./store');
 
 const actionBuckets = new Map();
@@ -10,14 +10,26 @@ const recentTimes = (map, key, now, windowMs) => {
   map.set(key, values);
   return values;
 };
-const isTrusted = (cfg, id, guild) => id === guild.ownerId || cfg.trusted.includes(id);
+const isTrusted = (cfg, id, guild) => {
+  if (id === guild.ownerId || cfg.trusted.includes(id)) return true;
+  const member = guild.members.cache.get(id);
+  return Boolean(member && (cfg.trustedRoles || []).some(roleId => member.roles.cache.has(roleId)));
+};
+function recordIncident(guild, type, actorId, details, severity = 'high') {
+  store.update(guild.id, cfg => {
+    cfg.incidents.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), type, actorId: actorId || null, details: String(details || '').slice(0, 900), severity, at: new Date().toISOString() });
+    cfg.incidents = cfg.incidents.slice(-100);
+  });
+}
 
 async function log(guild, text) {
   const id = store.get(guild.id).logChannelId;
   if (!id) return;
   const channel = guild.channels.cache.get(id) || await guild.channels.fetch(id).catch(() => null);
   if (channel?.isTextBased() && channel.send) {
-    await channel.send({ content: text.slice(0, 1900) }).catch(() => null);
+    const embed = new EmbedBuilder().setColor(/🚨|🛑|⚠️/.test(text) ? 0xED4245 : 0x5865F2)
+      .setDescription(text.slice(0, 4000)).setTimestamp();
+    await channel.send({ embeds: [embed] }).catch(() => null);
   }
 }
 async function lockdown(guild, reason) {
@@ -41,6 +53,7 @@ async function lockdown(guild, reason) {
     }
   }
   store.update(guild.id, c => { c.lockdown = { active: true, changed }; });
+  recordIncident(guild, 'lockdown', null, reason, 'critical');
   await log(guild, '🚨 **Mina lockdown activated.** ' + reason);
   return true;
 }
@@ -68,6 +81,8 @@ async function handleDestructiveAudit(entry, label) {
   const executor = entry.executor;
   if (!executor || isTrusted(cfg, executor.id, guild)) return;
   if (entry.action === AuditLogEvent.RoleUpdate && !(entry.changes || []).some(change => change.key === 'permissions')) return;
+  if (entry.action === AuditLogEvent.MemberRoleUpdate && !(entry.changes || []).some(change => change.key === '$add' || change.key === '$remove')) return;
+  recordIncident(guild, label, executor.id, 'Audit-log action by ' + executor.tag + '; target ' + (entry.targetId || 'unknown'));
 
   if (entry.action === AuditLogEvent.BotAdd && entry.targetId) {
     const addedBot = await guild.members.fetch(entry.targetId).catch(() => null);
@@ -90,6 +105,7 @@ async function handleDestructiveAudit(entry, label) {
     if (member?.moderatable) {
       await member.timeout(60 * 60 * 1000, 'Mina anti-nuke threshold exceeded').catch(() => null);
     }
+    recordIncident(guild, 'anti-nuke threshold', executor.id, 'Threshold ' + cfg.antiNuke.limit + ' reached in ' + Math.round(cfg.antiNuke.windowMs / 1000) + ' seconds', 'critical');
     if (cfg.antiNuke.lockdown) await lockdown(guild, 'Anti-nuke threshold exceeded for ' + executor.tag);
   }
 }
@@ -107,6 +123,7 @@ async function onJoin(member) {
     }
   }
   if (age < cfg.antiRaid.minAccountAgeMs && cfg.antiRaid.enabled) {
+    recordIncident(member.guild, 'young account join', member.id, 'Account age below configured minimum', 'medium');
     await log(member.guild, '🛡️ New-account gate: ' + member.user.tag + ' joined with a young account.' + (quarantined ? ' Quarantine role applied.' : ' Review member manually.'));
   } else if (verification.enabled) {
     await log(member.guild, '🔐 Verification required for ' + member.user.tag + (quarantined ? '; quarantine role applied.' : '; check role hierarchy.'));
@@ -117,6 +134,7 @@ async function onJoin(member) {
   list.push(now);
   joinBuckets.set(member.guild.id, list);
   if (list.length >= cfg.antiRaid.joinLimit) {
+    recordIncident(member.guild, 'anti-raid threshold', null, list.length + ' joins in ' + Math.round(cfg.antiRaid.windowMs / 1000) + ' seconds', 'critical');
     await lockdown(member.guild, 'Join-raid threshold reached (' + list.length + ' joins in ' + Math.round(cfg.antiRaid.windowMs / 1000) + 's).');
   }
 }
@@ -156,22 +174,26 @@ async function onMessage(message) {
   if (message.member?.moderatable) {
     await message.member.timeout(5 * 60 * 1000, 'Mina AutoMod: spam or unsafe link filter').catch(() => null);
   }
+  recordIncident(message.guild, 'automod', message.author.id, 'Automated enforcement: ' + [repeated && 'repeated messages', flood && 'message flood', mentionSpam && 'mention spam', invite && 'server invite', maliciousLink && 'suspicious link'].filter(Boolean).join(', '), 'medium');
   await log(message.guild, '🧹 AutoMod action on ' + message.author.tag + ': ' +
     [repeated && 'repeated messages', flood && 'message flood', mentionSpam && 'mention spam', invite && 'server invite', maliciousLink && 'suspicious link'].filter(Boolean).join(', '));
   return true;
 }
 module.exports = {
   onJoin, onMessage, lockdown, restoreLockdown, log,
-  handleDestructiveAudit, isSuspiciousLink,
+  handleDestructiveAudit, isSuspiciousLink, recordIncident,
   auditTypes: [
+    [AuditLogEvent.ChannelCreate, 'channel creation'],
     [AuditLogEvent.ChannelDelete, 'channel deletion'],
     [AuditLogEvent.ChannelOverwriteCreate, 'channel overwrite creation'],
     [AuditLogEvent.ChannelOverwriteUpdate, 'channel overwrite update'],
     [AuditLogEvent.ChannelOverwriteDelete, 'channel overwrite deletion'],
+    [AuditLogEvent.RoleCreate, 'role creation'],
     [AuditLogEvent.RoleDelete, 'role deletion'],
     [AuditLogEvent.RoleUpdate, 'role update or permission change'],
     [AuditLogEvent.MemberBanAdd, 'member ban'],
     [AuditLogEvent.MemberKick, 'member kick'],
+    [AuditLogEvent.MemberRoleUpdate, 'member role change'],
     [AuditLogEvent.WebhookCreate, 'webhook creation'],
     [AuditLogEvent.WebhookUpdate, 'webhook update'],
     [AuditLogEvent.WebhookDelete, 'webhook deletion'],
