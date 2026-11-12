@@ -240,7 +240,7 @@ async function handlePrefix(message) {
  if(name==='purge'){
   if(!requirePerm(PermissionFlagsBits.ManageMessages))return deny();
   const amount=Number(args.split(/\\s+/)[0]);if(!Number.isInteger(amount)||amount<2||amount>100){await message.reply('Usage: ,purge 2-100').catch(()=>null);return true;}
-  const deleted=await message.channel.bulkDelete(amount+1,true).catch(()=>null);
+  const deleted=await message.channel.bulkDelete(amount,true).catch(()=>null);
   await security.log(message.guild,message.author.tag+' bulk-deleted '+(deleted?.size||0)+' messages in #'+message.channel.name+'.');
   await message.channel.send('Deleted '+Math.max(0,(deleted?.size||1)-1)+' recent messages.').then(m=>setTimeout(()=>m.delete().catch(()=>null),5000)).catch(()=>null);return true;
  }
