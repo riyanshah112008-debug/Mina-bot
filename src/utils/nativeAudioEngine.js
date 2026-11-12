@@ -371,7 +371,7 @@ function createProgressBar(currentMs, totalMs, length = 12) {
     return bar;
 }
 
-class StarryGuildPlayer {
+class NovaBotGuildPlayer {
     constructor(client, guildId, voiceChannel, textChannel) {
         this.client = client;
         this.guildId = guildId;
@@ -520,7 +520,7 @@ class StarryGuildPlayer {
             // High-Intelligence Autoplay Recommendation
             if (this.autoplay && this.previousTrack) {
                 try {
-                    const nextSong = await StarryAudioEngine.getAutoplayRecommendation(this.previousTrack, this.history);
+                    const nextSong = await NovaBotAudioEngine.getAutoplayRecommendation(this.previousTrack, this.history);
                     if (nextSong) {
                         if (this.textChannel) {
                             const autoEmbed = new EmbedBuilder()
@@ -576,7 +576,7 @@ class StarryGuildPlayer {
                 const botMember = guild?.members?.me || await guild?.members?.fetchMe?.().catch(() => null);
                 const canManage = botMember && this.voiceChannel.permissionsFor(botMember)?.has(PermissionsBitField.Flags.ManageChannels);
                 if (canManage) {
-                    this.voiceChannel = await this.voiceChannel.setBitrate(guildMax, 'Starry Premium audio quality');
+                    this.voiceChannel = await this.voiceChannel.setBitrate(guildMax, 'NovaBot Premium audio quality');
                 }
             } catch (error) {
                 console.warn(`[Premium Audio] Could not raise voice channel bitrate in ${this.guildId}:`, error.message || error);
@@ -876,7 +876,7 @@ class StarryGuildPlayer {
         const embed = new EmbedBuilder()
             .setColor('#5865F2')
             .setAuthor({ 
-                name: `NOW PLAYING  •  ${this.client.user?.username || 'STARRY'}`, 
+                name: `NOW PLAYING  •  ${this.client.user?.username || 'NovaBot'}`, 
                 iconURL: this.client.user?.displayAvatarURL({ dynamic: true })
             })
             .setTitle(track.title ? track.title.substring(0, 95) : 'Audio Track')
@@ -892,7 +892,7 @@ class StarryGuildPlayer {
                 `**Up next**  ${this.queue.length} ${this.queue.length === 1 ? 'track' : 'tracks'}\n\n` +
                 `*Use the controls below to manage playback, queue and sound settings.*`
             )
-            .setFooter({ text: `STARRY MUSIC  •  ${this.client.user ? this.client.user.tag : 'Music Player'}`, iconURL: this.client.user ? this.client.user.displayAvatarURL() : undefined })
+            .setFooter({ text: `NovaBot MUSIC  •  ${this.client.user ? this.client.user.tag : 'Music Player'}`, iconURL: this.client.user ? this.client.user.displayAvatarURL() : undefined })
             .setTimestamp();
 
         // Row 1: 4 buttons (No mobile wrapping)
@@ -1186,15 +1186,15 @@ class StarryGuildPlayer {
         }
         const botId = this.client?.user?.id;
         if (botId) {
-            StarryAudioEngine.players.delete(`${this.guildId}:${botId}`);
+            NovaBotAudioEngine.players.delete(`${this.guildId}:${botId}`);
         }
-        if (StarryAudioEngine.players.get(this.guildId) === this) {
-            StarryAudioEngine.players.delete(this.guildId);
+        if (NovaBotAudioEngine.players.get(this.guildId) === this) {
+            NovaBotAudioEngine.players.delete(this.guildId);
         }
     }
 }
 
-class StarryAudioEngine {
+class NovaBotAudioEngine {
     static players = new Map();
 
     static getPlayer(guildId, client = null) {
@@ -1221,7 +1221,7 @@ class StarryAudioEngine {
         const key = botId ? `${guildId}:${botId}` : guildId;
         let player = this.players.get(key);
         if (!player || player.destroyed) {
-            player = new StarryGuildPlayer(client, guildId, voiceChannel, textChannel);
+            player = new NovaBotGuildPlayer(client, guildId, voiceChannel, textChannel);
             this.players.set(key, player);
             this.players.set(guildId, player);
         } else {
@@ -1781,8 +1781,8 @@ class StarryAudioEngine {
 }
 
 module.exports = {
-    StarryAudioEngine,
-    StarryGuildPlayer,
+    NovaBotAudioEngine,
+    NovaBotGuildPlayer,
     formatTime,
     createProgressBar
 };
