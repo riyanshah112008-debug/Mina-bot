@@ -5,7 +5,12 @@ const KazagumoSpotify = require('kazagumo-spotify');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 function createMusicManager(client) {
   if (client.manager) return client.manager;
-  const nodes = [{ name:'mina-lavalink', url:process.env.LAVALINK_URL||'lavalink.serenetia.com:443', auth:process.env.LAVALINK_AUTH||'youshallnotpass', secure:process.env.LAVALINK_SECURE!=='false', retryAmount:10, retryDelay:3000 }];
+  const nodes = [
+    { name:'Node-1-Serenetia-SSL', url:'lavalink.serenetia.com:443', auth:'youshallnotpass', secure:true, retryAmount:15, retryDelay:3000 },
+    { name:'Node-2-Serenetia-V4-SSL', url:'lavalinkv4.serenetia.com:443', auth:'https://seretia.link/discord', secure:true, retryAmount:10, retryDelay:3000 },
+    { name:'Node-3-TriniumHost-SSL', url:'lavalink-v4.triniumhost.com:443', auth:'free', secure:true, retryAmount:10, retryDelay:3000 },
+    { name:'Node-4-MilloHost-SSL', url:'lava-v4.millohost.my.id:443', auth:'https://discord.gg/mjS5J2K3ep', secure:true, retryAmount:10, retryDelay:3000 }
+  ];
   const manager = new Kazagumo({
     defaultSearchEngine:'youtube_music',
     searchFallbacks:{spotify:'ytmsearch',soundcloud:'ytmsearch',youtube:'ytsearch'},

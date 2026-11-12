@@ -12,7 +12,6 @@ Mina is a single-server Discord bot with Wick-inspired security, moderation, Man
 Set these environment variables in the hosting dashboard:
 - `DISCORD_TOKEN`, `CLIENT_ID`, and optionally `GUILD_ID`
 - `PREFIX` (defaults to `,`; `.` is also accepted)
-- `LAVALINK_URL`, `LAVALINK_AUTH`, and `LAVALINK_SECURE`
 - Optional `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` for Spotify catalogue/playlist resolution
 - `DATA_DIR` for persisted server settings and reminders
 
