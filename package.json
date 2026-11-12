@@ -1,20 +1,21 @@
 {
-  "name": "mina-security-bot",
-  "version": "3.0.0",
+  "name": "mina-bot",
+  "version": "4.0.0",
   "private": true,
-  "description": "Mina — standalone Discord security and moderation bot",
+  "description": "Mina — Discord security, music and utility bot",
   "main": "src/index.js",
-  "engines": {
-    "node": ">=20"
-  },
+  "engines": { "node": ">=20" },
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --test",
-    "check": "node --check src/index.js && node --check src/security.js && node --check src/store.js && node --check src/commands.js && node --check tests/security.test.js"
+    "check": "node --check src/index.js && node --check src/commands.js && node --check src/store.js && node --check src/security.js && node --check src/music.js && node --check src/utility.js && node --check src/spotify.js"
   },
   "dependencies": {
+    "@discord-player/extractor": "^4.5.1",
+    "discord-player": "^6.7.1",
     "discord.js": "^14.19.3",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "mathjs": "^14.8.1"
   }
 }
