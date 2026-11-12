@@ -37,7 +37,9 @@ The music engine uses Kazagumo/Shoukaku with Lavalink, YouTube Music search and 
 - Trusted users/roles, incident history, configurable thresholds and timeout/kick/ban response.
 - Verification panel with arithmetic challenge and verified/quarantine roles.
 - Emergency lockdown and permission restoration.
-- `/timeout`, `/kick`, `/ban`.
+- Moderation cases: `/warn`, `/warnings`, `/clearwarnings`, `/timeout`, `/kick`, `/ban`, and `/unban`.
+- Channel controls: `/purge` and `/slowmode`; member controls: `/nick`.
+- Prefix moderation aliases: `,warn`, `,warnings`, `,clearwarnings`, `,timeout`, `,kick`, `,ban`, `,unban`, `,nick`, `,purge`, `,slowmode`, `,lockdown`, and `,unlock` (also accepts `.` prefix).
 
 Start with `/security setup`, configure the quarantine role with `/security quarantine-role`, tune `/security limits`, `/security join-gate`, `/security join-raid`, and `/security heat-threshold`, then configure roles using `/verification setup` and publish `/verification panel`. Add/remove blocked phrases with `/security heat-word-add` and `/security heat-word-remove`.
 
