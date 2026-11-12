@@ -1,6 +1,8 @@
 const { Kazagumo, KazagumoPlayer, KazagumoTrack } = require('kazagumo');
 const { Connectors } = require('shoukaku');
 const KazagumoSpotify = require('kazagumo-spotify');
+const nativeAudioModule = require('./nativeAudioEngine');
+const NativeAudioEngine = nativeAudioModule.NovaBotAudioEngine || nativeAudioModule.StarryAudioEngine;
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, MessageFlags } = require('discord.js');
 const { getGuildLanguageSync, localizePayload, t } = require('./i18n');
 
@@ -1098,6 +1100,49 @@ function createMusicManager(client) {
         }
     }
 
+    // If a Lavalink node accepts a track but cannot resolve/play its audio, switch this guild to the native engine.
+    const fallbackPlayerToNative = async (player, failedTrack, reason) => {
+        if (!player || player.data?.get('nativeFallbackAttempted')) return false;
+        const guild = client.guilds.cache.get(player.guildId);
+        const voiceChannel = guild?.channels?.cache?.get(player.voiceId);
+        const textChannel = client.channels.cache.get(player.textId);
+        if (!voiceChannel || !textChannel || !NativeAudioEngine) return false;
+
+        player.data.set('nativeFallbackAttempted', true);
+        console.warn(`[Music Native Failover] Guild ${player.guildId}: switching from Lavalink to native audio (${reason || 'track resolution failure'}).`);
+
+        const sourceTracks = [failedTrack || player.queue?.current, ...(player.queue?.toArray?.() || [])].filter(Boolean);
+        const seen = new Set();
+        const nativeTracks = sourceTracks.map(item => ({
+            title: item.title || 'Unknown track',
+            author: item.author || 'Unknown artist',
+            url: item.realUri || item.uri || item.url || '',
+            duration: Number(item.length || item.duration || 180000),
+            thumbnail: item.thumbnail || null,
+            source: item.sourceName || item.source || 'Lavalink fallback',
+            requester: item.requester || client.user
+        })).filter(item => {
+            const key = item.url || (item.author + '|' + item.title);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return Boolean(item.title);
+        });
+
+        if (!nativeTracks.length) return false;
+        const oldPanel = player.data.get('nowPlayingMessage');
+        if (oldPanel) await oldPanel.delete().catch(() => {});
+        const loading = player.data.get('loadingMessage');
+        if (loading) await loading.delete().catch(() => {});
+
+        const native = NativeAudioEngine.getOrCreatePlayer(client, player.guildId, voiceChannel, textChannel);
+        native.voiceChannel = voiceChannel;
+        native.textChannel = textChannel;
+        native.queue.unshift(...nativeTracks);
+        try { await player.destroy(); } catch (_) {}
+        if (!native.currentTrack) await native.playNext();
+        return true;
+    };
+
     // Player Start Event
     manager.on('playerStart', async (player, track) => {
         player.data.set('previousTrack', track);
@@ -1211,14 +1256,21 @@ function createMusicManager(client) {
         }
     });
 
-    manager.on('playerResolveError', (player, track, message) => {
+    manager.on('playerResolveError', async (player, track, message) => {
         console.warn(`⚠️ [Music PlayerResolveError] Guild ${player?.guildId}: ${track?.title} - ${message}`);
+        await fallbackPlayerToNative(player, track, message).catch(error => {
+            console.warn('[Music Native Failover] Could not switch player:', error.message || error);
+        });
     });
 
     manager.on('playerException', async (player, track, exception) => {
         console.warn(`⚠️ [Music Player Exception] Guild ${player?.guildId}:`, exception?.message || exception || 'Node failover event');
         const isFatal = exception?.severity === 'fault' || exception?.severity === 'FATAL' || (exception?.message && (exception.message.includes('Load failed') || exception.message.includes('not available')));
-        if (isFatal && player && player.queue && player.queue.length > 0) {
+        const switched = await fallbackPlayerToNative(player, track, exception?.message || 'Lavalink playback exception').catch(error => {
+            console.warn('[Music Native Failover] Could not switch player:', error.message || error);
+            return false;
+        });
+        if (!switched && isFatal && player && player.queue && player.queue.length > 0) {
             player.skip();
         }
     });
@@ -1232,6 +1284,7 @@ function createMusicManager(client) {
     });
 
     manager.on('playerEmpty', async player => {
+        if (player.data?.get('nativeFallbackAttempted')) return;
         const channel = client.channels.cache.get(player.textId);
         const isAutoplay = Boolean(player.data.get('autoplay') || player.autoplay);
 
