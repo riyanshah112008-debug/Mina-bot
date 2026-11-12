@@ -360,6 +360,14 @@ function formatTime(ms) {
     return `${m}m ${s.toString().padStart(2, '0')}s`;
 }
 
+function getExternalCatalogSearchUrls(query) {
+    const term = encodeURIComponent(String(query || '').trim());
+    return {
+        deezer: `https://api.deezer.com/search?q=${term}&limit=8`,
+        appleMusic: `https://itunes.apple.com/search?term=${term}&entity=song&limit=8`
+    };
+}
+
 function createProgressBar(currentMs, totalMs, length = 12) {
     if (!totalMs || totalMs <= 0) return '🔘' + '▬'.repeat(length - 1);
     const progress = Math.min(Math.max(currentMs / totalMs, 0), 1);
@@ -1694,8 +1702,9 @@ class NovaBotAudioEngine {
         } catch (scErr) {}
 
         // 10. Deezer catalogue fallback (metadata is resolved to a playable stream below).
+        const catalogSearchUrls = getExternalCatalogSearchUrls(query);
         try {
-            const dzResponse = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(query)}&limit=8`, {
+            const dzResponse = await fetch(catalogSearchUrls.deezer, {
                 signal: AbortSignal.timeout(7000)
             });
             if (dzResponse.ok) {
@@ -1725,7 +1734,7 @@ class NovaBotAudioEngine {
 
         // 11. Apple Music/iTunes catalogue fallback (preview URLs are deliberately not used for playback).
         try {
-            const itunesResponse = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=8`, {
+            const itunesResponse = await fetch(catalogSearchUrls.appleMusic, {
                 signal: AbortSignal.timeout(7000)
             });
             if (itunesResponse.ok) {
@@ -1845,5 +1854,6 @@ module.exports = {
     NovaBotAudioEngine,
     NovaBotGuildPlayer,
     formatTime,
-    createProgressBar
+    createProgressBar,
+    getExternalCatalogSearchUrls
 };
