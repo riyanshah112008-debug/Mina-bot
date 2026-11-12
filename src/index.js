@@ -74,6 +74,7 @@ client.on(Events.InteractionCreate,async interaction => {
   }
 });
 client.on(Events.MessageCreate,message=>music.handlePrefix(message,client).catch(error=>console.error('[NovaBot] Prefix command error:',error)));
+client.on(Events.MessageCreate,message=>commands.handlePrefix(message).catch(error=>console.error('[NovaBot] Moderation prefix error:',error)));
 client.on(Events.GuildMemberAdd,member=>security.onJoin(member).catch(console.error));
 client.on(Events.MessageCreate,message=>security.onMessage(message).catch(console.error));
 client.on(Events.GuildAuditLogEntryCreate,entry=>{ const item=security.auditTypes.find(([type])=>type===entry.action); if(item) security.handleDestructiveAudit(entry,item[1]).catch(console.error); });
