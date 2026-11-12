@@ -841,6 +841,8 @@ class NovaBotGuildPlayer {
             }
 
             this.player.play(this.audioResource);
+            // Publish a Now Playing panel only after Discord's audio player enters Playing.
+            await entersState(this.player, AudioPlayerStatus.Playing, 15000);
             this.paused = false;
             this.playbackStartTime = Date.now();
             this._pausedPosition = 0;
