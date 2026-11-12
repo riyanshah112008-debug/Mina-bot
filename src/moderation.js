@@ -32,7 +32,7 @@ function addWarning(guildId, userId, moderatorId, reason) {
 }
 
 function getWarnings(guildId, userId) {
-  return (store.get(guildId).warnings || []).filter(item => item.userId === userId);
+  return (store.get(guildId).warnings || []).filter(item => item.userId === userId && item.type !== 'warnings-cleared');
 }
 
 function clearWarnings(guildId, userId, moderatorId) {
