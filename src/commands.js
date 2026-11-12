@@ -209,7 +209,7 @@ if(name==='nick'){
 if(name==='unban'){
  if(!i.memberPermissions.has(PermissionFlagsBits.BanMembers))return i.reply({content:'Ban Members permission required.',ephemeral:true});
  const id=i.options.getString('user_id'),reason=i.options.getString('reason')||'No reason provided';
- if(!/^\\d{17,20}$/.test(id))return i.reply({content:'Enter a valid Discord user ID.',ephemeral:true});
+ if(!/^\d{17,20}$/.test(id))return i.reply({content:'Enter a valid Discord user ID.',ephemeral:true});
  const existing=await i.guild.bans.fetch(id).catch(()=>null);
  if(!existing)return i.reply({content:'That user is not currently banned.',ephemeral:true});
  await i.guild.members.unban(id,reason);
@@ -224,14 +224,14 @@ async function handleComponent(i){
 
 async function handlePrefix(message) {
  if(!message.guild||message.author.bot||!message.content)return false;
- const match=message.content.trim().match(/^[,.]([a-z]+)(?:\\s+([\\s\\S]*))?$/i);
+ const match=message.content.trim().match(/^[,.]([a-z]+)(?:\s+([\s\S]*))?$/i);
  if(!match)return false;
  const name=match[1].toLowerCase(),args=(match[2]||'').trim();
  const perms=message.member?.permissions;
  const requirePerm=permission=>perms?.has(permission);
  const deny=()=>message.reply({content:'You do not have permission to use this command.'}).catch(()=>null);
  const target=message.mentions.members.first();
- if(name==='help'){await message.reply({embeds:[new EmbedBuilder().setColor(0x5865F2).setTitle('NovaBot commands').setDescription('**Security:** /security, /verification, /lockdown, /unlock\\n**Moderation:** /warn, /warnings, /clearwarnings, /timeout, /kick, /ban, /unban, /purge, /slowmode, /nick\\n**Music:** ,play, ,pause, ,resume, ,skip, ,queue, ,volume\\n**Utilities:** /ping, /calculate, /poll, /remind')]}).catch(()=>null);return true;}
+ if(name==='help'){await message.reply({embeds:[new EmbedBuilder().setColor(0x5865F2).setTitle('NovaBot commands').setDescription('**Security:** /security, /verification, /lockdown, /unlock\n**Moderation:** /warn, /warnings, /clearwarnings, /timeout, /kick, /ban, /unban, /purge, /slowmode, /nick\n**Music:** ,play, ,pause, ,resume, ,skip, ,queue, ,volume\n**Utilities:** /ping, /calculate, /poll, /remind')]}).catch(()=>null);return true;}
  if(name==='lockdown'||name==='unlock'){
   if(!requirePerm(PermissionFlagsBits.Administrator))return deny();
   if(name==='lockdown')await security.lockdown(message.guild,'Manually activated by '+message.author.tag);else await security.restoreLockdown(message.guild);
@@ -239,7 +239,7 @@ async function handlePrefix(message) {
  }
  if(name==='purge'){
   if(!requirePerm(PermissionFlagsBits.ManageMessages))return deny();
-  const amount=Number(args.split(/\\s+/)[0]);if(!Number.isInteger(amount)||amount<2||amount>100){await message.reply('Usage: ,purge 2-100').catch(()=>null);return true;}
+  const amount=Number(args.split(/\s+/)[0]);if(!Number.isInteger(amount)||amount<2||amount>100){await message.reply('Usage: ,purge 2-100').catch(()=>null);return true;}
   const deleted=await message.channel.bulkDelete(amount,true).catch(()=>null);
   await security.log(message.guild,message.author.tag+' bulk-deleted '+(deleted?.size||0)+' messages in #'+message.channel.name+'.');
   await message.channel.send('Deleted '+Math.max(0,(deleted?.size||1)-1)+' recent messages.').then(m=>setTimeout(()=>m.delete().catch(()=>null),5000)).catch(()=>null);return true;
@@ -254,7 +254,7 @@ async function handlePrefix(message) {
   if(!target){await message.reply('Mention a member.').catch(()=>null);return true;}
   const actor=message.member,check=moderation.canActOnTarget(actor,target,message.guild.members.me);
   if(!check.ok){await message.reply(check.reason).catch(()=>null);return true;}
-  const reason=args.replace(/<@!?\\d+>/,'').trim()||'No reason provided';
+  const reason=args.replace(/<@!?\d+>/,'').trim()||'No reason provided';
   if(name==='warn'){
    if(!requirePerm(PermissionFlagsBits.ModerateMembers))return deny();
    const item=moderation.addWarning(message.guildId,target.id,message.author.id,reason);
@@ -264,7 +264,7 @@ async function handlePrefix(message) {
   if(name==='warnings'){
    if(!requirePerm(PermissionFlagsBits.ModerateMembers))return deny();
    const items=moderation.getWarnings(message.guildId,target.id);
-   const body=items.slice(-12).map(x=>'#'+x.id+' · '+x.reason+' · <t:'+Math.floor(new Date(x.at).getTime()/1000)+':R>').join('\\n');
+   const body=items.slice(-12).map(x=>'#'+x.id+' · '+x.reason+' · <t:'+Math.floor(new Date(x.at).getTime()/1000)+':R>').join('\n');
    await message.reply({embeds:[new EmbedBuilder().setColor(0xF1C40F).setTitle('Warnings · '+target.user.tag).setDescription(body||'No warnings recorded.').setFooter({text:items.length+' record(s)'})]}).catch(()=>null);return true;
   }
   if(name==='clearwarnings'){
@@ -274,7 +274,7 @@ async function handlePrefix(message) {
   }
   if(name==='timeout'){
    if(!requirePerm(PermissionFlagsBits.ModerateMembers)||!target.moderatable)return deny();
-   const minutes=Number(args.match(/\\d+/)?.[0]);if(!Number.isInteger(minutes)||minutes<1||minutes>40320){await message.reply('Usage: ,timeout @member 1-40320 [reason]').catch(()=>null);return true;}
+   const minutes=Number(args.match(/\d+/)?.[0]);if(!Number.isInteger(minutes)||minutes<1||minutes>40320){await message.reply('Usage: ,timeout @member 1-40320 [reason]').catch(()=>null);return true;}
    await target.timeout(minutes*60000,reason);await message.reply(target.user.tag+' timed out for '+minutes+' minute(s).').catch(()=>null);return true;
   }
   if(name==='kick'){
@@ -287,13 +287,13 @@ async function handlePrefix(message) {
   }
   if(name==='nick'){
    if(!requirePerm(PermissionFlagsBits.ManageNicknames)||!target.manageable)return deny();
-   const nickname=args.replace(/<@!?\\d+>/,'').trim()||null;await target.setNickname(nickname,'Changed by '+message.author.tag);
+   const nickname=args.replace(/<@!?\d+>/,'').trim()||null;await target.setNickname(nickname,'Changed by '+message.author.tag);
    await message.reply('Nickname updated for '+target.user.tag+'.').catch(()=>null);return true;
   }
  }
  if(name==='unban'){
   if(!requirePerm(PermissionFlagsBits.BanMembers))return deny();
-  const id=args.split(/\\s+/)[0];if(!/^\\d{17,20}$/.test(id||'')){await message.reply('Usage: ,unban USER_ID [reason]').catch(()=>null);return true;}
+  const id=args.split(/\s+/)[0];if(!/^\d{17,20}$/.test(id||'')){await message.reply('Usage: ,unban USER_ID [reason]').catch(()=>null);return true;}
   const existing=await message.guild.bans.fetch(id).catch(()=>null);if(!existing){await message.reply('That user is not banned.').catch(()=>null);return true;}
   await message.guild.members.unban(id,args.slice(id.length).trim()||'No reason provided');
   await message.reply('User '+id+' unbanned.').catch(()=>null);return true;
