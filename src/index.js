@@ -49,6 +49,6 @@ client.on(Events.MessageCreate,message=>security.onMessage(message).catch(consol
 client.on(Events.GuildAuditLogEntryCreate,entry=>{ const item=security.auditTypes.find(([type])=>type===entry.action); if(item) security.handleDestructiveAudit(entry,item[1]).catch(console.error); });
 client.on(Events.Error,error=>console.error('[Mina] Discord error:',error));
 process.on('unhandledRejection',error=>console.error('[Mina] Unhandled rejection:',error));
-async function shutdown(signal) { console.log('[Mina] Shutdown: '+signal); store.save(); healthServer.close(); await player.destroy().catch(()=>null); client.destroy(); process.exit(0); }
+async function shutdown(signal) { console.log('[Mina] Shutdown: '+signal); store.save(); healthServer.close(); player.destroy(); client.destroy(); process.exit(0); }
 process.once('SIGINT',()=>shutdown('SIGINT')); process.once('SIGTERM',()=>shutdown('SIGTERM'));
 client.login(token).catch(error=>{console.error('[Mina] Login failed:',error.message);process.exit(1);});
