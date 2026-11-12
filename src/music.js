@@ -31,7 +31,7 @@ async function play(ctx,manager,query){
  if(hasReadyNode){
   try{
    let result=await manager.search(query,{requester:ctx.user});
-   if(!result?.tracks?.length&&!/^https?:\\/\\//i.test(query))result=await manager.search('ytsearch:'+query,{requester:ctx.user});
+   if(!result?.tracks?.length&&!/^https?:\/\//i.test(query))result=await manager.search('ytsearch:'+query,{requester:ctx.user});
    if(result?.tracks?.length){
     const p=manager.getPlayer(ctx.guild.id)||await manager.createPlayer({guildId:ctx.guild.id,voiceId:g.voice.id,textId:ctx.channel.id,deaf:true,volume:100});
     if(p.voiceId!==g.voice.id)await p.setVoiceChannel(g.voice.id);
@@ -76,7 +76,7 @@ async function execute(ctx,manager,action,value){
  const upcoming=native?p.queue:p.queue?.toArray?.()||p.queue||[];
  if(action==='queue'){
   const rows=upcoming.slice(0,10).map((t,i)=>(i+1)+'. **'+String(t.title).slice(0,80)+'** · '+fmt(native?t.duration:t.length));
-  return ctx.reply({embeds:[new EmbedBuilder().setColor(0x5865F2).setTitle('🎵 Music Queue').setDescription('**Now Playing:** '+(current?.title||'Nothing')+'\\n\\n**Up Next:**\\n'+(rows.join('\\n')||'No upcoming tracks.'))]});
+  return ctx.reply({embeds:[new EmbedBuilder().setColor(0x5865F2).setTitle('🎵 Music Queue').setDescription('**Now Playing:** '+(current?.title||'Nothing')+'\n\n**Up Next:**\n'+(rows.join('\n')||'No upcoming tracks.'))]});
  }
  if(action==='nowplaying'||action==='np')return current?ctx.reply(native?p.buildNowPlayingPayload(current):{embeds:[trackEmbed(current,p)]}):ctx.reply('Nothing is playing.');
  const voiceId=native?p.voiceChannel?.id:p.voiceId;
