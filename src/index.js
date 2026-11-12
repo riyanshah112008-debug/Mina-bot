@@ -42,7 +42,7 @@ healthServer.listen(port,'0.0.0.0',() => {
   };
   const keepAliveTimer = setInterval(() => {
     ping('http://127.0.0.1:'+port+'/health', 'local');
-    if (externalUrl) ping(externalUrl.replace(/\\/$/, '')+'/health', 'external');
+    if (externalUrl) ping((externalUrl.endsWith('/') ? externalUrl.slice(0, -1) : externalUrl)+'/health', 'external');
   }, 180000);
   keepAliveTimer.unref?.();
 });
