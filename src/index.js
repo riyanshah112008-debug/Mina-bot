@@ -17,7 +17,35 @@ const healthServer = http.createServer((req,res) => {
   if (req.url === '/health' || req.url === '/ping') { res.writeHead(200,{'content-type':'application/json'}); return res.end(JSON.stringify({status:'ok',bot:client.isReady()?'online':'starting',uptime:process.uptime()})); }
   res.writeHead(404); res.end();
 });
-healthServer.listen(port,'0.0.0.0');
+healthServer.listen(port,'0.0.0.0',() => {
+  console.log('[Mina] Health server listening on port '+port);
+  // Starry-style Render keep-alive: ping the public service URL every 3 minutes.
+  // Render supplies RENDER_EXTERNAL_URL automatically; no extra secret is required.
+  const externalUrl = process.env.RENDER_EXTERNAL_URL ||
+    (process.env.RENDER_EXTERNAL_HOSTNAME ? 'https://' + process.env.RENDER_EXTERNAL_HOSTNAME : null);
+  if (externalUrl) {
+    console.log('[Mina KeepAlive] External self-ping enabled (every 3 minutes).');
+  } else {
+    console.warn('[Mina KeepAlive] Render URL not detected; external keep-alive is inactive.');
+  }
+  const ping = (target, label) => {
+    const clientModule = target.startsWith('https:') ? require('node:https') : http;
+    const req = clientModule.get(target, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MinaKeepAlive/1.0)' },
+      timeout: 10000
+    }, res => {
+      res.resume();
+      if (res.statusCode >= 400) console.warn('[Mina KeepAlive] '+label+' returned HTTP '+res.statusCode);
+    });
+    req.on('timeout', () => req.destroy(new Error('Keep-alive request timed out')));
+    req.on('error', error => console.warn('[Mina KeepAlive] '+label+' ping failed:', error.message));
+  };
+  const keepAliveTimer = setInterval(() => {
+    ping('http://127.0.0.1:'+port+'/health', 'local');
+    if (externalUrl) ping(externalUrl.replace(/\\/$/, '')+'/health', 'external');
+  }, 180000);
+  keepAliveTimer.unref?.();
+});
 client.once(Events.ClientReady,async ready => {
   console.log('[Mina] Online as '+ready.user.tag);
   try { await player.init(ready.user.id); console.log('[Mina] Lavalink music manager initialized.'); } catch(error) { console.error('[Mina] Lavalink initialization failed:',error.message); }
