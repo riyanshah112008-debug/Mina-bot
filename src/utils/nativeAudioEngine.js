@@ -396,6 +396,7 @@ class NovaBotGuildPlayer {
         this.playbackStartTime = 0;
         this.disconnectTimeout = null;
         this._isSeeking = false;
+        this._endedTrack = null;
 
         // Initialize Discord.js AudioPlayer with Play on no-subscriber behavior and high jitter tolerance
         this.player = createAudioPlayer({
@@ -422,21 +423,18 @@ class NovaBotGuildPlayer {
 
         this.player.on(AudioPlayerStatus.Idle, () => {
             if (this.destroyed || this._isSeeking) return;
-            if (this.isPlaying) {
-                this.isPlaying = false;
-                this.handleTrackEnd();
-            } else if (this.currentTrack) {
-                // If stream died immediately without playing (e.g. 0-byte stream / 403 / network drop)
-                console.warn(`⚠️ [Audio Stream Failover] Track "${this.currentTrack.title}" ended before playing. Advancing...`);
-                this.handleTrackEnd();
-            }
+            const endedTrack = this.currentTrack;
+            if (!endedTrack) return;
+            if (this.isPlaying) this.isPlaying = false;
+            else console.warn(`⚠️ [Audio Stream Failover] Track "${endedTrack.title}" ended before confirmed playback.`);
+            this.handleTrackEnd(endedTrack);
         });
 
         this.player.on('error', (error) => {
             console.warn(`⚠️ [Audio Stream Engine Status in ${this.guildId}]:`, error.message || error);
             if (this.destroyed) return;
             this.isPlaying = false;
-            this.handleTrackEnd();
+            this.handleTrackEnd(this.currentTrack);
         });
     }
 
@@ -492,7 +490,10 @@ class NovaBotGuildPlayer {
             try {
                 await entersState(this.connection, VoiceConnectionStatus.Ready, 15000);
             } catch (e) {
-                console.warn(`⚠️ [VoiceConnection ${this.guildId}:${this.client?.user?.username || botGroup}] Handshake notice:`, e.message || e);
+                console.error(`❌ [VoiceConnection ${this.guildId}] Could not become ready:`, e.message || e);
+                try { this.connection?.destroy(); } catch (_) {}
+                this.connection = null;
+                throw new Error(`Discord voice connection did not become ready: ${e.message || e}`);
             }
         }
 
@@ -701,6 +702,7 @@ class NovaBotGuildPlayer {
             this.previousTrack = this.currentTrack;
         }
         this.currentTrack = track;
+        this._endedTrack = null;
 
         try {
             await this.configureAudioQuality();
@@ -828,6 +830,9 @@ class NovaBotGuildPlayer {
             }
 
             this.player.play(this.audioResource);
+            // Do not announce a track until Discord confirms that audio is actually flowing.
+            await entersState(this.player, AudioPlayerStatus.Playing, 15000);
+            this.isPlaying = true;
             this.paused = false;
             this.playbackStartTime = Date.now();
             this._pausedPosition = 0;
@@ -849,17 +854,21 @@ class NovaBotGuildPlayer {
             if (this.textChannel) {
                 this.textChannel.send(`⚠️ Could not stream **${track.title}**: ${err.message || 'Source stream unreachable'}`).catch(() => {});
             }
-            this.handleTrackEnd();
+            this.handleTrackEnd(track);
         }
     }
 
-    handleTrackEnd() {
-        if (this.loop === 'track' && this.currentTrack) {
-            this.queue.unshift(this.currentTrack);
-        } else if (this.loop === 'queue' && this.currentTrack) {
-            this.queue.push(this.currentTrack);
+    handleTrackEnd(expectedTrack = this.currentTrack) {
+        // Discord can emit both Idle and error for the same failed stream.
+        // Advance only once for the track that actually ended.
+        if (!expectedTrack || this.destroyed || this.currentTrack !== expectedTrack || this._endedTrack === expectedTrack) return;
+        this._endedTrack = expectedTrack;
+        if (this.loop === 'track') {
+            this.queue.unshift(expectedTrack);
+        } else if (this.loop === 'queue') {
+            this.queue.push(expectedTrack);
         }
-        this.playNext();
+        this.playNext().catch(error => console.warn(`[Audio Queue ${this.guildId}] Advance failed:`, error.message || error));
     }
 
     buildNowPlayingPayload(track) {
@@ -1621,74 +1630,119 @@ class NovaBotAudioEngine {
             }
         }
 
-        // 7. PRIMARY SEARCH ENGINE: OFFICIAL SPOTIFY WEB API
-        try {
-            const spResults = await spotifyEngine.searchTracks(query, 10);
-            if (spResults && spResults.length > 0) {
-                const t = spResults[0];
-                tracks.push({
-                    title: t.name,
-                    author: t.artists?.map(a => a.name).join(', ') || 'Spotify Artist',
-                    album: t.album?.name || 'Spotify Album',
-                    url: t.external_urls?.spotify || `https://open.spotify.com/track/${t.id}`,
-                    duration: t.duration_ms || 180000,
-                    thumbnail: t.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80',
-                    source: 'Spotify',
-                    requester
-                });
-                return { type: 'TRACK', tracks };
+        // 7. MULTI-PROVIDER TEXT SEARCH
+        // Spotify, YouTube, SoundCloud, Deezer and Apple Music are metadata/search
+        // providers. Playback is resolved separately to a playable YouTube/SoundCloud stream.
+        const safeSearch = async (task, timeoutMs = 5000) => {
+            let timer;
+            try {
+                return await Promise.race([
+                    Promise.resolve().then(task),
+                    new Promise(resolve => { timer = setTimeout(() => resolve(null), timeoutMs); })
+                ]);
+            } catch (_) {
+                return null;
+            } finally {
+                if (timer) clearTimeout(timer);
             }
-        } catch (spErr) {
-            console.warn('⚠️ [Spotify Search Error]:', spErr.message || spErr);
+        };
+
+        const [spotifyResults, youtubeResults, soundCloudResults, deezerResults, appleResults] = await Promise.all([
+            safeSearch(() => spotifyEngine.searchTracks(query, 5)),
+            safeSearch(() => play.search(query, { limit: 5 })),
+            safeSearch(() => play.search(query, { source: { soundcloud: 'tracks' }, limit: 5 })),
+            safeSearch(async () => {
+                const response = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(query)}&limit=5`, { signal: AbortSignal.timeout(5000) });
+                if (!response.ok) return [];
+                const body = await response.json();
+                return body.data || [];
+            }),
+            safeSearch(async () => {
+                const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=5`, { signal: AbortSignal.timeout(5000) });
+                if (!response.ok) return [];
+                const body = await response.json();
+                return body.results || [];
+            })
+        ]);
+
+        for (const t of (Array.isArray(spotifyResults) ? spotifyResults : [])) {
+            tracks.push({
+                title: t.name,
+                author: t.artists?.map(a => a.name).join(', ') || 'Spotify Artist',
+                album: t.album?.name || 'Spotify Album',
+                url: t.external_urls?.spotify || `https://open.spotify.com/track/${t.id}`,
+                duration: t.duration_ms || 180000,
+                thumbnail: t.album?.images?.[0]?.url,
+                source: 'Spotify',
+                requester
+            });
         }
 
-        // 8. Fallback Official YouTube Search
-        try {
-            const ytSearch = await play.search(query, { limit: 5 }).catch(() => []);
-            if (ytSearch && ytSearch.length > 0) {
-                let candidateItems = ytSearch.map(item => ({
-                    rawItem: item,
-                    title: item.title || query,
-                    author: item.channel?.name || 'Official Artist',
-                    length: (item.durationInSec || 180) * 1000
-                }));
-                try {
-                    const { rankAndFilterCanonicalTracks } = require('./musicManager');
-                    candidateItems = rankAndFilterCanonicalTracks(candidateItems, query);
-                } catch (_) {}
-                const best = candidateItems[0]?.rawItem || ytSearch[0];
-                tracks.push({
-                    title: best.title || query,
-                    url: best.url,
-                    duration: (best.durationInSec || 180) * 1000,
-                    author: best.channel?.name || 'Official Artist',
-                    thumbnail: best.thumbnails?.[0]?.url || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80',
-                    source: 'YouTube',
-                    requester
-                });
-                return { type: 'TRACK', tracks };
-            }
-        } catch (ytErr) {}
+        for (const item of (Array.isArray(youtubeResults) ? youtubeResults : [])) {
+            tracks.push({
+                title: item.title || query,
+                url: item.url,
+                duration: (item.durationInSec || 180) * 1000,
+                author: item.channel?.name || 'YouTube Artist',
+                thumbnail: item.thumbnails?.[0]?.url,
+                source: 'YouTube',
+                requester
+            });
+        }
 
-        // 9. Fallback SoundCloud Search
-        try {
-            const scSearch = await play.search(query, { source: { soundcloud: 'tracks' }, limit: 8 }).catch(() => []);
-            if (scSearch && scSearch.length > 0) {
-                const item = scSearch.find(t => (t.durationInSec || 0) > 45) || scSearch[0];
+        for (const item of (Array.isArray(soundCloudResults) ? soundCloudResults : [])) {
+            // Ignore short preview snippets; they are not full-track results.
+            if ((item.durationInSec || 0) > 45) {
                 tracks.push({
                     title: item.name || item.title || query,
                     url: item.permalink || item.url,
                     duration: (item.durationInSec || 180) * 1000,
                     author: item.user?.name || 'SoundCloud Artist',
-                    thumbnail: item.thumbnail || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80',
+                    thumbnail: item.thumbnail,
                     source: 'SoundCloud',
                     requester
                 });
-                return { type: 'TRACK', tracks };
             }
-        } catch (scErr) {}
+        }
 
-        return { type: 'TRACK', tracks: [] };
+        for (const item of (Array.isArray(deezerResults) ? deezerResults : [])) {
+            if (!item.title || !item.link) continue;
+            tracks.push({
+                title: item.title,
+                author: item.artist?.name || 'Deezer Artist',
+                album: item.album?.title || 'Deezer',
+                url: item.link,
+                duration: (item.duration || 180) * 1000,
+                thumbnail: item.album?.cover_medium || item.album?.cover,
+                source: 'Deezer',
+                requester
+            });
+        }
+
+        for (const item of (Array.isArray(appleResults) ? appleResults : [])) {
+            if (!item.trackName || !item.trackViewUrl) continue;
+            tracks.push({
+                title: item.trackName,
+                author: item.artistName || 'Apple Music Artist',
+                album: item.collectionName || 'Apple Music',
+                url: item.trackViewUrl,
+                duration: item.trackTimeMillis || 180000,
+                thumbnail: (item.artworkUrl100 || '').replace('100x100bb', '600x600bb'),
+                source: 'Apple Music',
+                requester
+            });
+        }
+
+        const seenProviderTracks = new Set();
+        const mergedTracks = tracks.filter(track => {
+            if (!track.title || !track.url) return false;
+            const key = `${String(track.title).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}|${String(track.author || '').toLowerCase().trim()}|${track.source || ''}`;
+            if (seenProviderTracks.has(key)) return false;
+            seenProviderTracks.add(key);
+            return true;
+        });
+
+        return { type: mergedTracks.length > 1 ? 'SEARCH' : 'TRACK', tracks: mergedTracks.slice(0, 25) };
     }
 
     static async getAutoplayRecommendation(currentTrack, history = []) {
