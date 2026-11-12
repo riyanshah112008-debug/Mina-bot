@@ -17,8 +17,8 @@
     "discord.js": "^14.19.3",
     "dotenv": "^16.4.7",
     "mathjs": "^14.8.1",
-    "kazagumo": "^3.2.2",
-    "shoukaku": "^4.1.1",
+    "kazagumo": "^3.0.0",
+    "shoukaku": "^4.0.0",
     "kazagumo-spotify": "^1.0.0"
   }
 }
