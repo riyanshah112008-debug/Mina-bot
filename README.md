@@ -1,44 +1,49 @@
-# Mina Security Bot
+# Mina Bot
 
-A standalone Discord security and moderation bot inspired by publicly documented security patterns. It is an independent implementation and is not affiliated with Wick.
+Mina is a single-server Discord bot with security, moderation, music playback, Spotify catalogue lookup and utility commands.
 
 ## Requirements
 - Node.js 20+
-- A Discord application and bot token
-- Enable the Server Members, Message Content, and Server Members / Moderation privileged intents as required in the Discord Developer Portal
+- Discord application + bot token
+- Enable Server Members, Message Content and Server Members / Moderation intents in the Discord Developer Portal
+- Bot permissions: View Audit Log, Manage Roles, Moderate Members, Manage Channels, Manage Webhooks, Ban Members, Kick Members, Manage Messages, Connect, Speak and Send Messages
 
-## Run
-1. Copy `.env.example` to `.env` and set `DISCORD_TOKEN` and `CLIENT_ID`.
-2. Optionally set `GUILD_ID` to restrict command registration and bot operation to one server. Leave it blank for global command registration.
-3. Set `OWNER_IDS` to comma-separated trusted bot-owner Discord user IDs if using owner-only extensions.
-4. Install dependencies with `npm install`.
-5. Start with `npm start`.
+## Setup
+1. Set `DISCORD_TOKEN` and `CLIENT_ID`.
+2. Set `GUILD_ID` to your one target server ID for instant guild command registration.
+3. Optionally set `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` for Spotify search and Spotify track/playlist URL resolution.
+4. Install dependencies with `npm install` and start with `npm start`.
 
-The bot stores per-guild security settings in `data/guilds.json`. Do not commit `.env` or live bot tokens.
+The bot stores server configuration and reminders in `DATA_DIR/guilds.json`. Use persistent storage in production. Do not commit secrets.
 
-## Protection modules
-- Anti-nuke monitoring for channel/role creation and deletion, permission overwrite changes, member role changes, bans, kicks, webhook changes and bot additions
-- Configurable anti-nuke thresholds and timeout/kick/ban punishment
-- Trusted-user and trusted-role exemptions, resolved against live guild membership
-- Persistent incident history with `/security incidents` review
-- Anti-raid join-rate detection and configurable minimum account age
-- Optional quarantine role for young accounts and verification-gated new members
-- Button + short arithmetic verification with verified/quarantine role transitions
-- AutoMod for message flooding, repeated messages, mention spam, server invites and heuristic suspicious links
-- Per-server allowed-domain list for link-filter exceptions
-- Emergency lockdown and restoration of prior Send Messages/Add Reactions overwrite states
-- Trusted-user/role allowlists, module toggles, one-command `/security setup`, security embeds and moderation commands
-- Public verification panel publishing with `/verification panel`
+## Music
+- `/music play` supports track searches and supported audio URLs.
+- `/music pause`, `resume`, `skip`, `stop`, `queue`, `nowplaying`, `volume`, `loop`, `shuffle`, `remove`, and `clear`.
+- `/spotify search` searches Spotify metadata.
+- Spotify track and playlist links can be resolved to track metadata and queued by matching the title/artist against the configured audio extractors.
 
-## Important setup
-- Give Mina only the permissions it needs, including View Audit Log, Manage Roles, Moderate Members, Manage Channels, Manage Webhooks, Ban Members and Manage Messages for the modules you enable.
-- Place Mina's highest role above the verified/quarantine roles and any roles it must manage.
-- Configure a quarantine role that denies access to channels/categories until verification. Run `/verification setup` with distinct verified and quarantine roles, then publish `/verify` instructions in your server.
-- Enable Message Content and Server Members intents in the Discord Developer Portal.
-- Run `/security setup` in the channel you want to use for logs, then use `/security status` to inspect protection.
-- Add trusted staff with `/security whitelist-add` or `/security trust-role-add`; use `/security module` to toggle modules and `/security threshold` or `/security punishment` to tune anti-nuke behavior.
-- Configure verification with `/verification setup`, then publish its public button using `/verification panel`.
-- Configure allowed hostnames with `/security allow-domain` if a trusted site is being flagged.
+Spotify provides catalogue metadata, not a playable audio stream. Playback is performed by Discord Player using supported audio extractors; Spotify Premium is not required. Track matching can differ from the original Spotify recording. Source availability and extractor terms/availability can change.
 
-## Safety and platform limits
-Discord role hierarchy and server-owner authority cannot be bypassed. Audit-log protection requires View Audit Log and can only react after Discord emits an audit event; it cannot guarantee prevention of every action. Link filtering is heuristic and should be tuned with an allowlist. Test quarantine and lockdown behavior in a private server before production use.
+## Security and moderation
+- Anti-nuke: audit-log monitoring for channel/role changes, permission overwrite changes, bans, kicks, webhook changes, member role changes and bot additions.
+- Anti-raid: join-burst detection and young-account quarantine.
+- AutoMod: spam, repeated messages, mass mentions, invite links and heuristic suspicious-link filtering.
+- Trusted users and roles, incident history, configurable anti-nuke thresholds and timeout/kick/ban response.
+- Verification panel with a short arithmetic challenge and verified/quarantine roles.
+- Emergency lockdown and permission restoration.
+- Moderation: `/timeout`, `/kick`, `/ban`.
+
+Start with `/security setup` in the desired log channel. Configure roles with `/verification setup`, then publish a panel with `/verification panel`. Add trusted staff using `/security trust-user` and `/security trust-role`.
+
+## Utilities
+- `/ping`, `/avatar`, `/userinfo`, `/serverinfo`, `/botinfo`
+- `/calculate` for basic arithmetic
+- `/poll` for reaction polls
+- `/remind create|list|cancel` for persisted reminders
+- `/help` for the command guide
+
+## Hosting notes
+The included Render blueprint exposes a health endpoint at `/health`. Voice playback requires a host that supports Discord voice networking and a persistent always-on process. Free hosting may sleep or have resource/network restrictions; a sleeping service cannot provide reliable music playback. Configure a persistent disk and point `DATA_DIR` to it if your host supports one.
+
+## Security limitations
+Anti-nuke is reactive to Discord audit-log events; it cannot guarantee prevention of every action. Configure bot role hierarchy carefully and test lockdown/verification in a private server before production use.
