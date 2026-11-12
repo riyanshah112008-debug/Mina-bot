@@ -1,5 +1,6 @@
 'use strict';
 require('dotenv').config();
+try { process.env.FFMPEG_PATH = require('ffmpeg-static') || 'ffmpeg'; } catch (_) { process.env.FFMPEG_PATH = 'ffmpeg'; }
 const http = require('node:http');
 const { Client, GatewayIntentBits, Partials, REST, Routes, Events } = require('discord.js');
 const store = require('./store');

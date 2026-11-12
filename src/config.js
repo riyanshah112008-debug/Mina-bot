@@ -1,0 +1,89 @@
+// ==========================================
+// 🛡️ Starry BOT CONFIGURATION
+// ==========================================
+
+module.exports = {
+    // Fixed comma prefix by default across the entire bot
+    DEFAULT_PREFIX: ',',
+    PREFIX: ',',
+
+    // Maximum 32-bit signed integer supported by Node.js event loop (~24.8 days)
+    INTERACTION_TIMEOUT: 2147483647,
+    ONE_YEAR_MS: 2147483647,
+
+    // Bot owner user IDs for unrestricted administrative access
+    get BOT_OWNERS() {
+        const defaultOwners = ['1465049039153135639', '1257676837249617971'];
+        const set = new Set(defaultOwners);
+        if (process.env.OWNER_ID) {
+            process.env.OWNER_ID.split(',').map(s => s.trim()).filter(Boolean).forEach(id => set.add(id));
+        }
+        if (process.env.OWNER_IDS) {
+            process.env.OWNER_IDS.split(',').map(s => s.trim()).filter(Boolean).forEach(id => set.add(id));
+        }
+        if (global.__discordAppOwnerIds && Array.isArray(global.__discordAppOwnerIds)) {
+            global.__discordAppOwnerIds.forEach(id => set.add(id));
+        }
+        return Array.from(set);
+    },
+
+    isBotOwner(userId, client = null) {
+        if (!userId) return false;
+        const uid = String(userId);
+        const defaultOwners = ['1465049039153135639', '1257676837249617971'];
+        const set = new Set(defaultOwners);
+        if (process.env.OWNER_ID) {
+            process.env.OWNER_ID.split(',').map(s => s.trim()).filter(Boolean).forEach(id => set.add(id));
+        }
+        if (process.env.OWNER_IDS) {
+            process.env.OWNER_IDS.split(',').map(s => s.trim()).filter(Boolean).forEach(id => set.add(id));
+        }
+        if (global.__discordAppOwnerIds && Array.isArray(global.__discordAppOwnerIds)) {
+            global.__discordAppOwnerIds.forEach(id => set.add(id));
+        }
+        if (set.has(uid)) return true;
+
+        // Dynamic Discord Application Owner / Team detection
+        if (client && client.application?.owner) {
+            const appOwner = client.application.owner;
+            if (appOwner.id) {
+                const ownerId = String(appOwner.id);
+                set.add(ownerId);
+                if (!global.__discordAppOwnerIds) global.__discordAppOwnerIds = [];
+                if (!global.__discordAppOwnerIds.includes(ownerId)) global.__discordAppOwnerIds.push(ownerId);
+                if (ownerId === uid) return true;
+            }
+            if (appOwner.members) {
+                if (typeof appOwner.members.has === 'function' && appOwner.members.has(uid)) {
+                    if (!global.__discordAppOwnerIds) global.__discordAppOwnerIds = [];
+                    if (!global.__discordAppOwnerIds.includes(uid)) global.__discordAppOwnerIds.push(uid);
+                    return true;
+                }
+                if (Array.isArray(appOwner.members)) {
+                    for (const m of appOwner.members) {
+                        const mId = String(m?.id || m?.userId || m?.user?.id || m);
+                        if (!global.__discordAppOwnerIds) global.__discordAppOwnerIds = [];
+                        if (!global.__discordAppOwnerIds.includes(mId)) global.__discordAppOwnerIds.push(mId);
+                        if (mId === uid) return true;
+                    }
+                }
+            }
+        }
+        return false;
+    },
+
+    // Default Embed Colors
+    EMBED_COLORS: {
+        PRIMARY: '#5865F2',
+        SUCCESS: '#2ECC71',
+        WARNING: '#F1C40F',
+        DANGER: '#ED4245',
+        DARK: '#2B2D31',
+        MUSIC: '#1DB954',
+        SOCIAL: '#FF79C6',
+        ECONOMY: '#F39C12'
+    },
+
+    // Multi-bot cluster metadata
+    CLUSTER_NAME: 'Starry-Starry-Network'
+};

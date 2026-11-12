@@ -5,13 +5,13 @@
   "description": "Mina — Discord security, music and utility bot",
   "main": "src/index.js",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --test",
-    "check": "node --check src/index.js && node --check src/commands.js && node --check src/store.js && node --check src/security.js && node --check src/music.js && node --check src/utility.js && node --check src/spotify.js"
+    "check": "node --check src/index.js && node --check src/commands.js && node --check src/store.js && node --check src/security.js && node --check src/music.js && node --check src/utility.js && node --check src/spotify.js && node --check src/utils/musicManager.js && node --check src/utils/nativeAudioEngine.js && node --check src/utils/streamResolverClient.js"
   },
   "dependencies": {
     "discord.js": "^14.19.3",
@@ -19,6 +19,12 @@
     "mathjs": "^14.8.1",
     "kazagumo": "^3.0.0",
     "shoukaku": "^4.0.0",
-    "kazagumo-spotify": "^1.0.0"
+    "kazagumo-spotify": "^1.0.0",
+    "@discordjs/voice": "^0.19.2",
+    "play-dl": "^1.9.7",
+    "spotify-url-info": "^3.3.3",
+    "prism-media": "^1.3.5",
+    "ffmpeg-static": "^5.2.0",
+    "@distube/ytdl-core": "^4.16.12"
   }
 }
