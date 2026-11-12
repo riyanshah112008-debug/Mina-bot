@@ -1,5 +1,5 @@
 'use strict';
-const { AuditLogEvent, ChannelType, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { AuditLogEvent, ChannelType, EmbedBuilder } = require('discord.js');
 const store = require('./store');
 
 const actionBuckets = new Map();
@@ -106,6 +106,7 @@ async function handleDestructiveAudit(entry, label) {
       await member.timeout(60 * 60 * 1000, 'Mina anti-nuke threshold exceeded').catch(() => null);
     }
     recordIncident(guild, 'anti-nuke threshold', executor.id, 'Threshold ' + cfg.antiNuke.limit + ' reached in ' + Math.round(cfg.antiNuke.windowMs / 1000) + ' seconds', 'critical');
+    actionBuckets.set(key, []);
     if (cfg.antiNuke.lockdown) await lockdown(guild, 'Anti-nuke threshold exceeded for ' + executor.tag);
   }
 }
@@ -114,7 +115,9 @@ async function onJoin(member) {
   if (!cfg.enabled || isTrusted(cfg, member.id, member.guild)) return;
   const age = Date.now() - member.user.createdTimestamp;
   const verification = cfg.verification || {};
-  const quarantineId = verification.enabled ? (verification.quarantineRoleId || cfg.quarantineRoleId) : (age < cfg.antiRaid.minAccountAgeMs ? cfg.quarantineRoleId : null);
+  const quarantineId = verification.enabled
+    ? (verification.quarantineRoleId || cfg.quarantineRoleId)
+    : (cfg.antiRaid.enabled && age < cfg.antiRaid.minAccountAgeMs ? cfg.quarantineRoleId : null);
   let quarantined = false;
   if (quarantineId) {
     const role = await member.guild.roles.fetch(quarantineId).catch(() => null);
