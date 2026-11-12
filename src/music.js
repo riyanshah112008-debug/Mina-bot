@@ -28,9 +28,13 @@ async function play(ctx,manager,query){
    if(result?.tracks?.length){
     const p=manager.getPlayer(ctx.guild.id)||await manager.createPlayer({guildId:ctx.guild.id,voiceId:g.voice.id,textId:ctx.channel.id,deaf:true,volume:100});
     if(p.voiceId!==g.voice.id)await p.setVoiceChannel(g.voice.id);
-    p.textId=ctx.channel.id;p.queue.add(result.tracks.slice(0,50));
-    if(!p.playing&&!p.paused)await p.play();
-    return sendResult({embeds:[trackEmbed(result.tracks[0],p)]});
+    p.textId=ctx.channel.id;
+    const selectedTracks=result.loadType==='playlist'?result.tracks:result.tracks.slice(0,1);
+    const alreadyPlaying=Boolean(p.playing||p.paused||p.queue.current);
+    p.queue.add(selectedTracks);
+    if(!alreadyPlaying&&!p.playing&&!p.paused)await p.play();
+    const first=selectedTracks[0];
+    return sendResult({content:alreadyPlaying?('✅ Added **'+first.title+'** to the queue (#'+p.queue.length+').'):'⏳ Connecting to voice and starting **'+first.title+'**. The Now Playing panel will appear after audio is confirmed.'});
    }
   }catch(error){console.warn('[NovaBot/NovaBot Music] Lavalink route failed; switching to native audio:',error.message||error);}
  }
@@ -39,12 +43,22 @@ async function play(ctx,manager,query){
   const result=await NovaBotAudioEngine.search(query,ctx.user);
   if(!result?.tracks?.length)return sendResult('❌ No playable results found for that song.');
   const native=NovaBotAudioEngine.getOrCreatePlayer(manager?.client||ctx.guild.client,ctx.guild.id,g.voice,ctx.channel);
-  native.voiceChannel=g.voice;native.textChannel=ctx.channel;native.loadingMessage=loading;
-  native.queue.push(...result.tracks);
-  if(!native.currentTrack)native.playNext().catch(error=>console.warn('[NovaBot/NovaBot Native Audio] Playback error:',error.message||error));
-  const first=result.tracks[0];
-  const payload=native.buildNowPlayingPayload(first)||{embeds:[trackEmbed({title:first.title,author:first.author,uri:first.url,length:first.duration,thumbnail:first.thumbnail,requester:first.requester},native)]};
-  return sendResult(payload);
+  native.voiceChannel=g.voice;native.textChannel=ctx.channel;
+  const selectedTracks=result.type==='PLAYLIST'?result.tracks:result.tracks.slice(0,1);
+  const first=selectedTracks[0];
+  const alreadyPlaying=Boolean(native.currentTrack);
+  native.queue.push(...selectedTracks);
+  if(!alreadyPlaying){
+    if(ctx.isInteraction&&ctx.interaction){
+      await ctx.editReply({content:'⏳ Connecting to voice and resolving **'+first.title+'**. I will show Now Playing only after audio starts.'});
+      native.loadingMessage=await ctx.interaction.fetchReply().catch(()=>null);
+    }else{
+      native.loadingMessage=loading;
+    }
+    native.playNext().catch(error=>console.warn('[NovaBot Native Audio] Playback error:',error.message||error));
+    return;
+  }
+  return sendResult({content:'✅ Added **'+first.title+'** to the queue (#'+native.queue.length+').'});
  }catch(error){
   console.error('[NovaBot/NovaBot Native Audio] Search/play failed:',error);
   return sendResult('❌ NovaBot audio could not resolve this track. Try another title or direct YouTube/SoundCloud link.');
