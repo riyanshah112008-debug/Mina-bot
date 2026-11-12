@@ -1182,7 +1182,7 @@ function createMusicManager(client) {
                 `Use the interactive controls below to manage your audio session.`
             )
             .setFooter({ 
-                text: `Starry Music Engine • Loop: ${player.loop.toUpperCase()} • Autoplay: ${isAutoplay ? 'ON' : 'OFF'} • Volume: ${player.volume || 100}%`, 
+                text: `NovaBot Music Engine • Loop: ${player.loop.toUpperCase()} • Autoplay: ${isAutoplay ? 'ON' : 'OFF'} • Volume: ${player.volume || 100}%`, 
                 iconURL: client.user ? client.user.displayAvatarURL() : undefined 
             });
 

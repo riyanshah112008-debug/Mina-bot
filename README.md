@@ -1,6 +1,6 @@
-# Mina Bot
+# NovaBot Bot
 
-Mina is a single-server Discord bot with Wick-inspired security, moderation, Manager-bot-style music controls, and utility commands.
+NovaBot is a single-server Discord bot with Wick-inspired security, moderation, Manager-bot-style music controls, and utility commands.
 
 ## Requirements
 - Node.js 20+
