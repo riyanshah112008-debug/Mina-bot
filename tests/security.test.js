@@ -11,11 +11,21 @@ test('guild defaults enable baseline protection and verification is opt-in', () 
   assert.equal(cfg.antiRaid.enabled, true);
   assert.equal(cfg.automod.enabled, true);
   assert.equal(cfg.automod.linkFilter, true);
+  assert.equal(cfg.automod.heatEnabled, true);
+  assert.equal(cfg.automod.heatThreshold, 100);
+  assert.deepEqual(cfg.automod.blacklistedWords, []);
+  assert.equal(cfg.joinGate.enabled, false);
+  assert.equal(cfg.joinGate.action, 'quarantine');
+  assert.equal(cfg.antiRaid.panicEnabled, true);
+  assert.equal(cfg.antiRaid.panicJoinLimit, 6);
   assert.equal(cfg.verification.enabled, false);
   assert.deepEqual(cfg.trusted, []);
   assert.deepEqual(cfg.trustedRoles, []);
   assert.deepEqual(cfg.incidents, []);
   assert.equal(cfg.antiNuke.limit, 3);
+  assert.equal(cfg.antiNuke.minuteLimit, 5);
+  assert.equal(cfg.antiNuke.hourLimit, 12);
+  assert.equal(cfg.antiNuke.quarantineHold, true);
   assert.equal(cfg.antiNuke.punish, 'timeout');
 });
 

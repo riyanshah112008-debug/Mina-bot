@@ -32,14 +32,14 @@ The music engine uses Kazagumo/Shoukaku with Lavalink, YouTube Music search and 
 
 ## Security and moderation
 - Anti-nuke audit-log monitoring for destructive channel, role, permission, ban, kick, webhook and bot-add events.
-- Anti-raid join-burst detection and young-account quarantine.
-- AutoMod for spam, repeated messages, mass mentions, invites and suspicious links.
+- Anti-raid join-burst detection, Join Gate filters, and configurable Join Raid panic mode.
+- Heat-based AutoMod with decaying weighted signals for spam, repeated messages, mass mentions, attachments, invites, suspicious links, blocked words, and webhook messages; timeout strikes escalate with a cap.
 - Trusted users/roles, incident history, configurable thresholds and timeout/kick/ban response.
 - Verification panel with arithmetic challenge and verified/quarantine roles.
 - Emergency lockdown and permission restoration.
 - `/timeout`, `/kick`, `/ban`.
 
-Start with `/security setup`, configure roles using `/verification setup`, then publish `/verification panel`.
+Start with `/security setup`, configure the quarantine role with `/security quarantine-role`, tune `/security limits`, `/security join-gate`, `/security join-raid`, and `/security heat-threshold`, then configure roles using `/verification setup` and publish `/verification panel`. Add/remove blocked phrases with `/security heat-word-add` and `/security heat-word-remove`.
 
 ## Utilities
 - `/ping`, `/avatar`, `/userinfo`, `/serverinfo`, `/botinfo`
