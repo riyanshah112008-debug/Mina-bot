@@ -100,6 +100,20 @@ async function handleDestructiveAudit(entry, label) {
   if (entry.action === AuditLogEvent.RoleUpdate && !(entry.changes || []).some(change => change.key === 'permissions')) return;
   if (entry.action === AuditLogEvent.MemberRoleUpdate && !(entry.changes || []).some(change => change.key === '$add' || change.key === '$remove')) return;
 
+  if (entry.action === AuditLogEvent.MemberRoleUpdate && cfg.antiNuke.quarantineHold && cfg.quarantineRoleId) {
+    const removed = (entry.changes || []).find(change => change.key === '$remove');
+    const removedIds = Array.isArray(removed?.new) ? removed.new.map(role => String(role.id || role)) : [];
+    if (removedIds.includes(cfg.quarantineRoleId) && entry.targetId) {
+      const target = await guild.members.fetch(entry.targetId).catch(() => null);
+      const quarantine = await guild.roles.fetch(cfg.quarantineRoleId).catch(() => null);
+      if (target?.manageable && quarantine && !target.roles.cache.has(quarantine.id)) {
+        await target.roles.add(quarantine, 'NovaBot quarantine hold: attempted bypass').catch(() => null);
+        incident(guild, 'quarantine bypass blocked', actor.id, 'Attempted to remove quarantine from ' + target.user.tag, 'critical');
+        await log(guild, '🛡️ Quarantine Hold restored the quarantine role for ' + target.user.tag + '.');
+      }
+    }
+  }
+
   incident(guild, label, actor.id, 'Actor ' + actor.tag + '; target ' + (entry.targetId || 'unknown'));
   if (entry.action === AuditLogEvent.BotAdd && entry.targetId) {
     const bot = await guild.members.fetch(entry.targetId).catch(() => null);
@@ -107,15 +121,24 @@ async function handleDestructiveAudit(entry, label) {
   }
 
   const key = guild.id + ':' + actor.id;
-  const list = recent(actionBuckets, key, Date.now(), cfg.antiNuke.windowMs);
-  list.push(Date.now());
-  await log(guild, '⚠️ Anti-nuke: ' + actor.tag + ' — ' + label + ' (' + list.length + '/' + cfg.antiNuke.limit + ').');
-  if (list.length < cfg.antiNuke.limit) return;
+  const now = Date.now();
+  const events = recent(actionBuckets, key, now, 3600000);
+  events.push(now);
+  const burstCount = events.filter(timestamp => now - timestamp < cfg.antiNuke.windowMs).length;
+  const minuteCount = events.filter(timestamp => now - timestamp < 60000).length;
+  const hourCount = events.length;
+  await log(guild, '⚠️ Anti-nuke: ' + actor.tag + ' — ' + label + ' (burst ' + burstCount + '/' + cfg.antiNuke.limit +
+    ', minute ' + minuteCount + '/' + cfg.antiNuke.minuteLimit + ', hour ' + hourCount + '/' + cfg.antiNuke.hourLimit + ').');
+  const exceeded = burstCount >= cfg.antiNuke.limit || minuteCount >= cfg.antiNuke.minuteLimit || hourCount >= cfg.antiNuke.hourLimit;
+  if (!exceeded) return;
 
   const member = await guild.members.fetch(actor.id).catch(() => null);
-  const reason = 'Anti-nuke threshold exceeded';
+  const reason = 'Anti-nuke activity limits exceeded';
   if (member) {
-    if (cfg.antiNuke.punish === 'ban' && member.bannable) await member.ban({ reason }).catch(() => null);
+    if (cfg.antiNuke.punish === 'quarantine' && cfg.quarantineRoleId) {
+      const role = await guild.roles.fetch(cfg.quarantineRoleId).catch(() => null);
+      if (role && member.manageable) await member.roles.add(role, reason).catch(() => null);
+    } else if (cfg.antiNuke.punish === 'ban' && member.bannable) await member.ban({ reason }).catch(() => null);
     else if (cfg.antiNuke.punish === 'kick' && member.kickable) await member.kick(reason).catch(() => null);
     else if (member.moderatable) await member.timeout(3600000, reason).catch(() => null);
   }
