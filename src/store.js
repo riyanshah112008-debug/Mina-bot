@@ -1,64 +1,33 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
-
 const dataDir = path.resolve(process.env.DATA_DIR || './data');
 const file = path.join(dataDir, 'guilds.json');
 const defaults = () => ({
   enabled: true,
   antiNuke: { enabled: true, windowMs: 10000, limit: 3, lockdown: true, punish: 'timeout' },
   antiRaid: { enabled: true, windowMs: 15000, joinLimit: 8, minAccountAgeMs: 86400000 },
-  automod: {
-    enabled: true, windowMs: 7000, messageLimit: 6, mentionLimit: 5,
-    inviteFilter: true, linkFilter: true, allowedDomains: []
-  },
-  trusted: [],
-  trustedRoles: [],
-  incidents: [],
-  logChannelId: null,
-  quarantineRoleId: null,
+  automod: { enabled: true, windowMs: 7000, messageLimit: 6, mentionLimit: 5, inviteFilter: true, linkFilter: true, allowedDomains: [] },
+  trusted: [], trustedRoles: [], incidents: [], logChannelId: null, quarantineRoleId: null,
   verification: { enabled: false, verifiedRoleId: null, quarantineRoleId: null },
-  lockdown: { active: false, changed: [] }
+  lockdown: { active: false, changed: [] }, music: { defaultVolume: 70, maxVolume: 100 }, reminders: []
 });
 let cache = {};
 function load() {
-  try {
-    fs.mkdirSync(dataDir, { recursive: true });
-    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) cache = parsed;
-  } catch (error) {
-    if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
-    cache = {};
-  }
+  try { fs.mkdirSync(dataDir, { recursive: true }); const data = JSON.parse(fs.readFileSync(file, 'utf8')); if (data && typeof data === 'object' && !Array.isArray(data)) cache = data; }
+  catch (error) { if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error; cache = {}; }
 }
-function save() {
-  fs.mkdirSync(dataDir, { recursive: true });
-  const temp = file + '.tmp';
-  fs.writeFileSync(temp, JSON.stringify(cache, null, 2), { mode: 0o600 });
-  fs.renameSync(temp, file);
-}
+function save() { fs.mkdirSync(dataDir, { recursive: true }); const temp = file + '.tmp'; fs.writeFileSync(temp, JSON.stringify(cache, null, 2), { mode: 0o600 }); fs.renameSync(temp, file); }
 function get(guildId) {
-  if (!cache[guildId]) { cache[guildId] = defaults(); save(); }
-  const cfg = cache[guildId];
-  const base = defaults();
-  for (const key of Object.keys(base)) {
-    if (cfg[key] === undefined) cfg[key] = base[key];
-  }
-  for (const group of ['antiNuke','antiRaid','automod','verification','lockdown']) {
-    cfg[group] = { ...base[group], ...(cfg[group] || {}) };
-  }
-  if (!Array.isArray(cfg.trusted)) cfg.trusted = [];
-  if (!Array.isArray(cfg.trustedRoles)) cfg.trustedRoles = [];
-  if (!Array.isArray(cfg.incidents)) cfg.incidents = [];
+  if (!cache[guildId]) cache[guildId] = defaults();
+  const cfg = cache[guildId], base = defaults();
+  for (const key of Object.keys(base)) if (cfg[key] === undefined) cfg[key] = base[key];
+  for (const key of ['antiNuke','antiRaid','automod','verification','lockdown','music']) cfg[key] = { ...base[key], ...(cfg[key] || {}) };
+  for (const key of ['trusted','trustedRoles','incidents','reminders']) if (!Array.isArray(cfg[key])) cfg[key] = [];
   if (!Array.isArray(cfg.automod.allowedDomains)) cfg.automod.allowedDomains = [];
   return cfg;
 }
-function update(guildId, updater) {
-  const current = get(guildId);
-  updater(current);
-  save();
-  return current;
-}
+function update(guildId, fn) { const cfg = get(guildId); fn(cfg); save(); return cfg; }
 function all() { return cache; }
 load();
 module.exports = { get, update, all, save, defaults };
