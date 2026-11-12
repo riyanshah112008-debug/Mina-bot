@@ -4,7 +4,7 @@ const { QueueRepeatMode } = require('discord-player');
 const spotify = require('./spotify');
 function queueOf(player,guildId){return player.nodes.get(guildId);}
 function requireVoice(interaction){const voice=interaction.member?.voice?.channel;if(!voice)return {error:'Join a voice channel first.'};const me=interaction.guild.members.me;if(me&&voice.permissionsFor(me)&&!voice.permissionsFor(me).has(['Connect','Speak']))return {error:'I need Connect and Speak permissions in your voice channel.'};return {voice};}
-function trackEmbed(track,title='Now playing'){return new EmbedBuilder().setColor(0x5865F2).setTitle(title).setDescription('['+track.title+']('+track.url+')').addFields({name:'Artist / source',value:String(track.author||'Unknown').slice(0,100),inline:true},{name:'Duration',value:track.duration||'Live',inline:true}).setThumbnail(track.thumbnail||null).setFooter({text:'Requested by '+(track.requestedBy?.username||'Mina')});}
+function trackEmbed(track,title='Now playing'){const embed=new EmbedBuilder().setColor(0x5865F2).setTitle(title).setDescription('['+track.title+']('+track.url+')').addFields({name:'Artist / source',value:String(track.author||'Unknown').slice(0,100),inline:true},{name:'Duration',value:track.duration||'Live',inline:true}).setFooter({text:'Requested by '+(track.requestedBy?.username||'Mina')});if(track.thumbnail)embed.setThumbnail(track.thumbnail);return embed;}
 async function play(interaction,player,query){
  const v=requireVoice(interaction);if(v.error)return interaction.reply({content:v.error,ephemeral:true});await interaction.deferReply();
  try{
