@@ -30,6 +30,7 @@ client.once(Events.ClientReady,async ready => {
 });
 client.on(Events.InteractionCreate,async interaction => {
   try {
+    if(interaction.isAutocomplete()) return await music.autocomplete(interaction,client);
     if(interaction.isButton() && interaction.customId.startsWith('mina_music_')) return await music.handleButton(interaction,client);
     if(interaction.isButton()||interaction.isModalSubmit()) return await commands.handleComponent(interaction);
     if(!interaction.isChatInputCommand()) return;
