@@ -8,6 +8,7 @@ const security = require('./security');
 const commands = require('./commands');
 const utility = require('./utility');
 const music = require('./music');
+const { brandInteraction } = require('./utils/embeds');
 
 const token = process.env.DISCORD_TOKEN, clientId = process.env.CLIENT_ID;
 if (!token || !clientId) { console.error('Missing DISCORD_TOKEN or CLIENT_ID.'); process.exit(1); }
@@ -58,6 +59,7 @@ client.once(Events.ClientReady,async ready => {
   utility.resumeReminders(client);
 });
 client.on(Events.InteractionCreate,async interaction => {
+  if (!interaction.isAutocomplete()) brandInteraction(interaction);
   try {
     if(interaction.isAutocomplete()) return await music.autocomplete(interaction,client);
     if(interaction.isButton() && interaction.customId.startsWith('mina_music_')) return await music.handleButton(interaction,client);
