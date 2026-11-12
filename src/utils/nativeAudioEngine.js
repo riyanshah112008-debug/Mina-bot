@@ -32,6 +32,7 @@ const {
 } = require('discord.js');
 const { getGuildLanguageSync, localizePayload, t } = require('./i18n');
 const config = require('../config');
+const { brandPayload } = require('./embeds');
 
 const MUSIC_BASE_URL = (process.env.PUBLIC_URL || process.env.FRONTEND_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 10000}`).replace(/\/+$/, '');
 const MUSIC_DASHBOARD_URL = `${MUSIC_BASE_URL}/music.html`;
