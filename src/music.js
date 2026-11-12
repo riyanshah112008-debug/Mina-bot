@@ -28,9 +28,11 @@ async function play(ctx,manager,query){
    if(result?.tracks?.length){
     const p=manager.getPlayer(ctx.guild.id)||await manager.createPlayer({guildId:ctx.guild.id,voiceId:g.voice.id,textId:ctx.channel.id,deaf:true,volume:100});
     if(p.voiceId!==g.voice.id)await p.setVoiceChannel(g.voice.id);
-    p.textId=ctx.channel.id;p.queue.add(result.tracks.slice(0,50));
+    p.textId=ctx.channel.id;
+    if(loading)p.data.set('loadingMessage',loading);
+    p.queue.add(result.tracks.slice(0,50));
     if(!p.playing&&!p.paused)await p.play();
-    return sendResult({embeds:[trackEmbed(result.tracks[0],p)]});
+    return sendResult({content:'✅ Added **'+result.tracks.length+'** track(s) to the queue. The player will post its now-playing panel when audio starts.'});
    }
   }catch(error){console.warn('[NovaBot/NovaBot Music] Lavalink route failed; switching to native audio:',error.message||error);}
  }
@@ -41,10 +43,8 @@ async function play(ctx,manager,query){
   const native=NovaBotAudioEngine.getOrCreatePlayer(manager?.client||ctx.guild.client,ctx.guild.id,g.voice,ctx.channel);
   native.voiceChannel=g.voice;native.textChannel=ctx.channel;native.loadingMessage=loading;
   native.queue.push(...result.tracks);
-  if(!native.currentTrack)native.playNext().catch(error=>console.warn('[NovaBot/NovaBot Native Audio] Playback error:',error.message||error));
-  const first=result.tracks[0];
-  const payload=native.buildNowPlayingPayload(first)||{embeds:[trackEmbed({title:first.title,author:first.author,uri:first.url,length:first.duration,thumbnail:first.thumbnail,requester:first.requester},native)]};
-  return sendResult(payload);
+  if(!native.currentTrack)native.playNext().catch(error=>console.warn('[NovaBot/Native Audio] Playback error:',error.message||error));
+  return sendResult({content:'✅ Added **'+result.tracks.length+'** track(s) to the queue. NovaBot will post the now-playing panel only after audio starts.'});
  }catch(error){
   console.error('[NovaBot/NovaBot Native Audio] Search/play failed:',error);
   return sendResult('❌ NovaBot audio could not resolve this track. Try another title or direct YouTube/SoundCloud link.');
