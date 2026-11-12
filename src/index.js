@@ -20,6 +20,7 @@ const healthServer = http.createServer((req,res) => {
 healthServer.listen(port,'0.0.0.0');
 client.once(Events.ClientReady,async ready => {
   console.log('[Mina] Online as '+ready.user.tag);
+  try { await player.init(ready.user.id); console.log('[Mina] Lavalink music manager initialized.'); } catch(error) { console.error('[Mina] Lavalink initialization failed:',error.message); }
   try {
     const rest=new REST({version:'10'}).setToken(token);
     const route=process.env.GUILD_ID?Routes.applicationGuildCommands(clientId,process.env.GUILD_ID):Routes.applicationCommands(clientId);
