@@ -30,4 +30,19 @@ async function execute(ctx,manager,action,value){const p=getPlayer(manager,ctx.g
 function context(m){return {isInteraction:false,guild:m.guild,member:m.member,channel:m.channel,user:m.author,reply:x=>m.reply(x)};}
 async function handlePrefix(message,client){if(!message.guild||message.author.bot||!message.content)return false;const prefix=process.env.PREFIX||',';const content=message.content.trim();const used=[...new Set([prefix,',','.'])].sort((a,b)=>b.length-a.length).find(x=>x&&content.toLowerCase().startsWith(x.toLowerCase()));if(!used)return false;const args=content.slice(used.length).trim().split(/\s+/),raw=(args.shift()||'').toLowerCase();const aliases={p:'play',add:'play',np:'nowplaying',prev:'previous',back:'previous',summon:'join',connect:'join',vol:'volume',q:'queue',repeat:'loop',next:'skip',dc:'stop',find:'search'};const action=aliases[raw]||raw;const valid=['play','pause','resume','skip','stop','queue','nowplaying','volume','loop','shuffle','clear','remove','jump','replay','previous','join','search','autoplay','filter','speed','seek','help'];if(!valid.includes(action))return false;if(action==='help')return message.reply('🎵 **Mina Music**\n,play <song/URL> · ,pause · ,resume · ,skip · ,stop · ,queue · ,nowplaying\n,volume <0-150> · ,loop <off/track/queue> · ,shuffle · ,remove <position> · ,clear · ,jump <position> · ,seek <seconds> · ,filter <name> · ,speed <0.5-2>');return execute(context(message),client.manager,action,args.join(' '));}
 async function handleButton(i,client){if(!i.customId.startsWith('mina_music_'))return false;const a=i.customId.slice(11),p=getPlayer(client.manager,i.guildId);if(!p)return i.reply({content:'No active music session.',ephemeral:true});if(i.member?.voice?.channelId!==p.voiceId)return i.reply({content:'Join the player voice channel to use controls.',ephemeral:true});await i.deferUpdate();if(a==='pause')await p.pause(!p.paused);if(a==='skip')await p.skip();if(a==='stop')await p.destroy();if(a==='shuffle')p.queue.shuffle();if(a==='loop')await p.setLoop(p.loop==='none'?'track':p.loop==='track'?'queue':'none');if(a==='vol_down')await p.setVolume(Math.max(0,(p.volume||100)-10));if(a==='vol_up')await p.setVolume(Math.min(150,(p.volume||100)+10));return true;}
-module.exports={createMusicManager,execute,handlePrefix,handleButton,trackEmbed,controlRows};
+async function autocomplete(interaction,client){
+ const focused=String(interaction.options.getFocused()||'').trim();
+ if(focused.length<2||!client.manager)return interaction.respond([]);
+ try{
+  const result=await client.manager.search(focused,{requester:interaction.user});
+  const choices=(result?.tracks||[]).slice(0,25).map(track=>{
+   const label=[track.title,track.author].filter(Boolean).join(' — ').slice(0,100)||'Unknown track';
+   return {name:label,value:String(track.uri||[track.author,track.title].filter(Boolean).join(' - ')||focused).slice(0,100)};
+  });
+  return interaction.respond(choices);
+ }catch(error){
+  console.warn('[Mina Music] Autocomplete search failed:',error.message||error);
+  return interaction.respond([]);
+ }
+}
+module.exports={createMusicManager,execute,handlePrefix,handleButton,autocomplete,trackEmbed,controlRows};
