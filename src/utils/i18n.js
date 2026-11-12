@@ -1,5 +1,5 @@
 // ==========================================
-// 🌐 STARRY CORE MULTILINGUAL LOCALIZATION ENGINE (i18n)
+// 🌐 NovaBot CORE MULTILINGUAL LOCALIZATION ENGINE (i18n)
 // File Path: src/utils/i18n.js
 // 14 Global Languages • Instant In-Memory Cache • Zero-Latency Lookups
 // ==========================================
@@ -153,12 +153,12 @@ const guildLanguageCache = new Map();
 const TRANSLATIONS = {
     // 🇬🇧 ENGLISH (Default)
     en: {
-        'setup.welcome_title': '🌟 Welcome to Starry!',
-        'setup.welcome_desc': 'Thank you for adding **Starry** to **{guild}**!\n\nTo ensure the best experience for your community, please select your server language and run the setup wizard below.\n\n🌐 **Step 1:** Select your server\'s language from the dropdown.\n🧠 **Step 2:** Click **Sync & Setup** to automatically link channels, security, and economy.',
+        'setup.welcome_title': '🌟 Welcome to NovaBot!',
+        'setup.welcome_desc': 'Thank you for adding **NovaBot** to **{guild}**!\n\nTo ensure the best experience for your community, please select your server language and run the setup wizard below.\n\n🌐 **Step 1:** Select your server\'s language from the dropdown.\n🧠 **Step 2:** Click **Sync & Setup** to automatically link channels, security, and economy.',
         'setup.select_lang_title': '🌐 Select Server Language',
-        'setup.select_lang_desc': 'Choose the primary language for Starry commands, setup wizards, and automatic responses.',
+        'setup.select_lang_desc': 'Choose the primary language for NovaBot commands, setup wizards, and automatic responses.',
         'setup.select_lang_placeholder': 'Choose your server language...',
-        'setup.sync_title': '🧠 Starry Master Configuration Engine',
+        'setup.sync_title': '🧠 NovaBot Master Configuration Engine',
         'setup.sync_desc': '**Initiate Global Server Sync?**\n\nMy brain will scan your channels and automatically configure:\n🛡️ **Security:** Verification & Logs\n👋 **Community:** Welcomes, Starboard & Suggestions\n🎫 **Support:** Tickets, Appeals & Applications\n🎁 **Economy:** Rewards & Boosts\n\n*This will wire internal systems directly into your server layout.*',
         'setup.btn_sync': 'SYNC SERVER',
         'setup.btn_cancel': 'CANCEL',
@@ -185,12 +185,12 @@ const TRANSLATIONS = {
 
     // 🇪🇸 SPANISH (Español)
     es: {
-        'setup.welcome_title': '🌟 ¡Bienvenido a Starry!',
-        'setup.welcome_desc': '¡Gracias por añadir a **Starry** a **{guild}**!\n\nPara garantizar la mejor experiencia para tu comunidad, selecciona el idioma del servidor e inicia la configuración a continuación.\n\n🌐 **Paso 1:** Selecciona el idioma de tu servidor en el menú desplegable.\n🧠 **Paso 2:** Haz clic en **Sincronizar y Configurar** para vincular canales, seguridad y economía.',
+        'setup.welcome_title': '🌟 ¡Bienvenido a NovaBot!',
+        'setup.welcome_desc': '¡Gracias por añadir a **NovaBot** a **{guild}**!\n\nPara garantizar la mejor experiencia para tu comunidad, selecciona el idioma del servidor e inicia la configuración a continuación.\n\n🌐 **Paso 1:** Selecciona el idioma de tu servidor en el menú desplegable.\n🧠 **Paso 2:** Haz clic en **Sincronizar y Configurar** para vincular canales, seguridad y economía.',
         'setup.select_lang_title': '🌐 Seleccionar Idioma del Servidor',
-        'setup.select_lang_desc': 'Elige el idioma principal para los comandos, configuraciones y respuestas automáticas de Starry.',
+        'setup.select_lang_desc': 'Elige el idioma principal para los comandos, configuraciones y respuestas automáticas de NovaBot.',
         'setup.select_lang_placeholder': 'Elige el idioma de tu servidor...',
-        'setup.sync_title': '🧠 Motor de Configuración Maestro de Starry',
+        'setup.sync_title': '🧠 Motor de Configuración Maestro de NovaBot',
         'setup.sync_desc': '**¿Iniciar Sincronización Global del Servidor?**\n\nMi sistema escaneará tus canales y configurará automáticamente:\n🛡️ **Seguridad:** Verificación y Registros\n👋 **Comunidad:** Bienvenidas, Starboard y Sugerencias\n🎫 **Soporte:** Tickets, Apelaciones y Postulaciones\n🎁 **Economía:** Cofres de Botín y Boosts\n\n*Esto conectará los sistemas internos directamente con el diseño de tu servidor.*',
         'setup.btn_sync': 'SINCRONIZAR SERVIDOR',
         'setup.btn_cancel': 'CANCELAR',
@@ -217,12 +217,12 @@ const TRANSLATIONS = {
 
     // 🇧🇷 PORTUGUESE (Português)
     pt: {
-        'setup.welcome_title': '🌟 Bem-vindo ao Starry!',
-        'setup.welcome_desc': 'Obrigado por adicionar o **Starry** ao **{guild}**!\n\nPara garantir a melhor experiência na sua comunidade, selecione o idioma do servidor e inicie o assistente de configuração abaixo.\n\n🌐 **Passo 1:** Escolha o idioma no menu suspenso.\n🧠 **Passo 2:** Clique em **Sincronizar Servidor** para mapear canais, segurança e economia.',
+        'setup.welcome_title': '🌟 Bem-vindo ao NovaBot!',
+        'setup.welcome_desc': 'Obrigado por adicionar o **NovaBot** ao **{guild}**!\n\nPara garantir a melhor experiência na sua comunidade, selecione o idioma do servidor e inicie o assistente de configuração abaixo.\n\n🌐 **Passo 1:** Escolha o idioma no menu suspenso.\n🧠 **Passo 2:** Clique em **Sincronizar Servidor** para mapear canais, segurança e economia.',
         'setup.select_lang_title': '🌐 Selecionar Idioma do Servidor',
-        'setup.select_lang_desc': 'Escolha o idioma principal para os comandos, assistentes e respostas automáticas do Starry.',
+        'setup.select_lang_desc': 'Escolha o idioma principal para os comandos, assistentes e respostas automáticas do NovaBot.',
         'setup.select_lang_placeholder': 'Escolha o idioma do servidor...',
-        'setup.sync_title': '🧠 Motor de Configuração Mestre do Starry',
+        'setup.sync_title': '🧠 Motor de Configuração Mestre do NovaBot',
         'setup.sync_desc': '**Iniciar Sincronização Global do Servidor?**\n\nMeu sistema irá escanear seus canais e configurar automaticamente:\n🛡️ **Segurança:** Verificação e Logs\n👋 **Comunidade:** Boas-vindas, Starboard e Sugestões\n🎫 **Suporte:** Tickets, Apelações e Formulários\n🎁 **Economia:** Baús de Recompensa e Boosts\n\n*Isso conectará os sistemas internos diretamente à estrutura do seu servidor.*',
         'setup.btn_sync': 'SINCRONIZAR SERVIDOR',
         'setup.btn_cancel': 'CANCELAR',
@@ -249,12 +249,12 @@ const TRANSLATIONS = {
 
     // 🇯🇵 JAPANESE (日本語)
     ja: {
-        'setup.welcome_title': '🌟 Starryへようこそ！',
-        'setup.welcome_desc': '**{guild}** に **Starry** を導入していただき、ありがとうございます！\n\nコミュニティで最高の体験を提供するために、サーバーの言語を選択してセットアップを開始してください。\n\n🌐 **ステップ 1:** ドロップダウンメニューから言語を選択します。\n🧠 **ステップ 2:** **サーバーを同期** をクリックして、チャンネルやセキュリティを自動設定します。',
+        'setup.welcome_title': '🌟 NovaBotへようこそ！',
+        'setup.welcome_desc': '**{guild}** に **NovaBot** を導入していただき、ありがとうございます！\n\nコミュニティで最高の体験を提供するために、サーバーの言語を選択してセットアップを開始してください。\n\n🌐 **ステップ 1:** ドロップダウンメニューから言語を選択します。\n🧠 **ステップ 2:** **サーバーを同期** をクリックして、チャンネルやセキュリティを自動設定します。',
         'setup.select_lang_title': '🌐 サーバー言語の選択',
-        'setup.select_lang_desc': 'Starryのコマンド、セットアップウィザード、自動応答の主要言語を選択してください。',
+        'setup.select_lang_desc': 'NovaBotのコマンド、セットアップウィザード、自動応答の主要言語を選択してください。',
         'setup.select_lang_placeholder': 'サーバーの言語を選択してください...',
-        'setup.sync_title': '🧠 Starry マスター構成エンジン',
+        'setup.sync_title': '🧠 NovaBot マスター構成エンジン',
         'setup.sync_desc': '**グローバルサーバー同期を開始しますか？**\n\nチャンネルを自動スキャンし、以下を設定します：\n🛡️ **セキュリティ:** 認証＆ログ監視\n👋 **コミュニティ:** ようこそ、スターボード、提案\n🎫 **サポート:** チケット、異議申し立て、申請\n🎁 **経済:** 宝箱ドロップ＆ブースト追跡\n\n*サーバーの構造に合わせてシステムを自動連携します。*',
         'setup.btn_sync': 'サーバーを同期',
         'setup.btn_cancel': 'キャンセル',
@@ -281,12 +281,12 @@ const TRANSLATIONS = {
 
     // 🇮🇳 HINDI (हिन्दी)
     hi: {
-        'setup.welcome_title': '🌟 Starry में आपका स्वागत है!',
-        'setup.welcome_desc': '**{guild}** में **Starry** जोड़ने के लिए धन्यवाद!\n\nअपने सर्वर के लिए बेहतरीन अनुभव सुनिश्चित करने के लिए, नीचे सर्वर की भाषा चुनें और सेटअप शुरू करें।\n\n🌐 **स्टेप 1:** ड्रॉपडाउन मेनू से अपने सर्वर की भाषा चुनें।\n🧠 **स्टेप 2:** चैनल्स, सुरक्षा और अर्थव्यवस्था को ऑटो-लिंक करने के लिए **सर्वर सिंक करें** पर क्लिक करें।',
+        'setup.welcome_title': '🌟 NovaBot में आपका स्वागत है!',
+        'setup.welcome_desc': '**{guild}** में **NovaBot** जोड़ने के लिए धन्यवाद!\n\nअपने सर्वर के लिए बेहतरीन अनुभव सुनिश्चित करने के लिए, नीचे सर्वर की भाषा चुनें और सेटअप शुरू करें।\n\n🌐 **स्टेप 1:** ड्रॉपडाउन मेनू से अपने सर्वर की भाषा चुनें।\n🧠 **स्टेप 2:** चैनल्स, सुरक्षा और अर्थव्यवस्था को ऑटो-लिंक करने के लिए **सर्वर सिंक करें** पर क्लिक करें।',
         'setup.select_lang_title': '🌐 सर्वर की भाषा चुनें',
-        'setup.select_lang_desc': 'Starry कमांड्स, सेटअप और स्वचालित संदेशों के लिए प्राथमिक भाषा चुनें।',
+        'setup.select_lang_desc': 'NovaBot कमांड्स, सेटअप और स्वचालित संदेशों के लिए प्राथमिक भाषा चुनें।',
         'setup.select_lang_placeholder': 'सर्वर की भाषा चुनें...',
-        'setup.sync_title': '🧠 Starry मास्टर कॉन्फ़िगरेशन इंजन',
+        'setup.sync_title': '🧠 NovaBot मास्टर कॉन्फ़िगरेशन इंजन',
         'setup.sync_desc': '**क्या आप ग्लोबल सर्वर सिंक शुरू करना चाहते हैं?**\n\nबॉट आपके चैनल्स को स्कैन करेगा और स्वचालित रूप से कॉन्फ़िगर करेगा:\n🛡️ **सुरक्षा:** वेरिफिकेशन और लॉग्स\n👋 **कम्युनिटी:** वेलकम, स्टारबोर्ड और सुझाव\n🎫 **सपोर्ट:** टिकट्स, अपील और आवेदन\n🎁 **इकॉनमी:** लूट चेस्ट्स और बूस्ट्स\n\n*यह बॉट के सभी सिस्टम्स को आपके सर्वर लेआउट से जोड़ देगा।*',
         'setup.btn_sync': 'सर्वर सिंक करें',
         'setup.btn_cancel': 'रद्द करें',
@@ -313,12 +313,12 @@ const TRANSLATIONS = {
 
     // 🇫🇷 FRENCH (Français)
     fr: {
-        'setup.welcome_title': '🌟 Bienvenue sur Starry !',
-        'setup.welcome_desc': 'Merci d\'avoir ajouté **Starry** à **{guild}** !\n\nPour offrir la meilleure expérience à votre communauté, veuillez sélectionner la langue du serveur et lancer l\'assistant de configuration ci-dessous.\n\n🌐 **Étape 1 :** Sélectionnez la langue dans le menu déroulant.\n🧠 **Étape 2 :** Cliquez sur **Synchroniser le Serveur** pour configurer vos canaux automatiquement.',
+        'setup.welcome_title': '🌟 Bienvenue sur NovaBot !',
+        'setup.welcome_desc': 'Merci d\'avoir ajouté **NovaBot** à **{guild}** !\n\nPour offrir la meilleure expérience à votre communauté, veuillez sélectionner la langue du serveur et lancer l\'assistant de configuration ci-dessous.\n\n🌐 **Étape 1 :** Sélectionnez la langue dans le menu déroulant.\n🧠 **Étape 2 :** Cliquez sur **Synchroniser le Serveur** pour configurer vos canaux automatiquement.',
         'setup.select_lang_title': '🌐 Choisir la Langue du Serveur',
-        'setup.select_lang_desc': 'Choisissez la langue principale pour les commandes, configurations et réponses automatiques de Starry.',
+        'setup.select_lang_desc': 'Choisissez la langue principale pour les commandes, configurations et réponses automatiques de NovaBot.',
         'setup.select_lang_placeholder': 'Choisissez la langue du serveur...',
-        'setup.sync_title': '🧠 Moteur de Configuration Maître de Starry',
+        'setup.sync_title': '🧠 Moteur de Configuration Maître de NovaBot',
         'setup.sync_desc': '**Lancer la synchronisation globale du serveur ?**\n\nLe système scannera vos canaux et configurera automatiquement :\n🛡️ **Sécurité :** Vérification & Journaux\n👋 **Communauté :** Bienvenues, Starboard & Suggestions\n🎫 **Support :** Tickets & Candidatures\n🎁 **Économie :** Coffres de Butin & Boosts',
         'setup.btn_sync': 'SYNCHRONISER LE SERVEUR',
         'setup.btn_cancel': 'ANNULER',
@@ -345,12 +345,12 @@ const TRANSLATIONS = {
 
     // 🇩🇪 GERMAN (Deutsch)
     de: {
-        'setup.welcome_title': '🌟 Willkommen bei Starry!',
-        'setup.welcome_desc': 'Vielen Dank, dass du **Starry** zu **{guild}** hinzugefügt hast!\n\nWähle bitte die Sprache des Servers und starte den Einrichtungsassistenten unten.\n\n🌐 **Schritt 1:** Wähle deine Serversprache aus dem Menü.\n🧠 **Schritt 2:** Klicke auf **Server Synchronisieren**, um Kanäle und Sicherheit automatisch zu verknüpfen.',
+        'setup.welcome_title': '🌟 Willkommen bei NovaBot!',
+        'setup.welcome_desc': 'Vielen Dank, dass du **NovaBot** zu **{guild}** hinzugefügt hast!\n\nWähle bitte die Sprache des Servers und starte den Einrichtungsassistenten unten.\n\n🌐 **Schritt 1:** Wähle deine Serversprache aus dem Menü.\n🧠 **Schritt 2:** Klicke auf **Server Synchronisieren**, um Kanäle und Sicherheit automatisch zu verknüpfen.',
         'setup.select_lang_title': '🌐 Serversprache Auswählen',
-        'setup.select_lang_desc': 'Wähle die Hauptsprache für Starry-Befehle und automatische Antworten.',
+        'setup.select_lang_desc': 'Wähle die Hauptsprache für NovaBot-Befehle und automatische Antworten.',
         'setup.select_lang_placeholder': 'Serversprache auswählen...',
-        'setup.sync_title': '🧠 Starry Master Konfigurations-Engine',
+        'setup.sync_title': '🧠 NovaBot Master Konfigurations-Engine',
         'setup.sync_desc': '**Globale Server-Synchronisierung starten?**\n\nDas System scannt deine Kanäle und konfiguriert automatisch:\n🛡️ **Sicherheit:** Verifizierung & Logs\n👋 **Community:** Willkommen, Starboard & Vorschläge\n🎫 **Support:** Tickets & Bewerbungen\n🎁 **Wirtschaft:** Beutetruhen & Boosts',
         'setup.btn_sync': 'SERVER SYNCHRONISIEREN',
         'setup.btn_cancel': 'ABBRECHEN',
@@ -377,12 +377,12 @@ const TRANSLATIONS = {
 
     // 🇷🇺 RUSSIAN (Русский)
     ru: {
-        'setup.welcome_title': '🌟 Добро пожаловать в Starry!',
-        'setup.welcome_desc': 'Спасибо за добавление **Starry** на сервер **{guild}**!\n\nПожалуйста, выберите язык сервера и запустите мастер первоначальной настройки ниже.\n\n🌐 **Шаг 1:** Выберите язык сервера из выпадающего списка.\n🧠 **Шаг 2:** Нажмите **Синхронизировать**, чтобы автоматически связать каналы и модули.',
+        'setup.welcome_title': '🌟 Добро пожаловать в NovaBot!',
+        'setup.welcome_desc': 'Спасибо за добавление **NovaBot** на сервер **{guild}**!\n\nПожалуйста, выберите язык сервера и запустите мастер первоначальной настройки ниже.\n\n🌐 **Шаг 1:** Выберите язык сервера из выпадающего списка.\n🧠 **Шаг 2:** Нажмите **Синхронизировать**, чтобы автоматически связать каналы и модули.',
         'setup.select_lang_title': '🌐 Выбор Языка Сервера',
-        'setup.select_lang_desc': 'Выберите основной язык для команд, настроек и системных сообщений Starry.',
+        'setup.select_lang_desc': 'Выберите основной язык для команд, настроек и системных сообщений NovaBot.',
         'setup.select_lang_placeholder': 'Выберите язык сервера...',
-        'setup.sync_title': '🧠 Главный Движок Настройки Starry',
+        'setup.sync_title': '🧠 Главный Движок Настройки NovaBot',
         'setup.sync_desc': '**Запустить глобальную синхронизацию сервера?**\n\nБот просканирует каналы и автоматически настроит:\n🛡️ **Безопасность:** Верификация и Журналы\n👋 **Сообщество:** Приветствия, Starboard и Идеи\n🎫 **Поддержка:** Тикеты и Заявки\n🎁 **Экономика:** Сундуки и Отслеживание Бустов',
         'setup.btn_sync': 'СИНХРОНИЗИРОВАТЬ',
         'setup.btn_cancel': 'ОТМЕНА',
@@ -409,12 +409,12 @@ const TRANSLATIONS = {
 
     // 🇮🇩 INDONESIAN (Bahasa Indonesia)
     id: {
-        'setup.welcome_title': '🌟 Selamat Datang di Starry!',
-        'setup.welcome_desc': 'Terima kasih telah menambahkan **Starry** ke **{guild}**!\n\nPilih bahasa server Anda dan jalankan panduan pengaturan di bawah ini.\n\n🌐 **Langkah 1:** Pilih bahasa server dari menu dropdown.\n🧠 **Langkah 2:** Klik **Sinkronkan Server** untuk menghubungkan channel, keamanan, dan ekonomi secara otomatis.',
+        'setup.welcome_title': '🌟 Selamat Datang di NovaBot!',
+        'setup.welcome_desc': 'Terima kasih telah menambahkan **NovaBot** ke **{guild}**!\n\nPilih bahasa server Anda dan jalankan panduan pengaturan di bawah ini.\n\n🌐 **Langkah 1:** Pilih bahasa server dari menu dropdown.\n🧠 **Langkah 2:** Klik **Sinkronkan Server** untuk menghubungkan channel, keamanan, dan ekonomi secara otomatis.',
         'setup.select_lang_title': '🌐 Pilih Bahasa Server',
-        'setup.select_lang_desc': 'Pilih bahasa utama untuk perintah, wizard pengaturan, dan respons otomatis Starry.',
+        'setup.select_lang_desc': 'Pilih bahasa utama untuk perintah, wizard pengaturan, dan respons otomatis NovaBot.',
         'setup.select_lang_placeholder': 'Pilih bahasa server Anda...',
-        'setup.sync_title': '🧠 Mesin Konfigurasi Utama Starry',
+        'setup.sync_title': '🧠 Mesin Konfigurasi Utama NovaBot',
         'setup.sync_desc': '**Mulai Sinkronisasi Server Global?**\n\nSistem akan memindai channel dan mengonfigurasi otomatis:\n🛡️ **Keamanan:** Verifikasi & Log\n👋 **Komunitas:** Sambutan, Starboard & Saran\n🎫 **Dukungan:** Tiket, Banding & Lamaran\n🎁 **Ekonomi:** Peti Hadiah & Pelacak Boost',
         'setup.btn_sync': 'SINKRONKAN SERVER',
         'setup.btn_cancel': 'BATAL',
@@ -441,12 +441,12 @@ const TRANSLATIONS = {
 
     // 🇮🇹 ITALIAN (Italiano)
     it: {
-        'setup.welcome_title': '🌟 Benvenuto su Starry!',
-        'setup.welcome_desc': 'Grazie per aver aggiunto **Starry** a **{guild}**!\n\nSeleziona la lingua del server e avvia la configurazione qui sotto.\n\n🌐 **Passo 1:** Scegli la lingua dal menu a tendina.\n🧠 **Passo 2:** Clicca su **Sincronizza Server** per collegare automaticamente canali e sicurezza.',
+        'setup.welcome_title': '🌟 Benvenuto su NovaBot!',
+        'setup.welcome_desc': 'Grazie per aver aggiunto **NovaBot** a **{guild}**!\n\nSeleziona la lingua del server e avvia la configurazione qui sotto.\n\n🌐 **Passo 1:** Scegli la lingua dal menu a tendina.\n🧠 **Passo 2:** Clicca su **Sincronizza Server** per collegare automaticamente canali e sicurezza.',
         'setup.select_lang_title': '🌐 Seleziona Lingua Server',
-        'setup.select_lang_desc': 'Scegli la lingua principale per i comandi, le configurazioni e le risposte di Starry.',
+        'setup.select_lang_desc': 'Scegli la lingua principale per i comandi, le configurazioni e le risposte di NovaBot.',
         'setup.select_lang_placeholder': 'Scegli la lingua del tuo server...',
-        'setup.sync_title': '🧠 Motore di Configurazione Starry',
+        'setup.sync_title': '🧠 Motore di Configurazione NovaBot',
         'setup.sync_desc': '**Avviare la sincronizzazione globale del server?**\n\nIl sistema analizzerà i canali e configurerà automaticamente:\n🛡️ **Sicurezza:** Verifica e Log\n👋 **Community:** Benvenuti, Starboard e Suggerimenti\n🎫 **Supporto:** Ticket e Candidature\n🎁 **Economia:** Casse e Boost',
         'setup.btn_sync': 'SINCRONIZZA SERVER',
         'setup.btn_cancel': 'ANNULLA',
@@ -473,13 +473,13 @@ const TRANSLATIONS = {
 
     // 🇻🇳 VIETNAMESE (Tiếng Việt)
     vi: {
-        'setup.welcome_title': '🌟 Chào mừng đến với Starry!',
-        'setup.welcome_desc': 'Cảm ơn bạn đã thêm **Starry** vào **{guild}**!\n\nVui lòng chọn ngôn ngữ máy chủ và bắt đầu cài đặt bên dưới.\n\n🌐 **Bước 1:** Chọn ngôn ngữ máy chủ từ danh sách.\n🧠 **Bước 2:** Nhấn **Đồng bộ máy chủ** để tự động kết nối các kênh và hệ thống.',
+        'setup.welcome_title': '🌟 Chào mừng đến với NovaBot!',
+        'setup.welcome_desc': 'Cảm ơn bạn đã thêm **NovaBot** vào **{guild}**!\n\nVui lòng chọn ngôn ngữ máy chủ và bắt đầu cài đặt bên dưới.\n\n🌐 **Bước 1:** Chọn ngôn ngữ máy chủ từ danh sách.\n🧠 **Bước 2:** Nhấn **Đồng bộ máy chủ** để tự động kết nối các kênh và hệ thống.',
         'setup.select_lang_title': '🌐 Chọn Ngôn Ngữ Máy Chủ',
-        'setup.select_lang_desc': 'Chọn ngôn ngữ chính cho lệnh, trình hướng dẫn và phản hồi tự động của Starry.',
+        'setup.select_lang_desc': 'Chọn ngôn ngữ chính cho lệnh, trình hướng dẫn và phản hồi tự động của NovaBot.',
         'setup.select_lang_placeholder': 'Chọn ngôn ngữ máy chủ...',
-        'setup.sync_title': '🧠 Bộ Cấu Hình Tự Động Starry',
-        'setup.sync_desc': '**Bắt đầu đồng bộ hóa máy chủ toàn diện?**\n\nStarry sẽ quét các kênh và cấu hình tự động:\n🛡️ **Bảo mật:** Xác minh & Nhật ký (Logs)\n👋 **Cộng đồng:** Lời chào, Starboard & Gợi ý\n🎫 **Hỗ trợ:** Vé (Tickets) & Đơn ứng tuyển\n🎁 **Kinh tế:** Rương kho báu & Theo dõi Boost',
+        'setup.sync_title': '🧠 Bộ Cấu Hình Tự Động NovaBot',
+        'setup.sync_desc': '**Bắt đầu đồng bộ hóa máy chủ toàn diện?**\n\nNovaBot sẽ quét các kênh và cấu hình tự động:\n🛡️ **Bảo mật:** Xác minh & Nhật ký (Logs)\n👋 **Cộng đồng:** Lời chào, Starboard & Gợi ý\n🎫 **Hỗ trợ:** Vé (Tickets) & Đơn ứng tuyển\n🎁 **Kinh tế:** Rương kho báu & Theo dõi Boost',
         'setup.btn_sync': 'ĐỒNG BỘ MÁY CHỦ',
         'setup.btn_cancel': 'HỦY BỎ',
         'setup.btn_lang': 'ĐỔI NGÔN NGỮ',
@@ -505,12 +505,12 @@ const TRANSLATIONS = {
 
     // 🇹🇷 TURKISH (Türkçe)
     tr: {
-        'setup.welcome_title': '🌟 Starry\'ye Hoş Geldiniz!',
-        'setup.welcome_desc': '**Starry**\'yi **{guild}** sunucusuna eklediğiniz için teşekkür ederiz!\n\nLütfen sunucu dilini seçin ve kurulum sihirbazını başlatın.\n\n🌐 **Adım 1:** Açılır menüden sunucu dilinizi seçin.\n🧠 **Adım 2:** Kanalları ve güvenliği bağlamak için **Sunucuyu Senkronize Et** butonuna tıklayın.',
+        'setup.welcome_title': '🌟 NovaBot\'ye Hoş Geldiniz!',
+        'setup.welcome_desc': '**NovaBot**\'yi **{guild}** sunucusuna eklediğiniz için teşekkür ederiz!\n\nLütfen sunucu dilini seçin ve kurulum sihirbazını başlatın.\n\n🌐 **Adım 1:** Açılır menüden sunucu dilinizi seçin.\n🧠 **Adım 2:** Kanalları ve güvenliği bağlamak için **Sunucuyu Senkronize Et** butonuna tıklayın.',
         'setup.select_lang_title': '🌐 Sunucu Dilini Seçin',
         'setup.select_lang_desc': 'Komutlar ve otomatik yanıtlar için birincil sunucu dilini seçin.',
         'setup.select_lang_placeholder': 'Sunucu dilinizi seçin...',
-        'setup.sync_title': '🧠 Starry Ana Yapılandırma Motoru',
+        'setup.sync_title': '🧠 NovaBot Ana Yapılandırma Motoru',
         'setup.sync_desc': '**Küresel Sunucu Senkronizasyonu Başlatılsın mı?**\n\nSistem kanalları tarayacak ve otomatik olarak ayarlayacaktır:\n🛡️ **Güvenlik:** Doğrulama & Günlükler\n👋 **Topluluk:** Karşılama, Starboard & Öneriler\n🎫 **Destek:** Destek Talepleri & Başvurular\n🎁 **Ekonomi:** Sandıklar & Takviye Takibi',
         'setup.btn_sync': 'SUNUCUYU SENKRONİZE ET',
         'setup.btn_cancel': 'İPTAL',
@@ -537,12 +537,12 @@ const TRANSLATIONS = {
 
     // 🇸🇦 ARABIC (العربية)
     ar: {
-        'setup.welcome_title': '🌟 مرحبًا بك في Starry!',
-        'setup.welcome_desc': 'شكرًا لإضافة **Starry** إلى **{guild}**!\n\nلضمان أفضل تجربة لمجتمعك، يرجى اختيار لغة السيرفر وبدء الإعداد أدناه.\n\n🌐 **الخطوة 1:** اختر لغة السيرفر من القائمة أدناه.\n🧠 **الخطوة 2:** انقر فوق **مزامنة السيرفر** لربط القنوات والأمان والاقتصاد تلقائيًا.',
+        'setup.welcome_title': '🌟 مرحبًا بك في NovaBot!',
+        'setup.welcome_desc': 'شكرًا لإضافة **NovaBot** إلى **{guild}**!\n\nلضمان أفضل تجربة لمجتمعك، يرجى اختيار لغة السيرفر وبدء الإعداد أدناه.\n\n🌐 **الخطوة 1:** اختر لغة السيرفر من القائمة أدناه.\n🧠 **الخطوة 2:** انقر فوق **مزامنة السيرفر** لربط القنوات والأمان والاقتصاد تلقائيًا.',
         'setup.select_lang_title': '🌐 اختيار لغة السيرفر',
-        'setup.select_lang_desc': 'اختر اللغة الأساسية لأوامر Starry وإعداداته والردود التلقائية.',
+        'setup.select_lang_desc': 'اختر اللغة الأساسية لأوامر NovaBot وإعداداته والردود التلقائية.',
         'setup.select_lang_placeholder': 'اختر لغة السيرفر...',
-        'setup.sync_title': '🧠 محرك إعدادات Starry الرئيسي',
+        'setup.sync_title': '🧠 محرك إعدادات NovaBot الرئيسي',
         'setup.sync_desc': '**بدء المزامنة الشاملة للسيرفر؟**\n\nسيقوم البوت بمسح قنواتك وتهيئة الآتي تلقائيًا:\n🛡️ **الأمان:** التحقق وسجلات المراقبة\n👋 **المجتمع:** الترحيب، لوحة النجوم والاقتراحات\n🎫 **الدعم:** التذاكر والتقديمات\n🎁 **الاقتصاد:** صناديق المكافآت ومتتبع البوست',
         'setup.btn_sync': 'مزامنة السيرفر',
         'setup.btn_cancel': 'إلغاء',
@@ -569,12 +569,12 @@ const TRANSLATIONS = {
 
     // 🇰🇷 KOREAN (한국어)
     ko: {
-        'setup.welcome_title': '🌟 Starry에 오신 것을 환영합니다!',
-        'setup.welcome_desc': '**{guild}** 서버에 **Starry**를 추가해 주셔서 감사합니다!\n\n커뮤니티를 위한 최상의 경험을 위해 서버 언어를 선택하고 설정 마법사를 시작하세요.\n\n🌐 **1단계:** 드롭다운 메뉴에서 서버 언어를 선택합니다.\n🧠 **2단계:** **서버 동기화**를 클릭하여 채널, 보안 및 경제 시스템을 자동으로 연결합니다.',
+        'setup.welcome_title': '🌟 NovaBot에 오신 것을 환영합니다!',
+        'setup.welcome_desc': '**{guild}** 서버에 **NovaBot**를 추가해 주셔서 감사합니다!\n\n커뮤니티를 위한 최상의 경험을 위해 서버 언어를 선택하고 설정 마법사를 시작하세요.\n\n🌐 **1단계:** 드롭다운 메뉴에서 서버 언어를 선택합니다.\n🧠 **2단계:** **서버 동기화**를 클릭하여 채널, 보안 및 경제 시스템을 자동으로 연결합니다.',
         'setup.select_lang_title': '🌐 서버 언어 선택',
-        'setup.select_lang_desc': 'Starry 명령어, 설정 마법사 및 자동 응답에 사용할 기본 언어를 선택하세요.',
+        'setup.select_lang_desc': 'NovaBot 명령어, 설정 마법사 및 자동 응답에 사용할 기본 언어를 선택하세요.',
         'setup.select_lang_placeholder': '서버 언어를 선택하세요...',
-        'setup.sync_title': '🧠 Starry 마스터 구성 엔진',
+        'setup.sync_title': '🧠 NovaBot 마스터 구성 엔진',
         'setup.sync_desc': '**글로벌 서버 동기화를 시작하시겠습니까?**\n\n채널을 자동으로 스캔하여 다음 항목을 설정합니다:\n🛡️ **보안:** 인증 및 로그 모니터링\n👋 **커뮤니티:** 환영 인사, 스타보드 및 제안\n🎫 **지원:** 티켓 및 신청서\n🎁 **경제:** 전리품 상자 및 부스트 추적',
         'setup.btn_sync': '서버 동기화',
         'setup.btn_cancel': '취소',
@@ -1329,8 +1329,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ Goodbye **{user}**! Wishing you the best on your journey.",
         "goodbye.census_field": "📊 Server Census",
         "goodbye.census_value": "We are now down to **{count}** members.",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • Safe travels!",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • Setup Preview Mode",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • Safe travels!",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • Setup Preview Mode",
         "goodbye.setup_success": "✅ **Success!** Aesthetic goodbye cards will now be sent to {channel}!",
         "setup.report.goodbye": "• 🥀 **Goodbye / Farewell:** Linked to <#{channel}>",
         "welcome.control_panel_title": "🎨 Welcome Customizer & Manager | {guild}",
@@ -1358,8 +1358,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ ¡Adiós **{user}**! Te deseamos lo mejor en tu viaje.",
         "goodbye.census_field": "📊 Censo del Servidor",
         "goodbye.census_value": "Ahora somos **{count}** miembros.",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • ¡Buen viaje!",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • Modo de vista previa de configuración",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • ¡Buen viaje!",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • Modo de vista previa de configuración",
         "goodbye.setup_success": "✅ **¡Éxito!** ¡Las tarjetas de despedida se enviarán a {channel}!",
         "setup.report.goodbye": "• 🥀 **Despedidas:** Vinculado a <#{channel}>",
         "welcome.control_panel_title": "🎨 Personalizador y Administrador de Bienvenidas | {guild}",
@@ -1387,8 +1387,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ Adeus **{user}**! Desejamos o melhor em sua jornada.",
         "goodbye.census_field": "📊 Censo do Servidor",
         "goodbye.census_value": "Agora temos **{count}** membros.",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • Boa viagem!",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • Modo de pré-visualização",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • Boa viagem!",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • Modo de pré-visualização",
         "goodbye.setup_success": "✅ **Sucesso!** Os cartões de despedida serão enviados para {channel}!",
         "setup.report.goodbye": "• 🥀 **Despedidas:** Vinculado a <#{channel}>",
         "welcome.control_panel_title": "🎨 Personalizador e Gerenciador de Boas-Vindas | {guild}",
@@ -1416,8 +1416,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ さようなら **{user}**！旅路の無事を祈っています。",
         "goodbye.census_field": "📊 サーバーの住民数",
         "goodbye.census_value": "メンバー数は **{count}** 人になりました。",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • 良い旅を！",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • セットアッププレビューモード",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • 良い旅を！",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • セットアッププレビューモード",
         "goodbye.setup_success": "✅ **成功！** お別れカードが {channel} に送信されるようになりました！",
         "setup.report.goodbye": "• 🥀 **お別れメッセージ:** <#{channel}> にリンクされました",
         "welcome.control_panel_title": "🎨 ウェルカムカスタマイザー＆マネージャー | {guild}",
@@ -1445,8 +1445,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ अलविदा **{user}**! आपकी यात्रा मंगलमय हो।",
         "goodbye.census_field": "📊 सर्वर जनगणना",
         "goodbye.census_value": "अब हमारे पास **{count}** सदस्य बचे हैं।",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • यात्रा मंगलमय हो!",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • सेटअप पूर्वावलोकन मोड",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • यात्रा मंगलमय हो!",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • सेटअप पूर्वावलोकन मोड",
         "goodbye.setup_success": "✅ **सफलता!** विदाई कार्ड अब {channel} में भेजे जाएंगे!",
         "setup.report.goodbye": "• 🥀 **अलविदा / विदाई:** <#{channel}> से लिंक किया गया",
         "welcome.control_panel_title": "🎨 स्वागत कस्टमाइज़र और प्रबंधक | {guild}",
@@ -1474,8 +1474,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ Au revoir **{user}** ! En vous souhaitant le meilleur dans votre voyage.",
         "goodbye.census_field": "📊 Recensement du serveur",
         "goodbye.census_value": "Nous sommes désormais **{count}** membres.",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • Bon voyage !",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • Mode aperçu de configuration",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • Bon voyage !",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • Mode aperçu de configuration",
         "goodbye.setup_success": "✅ **Succès !** Les cartes d'adieu seront désormais envoyées dans {channel} !",
         "setup.report.goodbye": "• 🥀 **Adieux / Départs :** Lié à <#{channel}>",
         "welcome.control_panel_title": "🎨 Personnalisation et gestion de bienvenue | {guild}",
@@ -1503,8 +1503,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ Auf Wiedersehen **{user}**! Wir wünschen dir das Beste auf deiner Reise.",
         "goodbye.census_field": "📊 Server-Zensus",
         "goodbye.census_value": "Wir sind jetzt auf **{count}** Mitglieder geschrumpft.",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • Gute Reise!",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • Einrichtungs-Vorschau-Modus",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • Gute Reise!",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • Einrichtungs-Vorschau-Modus",
         "goodbye.setup_success": "✅ **Erfolg!** Abschiedskarten werden nun an {channel} gesendet!",
         "setup.report.goodbye": "• 🥀 **Abschiede:** Verknüpft mit <#{channel}>",
         "welcome.control_panel_title": "🎨 Willkommens-Customizer & Manager | {guild}",
@@ -1532,8 +1532,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ Прощай, **{user}**! Желаем легкого пути.",
         "goodbye.census_field": "📊 Перепись сервера",
         "goodbye.census_value": "Теперь нас **{count}** участников.",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • Счастливого пути!",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • Режим предпросмотра настройки",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • Счастливого пути!",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • Режим предпросмотра настройки",
         "goodbye.setup_success": "✅ **Успешно!** Прощальные карточки теперь будут отправляться в {channel}!",
         "setup.report.goodbye": "• 🥀 **Прощания:** Привязано к <#{channel}>",
         "welcome.control_panel_title": "🎨 Настройка и управление приветствиями | {guild}",
@@ -1561,8 +1561,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ Selamat jalan **{user}**! Semoga perjalananmu menyenangkan.",
         "goodbye.census_field": "📊 Sensus Server",
         "goodbye.census_value": "Jumlah anggota sekarang tinggal **{count}** orang.",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • Semoga selamat di jalan!",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • Mode Pratinjau Pengaturan",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • Semoga selamat di jalan!",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • Mode Pratinjau Pengaturan",
         "goodbye.setup_success": "✅ **Sukses!** Kartu perpisahan estetis sekarang akan dikirim ke {channel}!",
         "setup.report.goodbye": "• 🥀 **Perpisahan:** Terhubung ke <#{channel}>",
         "welcome.control_panel_title": "🎨 Pengelola & Penyesuai Sambutan | {guild}",
@@ -1590,8 +1590,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ Addio **{user}**! Ti auguriamo il meglio per il tuo cammino.",
         "goodbye.census_field": "📊 Censimento del Server",
         "goodbye.census_value": "Siamo ora scesi a **{count}** membri.",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • Buon viaggio!",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • Modalità anteprima configurazione",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • Buon viaggio!",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • Modalità anteprima configurazione",
         "goodbye.setup_success": "✅ **Operazione riuscita!** Le schede di addio verranno ora inviate a {channel}!",
         "setup.report.goodbye": "• 🥀 **Addio:** Collegato a <#{channel}>",
         "welcome.control_panel_title": "🎨 Gestore e Personalizzatore di Benvenuto | {guild}",
@@ -1619,8 +1619,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ Tạm biệt **{user}**! Chúc bạn mọi điều tốt đẹp trên hành trình.",
         "goodbye.census_field": "📊 Thống kê máy chủ",
         "goodbye.census_value": "Số thành viên hiện tại còn **{count}** người.",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • Thượng lộ bình an!",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • Chế độ xem trước thiết lập",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • Thượng lộ bình an!",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • Chế độ xem trước thiết lập",
         "goodbye.setup_success": "✅ **Thành công!** Thẻ tạm biệt thẩm mỹ sẽ được gửi tới {channel}!",
         "setup.report.goodbye": "• 🥀 **Tạm biệt:** Đã liên kết với <#{channel}>",
         "welcome.control_panel_title": "🎨 Trình quản lý & tùy chỉnh lời chào mừng | {guild}",
@@ -1648,8 +1648,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ Hoşça kal **{user}**! Yolculuğunda başarılar dileriz.",
         "goodbye.census_field": "📊 Sunucu Nüfusu",
         "goodbye.census_value": "Şu an **{count}** üyeye düştük.",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • İyi yolculuklar!",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • Kurulum Önizleme Modu",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • İyi yolculuklar!",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • Kurulum Önizleme Modu",
         "goodbye.setup_success": "✅ **Başarılı!** Estetik veda kartları artık {channel} kanalına gönderilecek!",
         "setup.report.goodbye": "• 🥀 **Veda / Ayrılış:** <#{channel}> kanalına bağlandı",
         "welcome.control_panel_title": "🎨 Karşılama Özelleştirici ve Yöneticisi | {guild}",
@@ -1677,8 +1677,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ وداعاً **{user}**! نتمنى لك رحلة موفقة.",
         "goodbye.census_field": "📊 إحصاء السيرفر",
         "goodbye.census_value": "لقد أصبحنا الآن **{count}** عضواً.",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • رحلة آمنة!",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • وضع معاينة الإعداد",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • رحلة آمنة!",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • وضع معاينة الإعداد",
         "goodbye.setup_success": "✅ **نجاح!** سيتم الآن إرسال بطاقات الوداع إلى {channel}!",
         "setup.report.goodbye": "• 🥀 **الوداع:** مرتبط بـ <#{channel}>",
         "welcome.control_panel_title": "🎨 مخصص ومدير الترحيب | {guild}",
@@ -1706,8 +1706,8 @@ const ADDITIONAL_TRANSLATIONS = {
         "goodbye.content": "🕊️ 안녕히 가세요 **{user}**님! 앞으로의 여정을 응원합니다.",
         "goodbye.census_field": "📊 서버 인구 조사",
         "goodbye.census_value": "이제 멤버 수가 **{count}**명이 되었습니다.",
-        "goodbye.footer": "🥀 Starry Aesthetic Goodbye System • 안전한 여행 되세요!",
-        "goodbye.footer_preview": "🥀 Starry Aesthetic Goodbye System • 설정 미리보기 모드",
+        "goodbye.footer": "🥀 NovaBot Aesthetic Goodbye System • 안전한 여행 되세요!",
+        "goodbye.footer_preview": "🥀 NovaBot Aesthetic Goodbye System • 설정 미리보기 모드",
         "goodbye.setup_success": "✅ **성공!** 이제 {channel}에 작별 인사가 전송됩니다!",
         "setup.report.goodbye": "• 🥀 **작별 인사:** <#{channel}> 채널에 연결됨",
         "welcome.control_panel_title": "🎨 환영 메시지 커스텀 관리자 | {guild}",
@@ -2062,7 +2062,7 @@ function t(guildOrLang, key, params = {}) {
 }
 
 // 6. UI Builder Helpers
-function createLanguageSelectRow(currentLang = 'en', customId = 'starry_lang_select') {
+function createLanguageSelectRow(currentLang = 'en', customId = 'NovaBot_lang_select') {
     const options = Object.values(SUPPORTED_LANGUAGES).map(lang => ({
         label: `${lang.native} (${lang.name})`,
         value: lang.code,
@@ -2095,23 +2095,23 @@ function createWelcomeSetupCard(guild, currentLang = 'en', botUser = null) {
             },
             { 
                 name: '⚡ Quick Setup Commands',
-                value: '• `,setup-starry` or `/setup-starry` — Auto-scan & link server layout\n• `,setup` or `/setup` — Deploy dedicated Music Controller channel\n• `,setlanguage` or `/setlanguage` — Change server language anytime',
+                value: '• `,setup-NovaBot` or `/setup-NovaBot` — Auto-scan & link server layout\n• `,setup` or `/setup` — Deploy dedicated Music Controller channel\n• `,setlanguage` or `/setlanguage` — Change server language anytime',
                 inline: false
             }
         )
-        .setFooter({ text: 'Starry Multi-Language Engine • 14 Global Languages', iconURL: avatarUrl })
+        .setFooter({ text: 'NovaBot Multi-Language Engine • 14 Global Languages', iconURL: avatarUrl })
         .setTimestamp();
 
-    const langRow = createLanguageSelectRow(currentLang, 'starry_lang_welcome_select');
+    const langRow = createLanguageSelectRow(currentLang, 'NovaBot_lang_welcome_select');
     
     const btnRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-            .setCustomId('starry_welcome_start_setup')
+            .setCustomId('NovaBot_welcome_start_setup')
             .setLabel(t(currentLang, 'setup.btn_setup'))
             .setStyle(ButtonStyle.Success)
             .setEmoji('🚀'),
         new ButtonBuilder()
-            .setCustomId('starry_welcome_sync')
+            .setCustomId('NovaBot_welcome_sync')
             .setLabel(t(currentLang, 'setup.btn_sync'))
             .setStyle(ButtonStyle.Primary)
             .setEmoji('🧠')
@@ -2131,10 +2131,10 @@ function createSetupPromptCard(guild, currentLang = 'en', botUser = null) {
             t(currentLang, 'setup.sync_desc') + '\n\n' +
             `🌐 **${t(currentLang, 'setup.select_lang_title')}:** ${langInfo.flag} **${langInfo.native}** (${langInfo.name})`
         )
-        .setFooter({ text: 'Starry Master Brain • Language: ' + langInfo.name, iconURL: avatarUrl })
+        .setFooter({ text: 'NovaBot Master Brain • Language: ' + langInfo.name, iconURL: avatarUrl })
         .setTimestamp();
 
-    const langRow = createLanguageSelectRow(currentLang, 'starry_setup_lang_select');
+    const langRow = createLanguageSelectRow(currentLang, 'NovaBot_setup_lang_select');
     const btnRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId('master_txt_confirm')
