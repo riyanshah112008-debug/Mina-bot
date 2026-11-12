@@ -1,4 +1,5 @@
 'use strict';
+process.env.DISABLE_STREAM_RESOLVER = 'true';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const audio = require('../src/utils/nativeAudioEngine');
