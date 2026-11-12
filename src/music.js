@@ -3,17 +3,15 @@ const { Kazagumo } = require('kazagumo');
 const { Connectors } = require('shoukaku');
 const KazagumoSpotify = require('kazagumo-spotify');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-function createMusicManager(client) {
-  if (client.manager) return client.manager;
-  // Same four-node Lavalink pool used by Starry/Manager-bot.
-  // The first node can be overridden with environment variables; the remaining
-  // nodes provide automatic failover when a public node is unavailable.
-  const nodes = [
-    { name:'Node-1-Serenetia-SSL', url:process.env.LAVALINK_URL||'lavalink.serenetia.com:443', auth:process.env.LAVALINK_AUTH||'youshallnotpass', secure:process.env.LAVALINK_SECURE ? process.env.LAVALINK_SECURE==='true' : true, retryAmount:15, retryDelay:3000 },
+// Built-in node pool, matching Manager-bot. No Lavalink env vars are required.
+const nodes = [
+    { name:'Node-1-Serenetia-SSL', url:'lavalink.serenetia.com:443', auth:'youshallnotpass', secure:true, retryAmount:15, retryDelay:3000 },
     { name:'Node-2-Serenetia-V4-SSL', url:'lavalinkv4.serenetia.com:443', auth:'https://seretia.link/discord', secure:true, retryAmount:10, retryDelay:3000 },
     { name:'Node-3-TriniumHost-SSL', url:'lavalink-v4.triniumhost.com:443', auth:'free', secure:true, retryAmount:10, retryDelay:3000 },
     { name:'Node-4-MilloHost-SSL', url:'lava-v4.millohost.my.id:443', auth:'https://discord.gg/mjS5J2K3ep', secure:true, retryAmount:10, retryDelay:3000 }
-  ];
+];
+function createMusicManager(client) {
+  if (client.manager) return client.manager;
   const manager = new Kazagumo({
     defaultSearchEngine:'youtube_music',
     searchFallbacks:{spotify:'ytmsearch',soundcloud:'ytmsearch',youtube:'ytsearch'},
@@ -37,7 +35,7 @@ function createMusicManager(client) {
     },
     plugins:[new KazagumoSpotify({clientId:process.env.SPOTIFY_CLIENT_ID||'dummy_id',clientSecret:process.env.SPOTIFY_CLIENT_SECRET||'dummy_secret',playlistPageLimit:5,albumPageLimit:3,searchMarket:'US',searchPrefix:'ytmsearch:'})],
     send:(guildId,payload)=>{const g=client.guilds.cache.get(guildId);if(g&&g.shard)g.shard.send(payload);}
-  },new Connectors.DiscordJS(client),nodes,{moveOnDisconnect:true,resume:true,resumeTimeout:60,reconnectTries:20,reconnectInterval:3000,restTimeout:10000,voiceConnectionTimeout:15000,linkInitializers:true,nodeResolver:available=>[...available.values()].filter(n=>n.state===1).sort((a,b)=>(a.stats?.cpu?.lavalinkLoad||0)-(b.stats?.cpu?.lavalinkLoad||0))[0]||null});
+  },new Connectors.DiscordJS(client),nodes,{moveOnDisconnect:true,resume:true,resumeTimeout:60,reconnectTries:50,reconnectInterval:3000,restTimeout:10000,voiceConnectionTimeout:15000,linkInitializers:true,nodeResolver:available=>{const ready=[...available.values()].filter(n=>n.state===1);return ready.length?ready.reduce((best,node)=>(best.stats?.cpu?.lavalinkLoad||0)<=(node.stats?.cpu?.lavalinkLoad||0)?best:node):null}});
   manager.shoukaku.on('ready',name=>console.log('[Mina Music] Lavalink ready:',name));
   manager.shoukaku.on('error',(name,error)=>console.error('[Mina Music] Lavalink error:',name,error?.message||error));
   manager.shoukaku.on('disconnect',(name,count)=>console.warn('[Mina Music] Lavalink disconnected:',name,'retry:',count));
