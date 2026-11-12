@@ -9,6 +9,7 @@ const security = require('./security');
 const challenges = new Map();
 const commands = [
   new SlashCommandBuilder().setName('security').setDescription('Configure Mina server protection')
+    .addSubcommand(s => s.setName('setup').setDescription('Enable baseline protection and use this channel for logs'))
     .addSubcommand(s => s.setName('status').setDescription('Show protection status'))
     .addSubcommand(s => s.setName('enable').setDescription('Enable protection'))
     .addSubcommand(s => s.setName('disable').setDescription('Disable protection'))
@@ -91,6 +92,10 @@ async function execute(interaction) {
   if (name === 'security') {
     const sub = interaction.options.getSubcommand();
     const cfg = store.get(guild.id);
+    if (sub === 'setup') {
+      store.update(guild.id, c => { c.enabled = true; c.antiNuke.enabled = true; c.antiRaid.enabled = true; c.automod.enabled = true; c.logChannelId = interaction.channelId; });
+      return interaction.reply({ content: 'Baseline protection enabled. This channel is now the security log channel. Use `/security status` to review settings, `/security module` to adjust modules, and `/security whitelist-add` to trust staff.', ephemeral: true });
+    }
     if (sub === 'status') return interaction.reply({ content:
       '**Mina Security**\nProtection: ' + (cfg.enabled ? 'ON' : 'OFF') +
       '\nAnti-nuke: ' + (cfg.antiNuke.enabled ? 'ON' : 'OFF') +
