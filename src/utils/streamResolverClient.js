@@ -10,6 +10,11 @@ class StreamResolverClient {
         this.reqId = 0;
         this.pending = new Map();
         this.cache = new Map();
+        // Unit tests can disable the optional Python worker without affecting production defaults.
+        if (process.env.DISABLE_STREAM_RESOLVER === 'true') {
+            this.disabled = true;
+            return;
+        }
         this.init();
     }
 
