@@ -3,14 +3,14 @@ const { Kazagumo } = require('kazagumo');
 const { Connectors } = require('shoukaku');
 const KazagumoSpotify = require('kazagumo-spotify');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-function createMusicManager(client) {
-  if (client.manager) return client.manager;
-  const nodes = [
+const nodes = [
     { name:'Node-1-Serenetia-SSL', url:'lavalink.serenetia.com:443', auth:'youshallnotpass', secure:true, retryAmount:15, retryDelay:3000 },
     { name:'Node-2-Serenetia-V4-SSL', url:'lavalinkv4.serenetia.com:443', auth:'https://seretia.link/discord', secure:true, retryAmount:10, retryDelay:3000 },
     { name:'Node-3-TriniumHost-SSL', url:'lavalink-v4.triniumhost.com:443', auth:'free', secure:true, retryAmount:10, retryDelay:3000 },
     { name:'Node-4-MilloHost-SSL', url:'lava-v4.millohost.my.id:443', auth:'https://discord.gg/mjS5J2K3ep', secure:true, retryAmount:10, retryDelay:3000 }
-  ];
+];
+function createMusicManager(client) {
+  if (client.manager) return client.manager;
   const manager = new Kazagumo({
     defaultSearchEngine:'youtube_music',
     searchFallbacks:{spotify:'ytmsearch',soundcloud:'ytmsearch',youtube:'ytsearch'},
