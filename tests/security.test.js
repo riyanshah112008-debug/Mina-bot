@@ -23,6 +23,9 @@ test('guild defaults enable baseline protection and verification is opt-in', () 
   assert.deepEqual(cfg.trustedRoles, []);
   assert.deepEqual(cfg.incidents, []);
   assert.equal(cfg.antiNuke.limit, 3);
+  assert.equal(cfg.antiNuke.minuteLimit, 5);
+  assert.equal(cfg.antiNuke.hourLimit, 12);
+  assert.equal(cfg.antiNuke.quarantineHold, true);
   assert.equal(cfg.antiNuke.punish, 'timeout');
 });
 
