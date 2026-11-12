@@ -13,5 +13,7 @@ services:
         sync: false
       - key: CLIENT_ID
         sync: false
+      - key: GUILD_ID
+        sync: false
       - key: OWNER_IDS
         sync: false

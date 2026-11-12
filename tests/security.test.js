@@ -13,6 +13,10 @@ test('guild defaults enable baseline protection and verification is opt-in', () 
   assert.equal(cfg.automod.linkFilter, true);
   assert.equal(cfg.verification.enabled, false);
   assert.deepEqual(cfg.trusted, []);
+  assert.deepEqual(cfg.trustedRoles, []);
+  assert.deepEqual(cfg.incidents, []);
+  assert.equal(cfg.antiNuke.limit, 3);
+  assert.equal(cfg.antiNuke.punish, 'timeout');
 });
 
 test('suspicious-link filter detects IP hosts and punycode domains', () => {

@@ -1,6 +1,6 @@
 'use strict';
 const {
-  SlashCommandBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle,
+  SlashCommandBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle, EmbedBuilder,
   ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle
 } = require('discord.js');
 const store = require('./store');
@@ -9,12 +9,26 @@ const security = require('./security');
 const challenges = new Map();
 const commands = [
   new SlashCommandBuilder().setName('security').setDescription('Configure Mina server protection')
+    .addSubcommand(s => s.setName('setup').setDescription('Enable baseline protection and use this channel for logs'))
     .addSubcommand(s => s.setName('status').setDescription('Show protection status'))
     .addSubcommand(s => s.setName('enable').setDescription('Enable protection'))
     .addSubcommand(s => s.setName('disable').setDescription('Disable protection'))
     .addSubcommand(s => s.setName('log-channel').setDescription('Set the security log channel').addChannelOption(o => o.setName('channel').setDescription('Text channel').setRequired(true)))
     .addSubcommand(s => s.setName('whitelist-add').setDescription('Trust a user').addUserOption(o => o.setName('user').setDescription('Trusted user').setRequired(true)))
     .addSubcommand(s => s.setName('whitelist-remove').setDescription('Remove a trusted user').addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
+    .addSubcommand(s => s.setName('trust-role-add').setDescription('Trust members with a role').addRoleOption(o => o.setName('role').setDescription('Trusted role').setRequired(true)))
+    .addSubcommand(s => s.setName('trust-role-remove').setDescription('Remove a trusted role').addRoleOption(o => o.setName('role').setDescription('Role').setRequired(true)))
+    .addSubcommand(s => s.setName('threshold').setDescription('Configure the anti-nuke action threshold')
+      .addIntegerOption(o => o.setName('limit').setDescription('Actions before punishment (2–10)').setMinValue(2).setMaxValue(10).setRequired(true))
+      .addIntegerOption(o => o.setName('window').setDescription('Detection window in seconds (3–60)').setMinValue(3).setMaxValue(60).setRequired(true)))
+    .addSubcommand(s => s.setName('punishment').setDescription('Set anti-nuke punishment')
+      .addStringOption(o => o.setName('action').setDescription('Punishment action').setRequired(true).addChoices(
+        { name: 'Timeout', value: 'timeout' }, { name: 'Kick', value: 'kick' }, { name: 'Ban', value: 'ban' })))
+    .addSubcommand(s => s.setName('module').setDescription('Enable or disable a protection module')
+      .addStringOption(o => o.setName('name').setDescription('Protection module').setRequired(true).addChoices(
+        { name: 'Anti-nuke', value: 'antiNuke' }, { name: 'Anti-raid', value: 'antiRaid' }, { name: 'AutoMod', value: 'automod' }))
+      .addBooleanOption(o => o.setName('enabled').setDescription('Enable this module').setRequired(true)))
+    .addSubcommand(s => s.setName('incidents').setDescription('Show recent security incidents'))
     .addSubcommand(s => s.setName('quarantine-role').setDescription('Set the role for young or unverified accounts').addRoleOption(o => o.setName('role').setDescription('Restricted quarantine role').setRequired(true)))
     .addSubcommand(s => s.setName('allow-domain').setDescription('Allow a domain through suspicious-link filtering').addStringOption(o => o.setName('domain').setDescription('Domain, e.g. example.com').setRequired(true).setMaxLength(253)))
     .addSubcommand(s => s.setName('remove-domain').setDescription('Remove an allowed domain').addStringOption(o => o.setName('domain').setDescription('Domain').setRequired(true).setMaxLength(253)))
@@ -23,6 +37,7 @@ const commands = [
     .addSubcommand(s => s.setName('setup').setDescription('Set verified and quarantine roles')
       .addRoleOption(o => o.setName('verified_role').setDescription('Role given after verification').setRequired(true))
       .addRoleOption(o => o.setName('quarantine_role').setDescription('Role held before verification').setRequired(true)))
+    .addSubcommand(s => s.setName('panel').setDescription('Post a public verification panel').addChannelOption(o => o.setName('channel').setDescription('Channel for the panel').setRequired(true)))
     .addSubcommand(s => s.setName('disable').setDescription('Disable verification gate'))
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
   new SlashCommandBuilder().setName('verify').setDescription('Complete the server verification challenge'),
@@ -58,6 +73,15 @@ async function execute(interaction) {
   }
   if (name === 'verification') {
     const sub = interaction.options.getSubcommand();
+    if (sub === 'panel') {
+      const channel = interaction.options.getChannel('channel');
+      if (!channel.isTextBased() || !channel.send) return interaction.reply({ content: 'Choose a text channel.', ephemeral: true });
+      const button = new ButtonBuilder().setCustomId('mina_verify_start').setLabel('Verify').setStyle(ButtonStyle.Success);
+      const embed = new EmbedBuilder().setColor(0x5865F2).setTitle('Server verification')
+        .setDescription('Press **Verify** and complete the short challenge to receive access.');
+      await channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(button)] });
+      return interaction.reply({ content: 'Verification panel posted in ' + channel.toString() + '.', ephemeral: true });
+    }
     if (sub === 'setup') {
       const verifiedRole = interaction.options.getRole('verified_role');
       const quarantineRole = interaction.options.getRole('quarantine_role');
@@ -74,6 +98,10 @@ async function execute(interaction) {
   if (name === 'security') {
     const sub = interaction.options.getSubcommand();
     const cfg = store.get(guild.id);
+    if (sub === 'setup') {
+      store.update(guild.id, c => { c.enabled = true; c.antiNuke.enabled = true; c.antiRaid.enabled = true; c.automod.enabled = true; c.logChannelId = interaction.channelId; });
+      return interaction.reply({ content: 'Baseline protection enabled. This channel is now the security log channel. Use `/security status` to review settings, `/security module` to adjust modules, and `/security whitelist-add` to trust staff.', ephemeral: true });
+    }
     if (sub === 'status') return interaction.reply({ content:
       '**Mina Security**\nProtection: ' + (cfg.enabled ? 'ON' : 'OFF') +
       '\nAnti-nuke: ' + (cfg.antiNuke.enabled ? 'ON' : 'OFF') +
@@ -82,12 +110,40 @@ async function execute(interaction) {
       '\nSuspicious-link filter: ' + (cfg.automod.linkFilter ? 'ON' : 'OFF') +
       '\nVerification: ' + (cfg.verification.enabled ? 'ON' : 'OFF') +
       '\nTrusted users: ' + cfg.trusted.length +
+      '\nTrusted roles: ' + (cfg.trustedRoles || []).length +
+      '\nRecorded incidents: ' + (cfg.incidents || []).length +
       '\nLockdown: ' + (cfg.lockdown.active ? 'ACTIVE' : 'inactive'), ephemeral: true });
     if (sub === 'enable') store.update(guild.id, c => { c.enabled = true; });
     if (sub === 'disable') store.update(guild.id, c => { c.enabled = false; });
     if (sub === 'log-channel') store.update(guild.id, c => { c.logChannelId = interaction.options.getChannel('channel').id; });
     if (sub === 'whitelist-add') store.update(guild.id, c => { const id = interaction.options.getUser('user').id; if (!c.trusted.includes(id)) c.trusted.push(id); });
     if (sub === 'whitelist-remove') store.update(guild.id, c => { c.trusted = c.trusted.filter(id => id !== interaction.options.getUser('user').id); });
+    if (sub === 'trust-role-add') store.update(guild.id, c => { const id = interaction.options.getRole('role').id; if (!c.trustedRoles.includes(id)) c.trustedRoles.push(id); });
+    if (sub === 'trust-role-remove') store.update(guild.id, c => { c.trustedRoles = c.trustedRoles.filter(id => id !== interaction.options.getRole('role').id); });
+    if (sub === 'threshold') {
+      const limit = interaction.options.getInteger('limit');
+      const windowMs = interaction.options.getInteger('window') * 1000;
+      store.update(guild.id, c => { c.antiNuke.limit = limit; c.antiNuke.windowMs = windowMs; });
+      return interaction.reply({ content: 'Anti-nuke threshold set to ' + limit + ' actions in ' + (windowMs / 1000) + ' seconds.', ephemeral: true });
+    }
+    if (sub === 'punishment') {
+      const action = interaction.options.getString('action');
+      store.update(guild.id, c => { c.antiNuke.punish = action; });
+      return interaction.reply({ content: 'Anti-nuke punishment set to ' + action + '.', ephemeral: true });
+    }
+    if (sub === 'module') {
+      const key = interaction.options.getString('name');
+      const enabled = interaction.options.getBoolean('enabled');
+      store.update(guild.id, c => { c[key].enabled = enabled; });
+      return interaction.reply({ content: key + ' protection ' + (enabled ? 'enabled' : 'disabled') + '.', ephemeral: true });
+    }
+    if (sub === 'incidents') {
+      const items = (cfg.incidents || []).slice(-10).reverse();
+      if (!items.length) return interaction.reply({ content: 'No security incidents recorded yet.', ephemeral: true });
+      const embed = new EmbedBuilder().setColor(0xED4245).setTitle('Recent security incidents')
+        .setDescription(items.map((item, i) => '**' + (i + 1) + '. ' + item.type + '** · ' + item.severity + '\n' + item.details + '\n' + new Date(item.at).toLocaleString()).join('\n\n').slice(0, 4000));
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
     if (sub === 'quarantine-role') store.update(guild.id, c => { c.quarantineRoleId = interaction.options.getRole('role').id; });
     if (sub === 'allow-domain' || sub === 'remove-domain') {
       const raw = interaction.options.getString('domain').toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
