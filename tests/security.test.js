@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const store = require('../src/store');
-const { isSuspiciousLink } = require('../src/security');
+const { suspiciousLink } = require('../src/security');
 
 test('guild defaults enable baseline protection and verification is opt-in', () => {
   const cfg = store.defaults();
@@ -20,16 +20,16 @@ test('guild defaults enable baseline protection and verification is opt-in', () 
 });
 
 test('suspicious-link filter detects IP hosts and punycode domains', () => {
-  assert.equal(isSuspiciousLink('click https://192.0.2.4/login', []), true);
-  assert.equal(isSuspiciousLink('visit https://xn--pple-43d.com/account', []), true);
+  assert.equal(suspiciousLink('click https://192.0.2.4/login', []), true);
+  assert.equal(suspiciousLink('visit https://xn--pple-43d.com/account', []), true);
 });
 
 test('suspicious-link filter ignores ordinary and explicitly allowed domains', () => {
-  assert.equal(isSuspiciousLink('https://example.com/news', []), false);
-  assert.equal(isSuspiciousLink('https://bit.ly/short', ['bit.ly']), false);
-  assert.equal(isSuspiciousLink('https://192.0.2.4/login', ['192.0.2.4']), false);
+  assert.equal(suspiciousLink('https://example.com/news', []), false);
+  assert.equal(suspiciousLink('https://bit.ly/short', ['bit.ly']), false);
+  assert.equal(suspiciousLink('https://192.0.2.4/login', ['192.0.2.4']), false);
 });
 
 test('malformed links do not crash link inspection', () => {
-  assert.equal(isSuspiciousLink('text https://[broken-url', []), false);
+  assert.equal(suspiciousLink('text https://[broken-url', []), false);
 });

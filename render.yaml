@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: mina-security-bot
+    name: mina-discord-bot
     runtime: node
     plan: free
     buildCommand: npm install
@@ -15,5 +15,17 @@ services:
         sync: false
       - key: GUILD_ID
         sync: false
-      - key: OWNER_IDS
+      - key: PREFIX
+        value: ,
+      - key: LAVALINK_URL
         sync: false
+      - key: LAVALINK_AUTH
+        sync: false
+      - key: LAVALINK_SECURE
+        value: 'true'
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false
+      - key: DATA_DIR
+        value: ./data

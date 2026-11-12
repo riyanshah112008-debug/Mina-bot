@@ -1,224 +1,132 @@
 'use strict';
-const {
-  SlashCommandBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle, EmbedBuilder,
-  ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle
-} = require('discord.js');
-const store = require('./store');
-const security = require('./security');
-
-const challenges = new Map();
-const commands = [
-  new SlashCommandBuilder().setName('security').setDescription('Configure Mina server protection')
-    .addSubcommand(s => s.setName('setup').setDescription('Enable baseline protection and use this channel for logs'))
-    .addSubcommand(s => s.setName('status').setDescription('Show protection status'))
-    .addSubcommand(s => s.setName('enable').setDescription('Enable protection'))
-    .addSubcommand(s => s.setName('disable').setDescription('Disable protection'))
-    .addSubcommand(s => s.setName('log-channel').setDescription('Set the security log channel').addChannelOption(o => o.setName('channel').setDescription('Text channel').setRequired(true)))
-    .addSubcommand(s => s.setName('whitelist-add').setDescription('Trust a user').addUserOption(o => o.setName('user').setDescription('Trusted user').setRequired(true)))
-    .addSubcommand(s => s.setName('whitelist-remove').setDescription('Remove a trusted user').addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
-    .addSubcommand(s => s.setName('trust-role-add').setDescription('Trust members with a role').addRoleOption(o => o.setName('role').setDescription('Trusted role').setRequired(true)))
-    .addSubcommand(s => s.setName('trust-role-remove').setDescription('Remove a trusted role').addRoleOption(o => o.setName('role').setDescription('Role').setRequired(true)))
-    .addSubcommand(s => s.setName('threshold').setDescription('Configure the anti-nuke action threshold')
-      .addIntegerOption(o => o.setName('limit').setDescription('Actions before punishment (2–10)').setMinValue(2).setMaxValue(10).setRequired(true))
-      .addIntegerOption(o => o.setName('window').setDescription('Detection window in seconds (3–60)').setMinValue(3).setMaxValue(60).setRequired(true)))
-    .addSubcommand(s => s.setName('punishment').setDescription('Set anti-nuke punishment')
-      .addStringOption(o => o.setName('action').setDescription('Punishment action').setRequired(true).addChoices(
-        { name: 'Timeout', value: 'timeout' }, { name: 'Kick', value: 'kick' }, { name: 'Ban', value: 'ban' })))
-    .addSubcommand(s => s.setName('module').setDescription('Enable or disable a protection module')
-      .addStringOption(o => o.setName('name').setDescription('Protection module').setRequired(true).addChoices(
-        { name: 'Anti-nuke', value: 'antiNuke' }, { name: 'Anti-raid', value: 'antiRaid' }, { name: 'AutoMod', value: 'automod' }))
-      .addBooleanOption(o => o.setName('enabled').setDescription('Enable this module').setRequired(true)))
-    .addSubcommand(s => s.setName('incidents').setDescription('Show recent security incidents'))
-    .addSubcommand(s => s.setName('quarantine-role').setDescription('Set the role for young or unverified accounts').addRoleOption(o => o.setName('role').setDescription('Restricted quarantine role').setRequired(true)))
-    .addSubcommand(s => s.setName('allow-domain').setDescription('Allow a domain through suspicious-link filtering').addStringOption(o => o.setName('domain').setDescription('Domain, e.g. example.com').setRequired(true).setMaxLength(253)))
-    .addSubcommand(s => s.setName('remove-domain').setDescription('Remove an allowed domain').addStringOption(o => o.setName('domain').setDescription('Domain').setRequired(true).setMaxLength(253)))
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-  new SlashCommandBuilder().setName('verification').setDescription('Configure button-and-math verification')
-    .addSubcommand(s => s.setName('setup').setDescription('Set verified and quarantine roles')
-      .addRoleOption(o => o.setName('verified_role').setDescription('Role given after verification').setRequired(true))
-      .addRoleOption(o => o.setName('quarantine_role').setDescription('Role held before verification').setRequired(true)))
-    .addSubcommand(s => s.setName('panel').setDescription('Post a public verification panel').addChannelOption(o => o.setName('channel').setDescription('Channel for the panel').setRequired(true)))
-    .addSubcommand(s => s.setName('disable').setDescription('Disable verification gate'))
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-  new SlashCommandBuilder().setName('verify').setDescription('Complete the server verification challenge'),
-  new SlashCommandBuilder().setName('lockdown').setDescription('Emergency server lockdown').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-  new SlashCommandBuilder().setName('unlock').setDescription('Restore channels after lockdown').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-  new SlashCommandBuilder().setName('timeout').setDescription('Timeout a member')
-    .addUserOption(o => o.setName('user').setDescription('Member').setRequired(true))
-    .addIntegerOption(o => o.setName('minutes').setDescription('Duration in minutes (1–40320)').setMinValue(1).setMaxValue(40320).setRequired(true))
-    .addStringOption(o => o.setName('reason').setDescription('Reason').setMaxLength(400)),
-  new SlashCommandBuilder().setName('kick').setDescription('Kick a member')
-    .addUserOption(o => o.setName('user').setDescription('Member').setRequired(true))
-    .addStringOption(o => o.setName('reason').setDescription('Reason').setMaxLength(400)),
-  new SlashCommandBuilder().setName('ban').setDescription('Ban a member')
-    .addUserOption(o => o.setName('user').setDescription('Member').setRequired(true))
-    .addStringOption(o => o.setName('reason').setDescription('Reason').setMaxLength(400))
-].map(c => c.toJSON());
-
-async function execute(interaction) {
-  if (!interaction.inGuild()) return interaction.reply({ content: 'Use this command in a server.', ephemeral: true });
-  const { commandName: name, guild } = interaction;
-  const actor = await guild.members.fetch(interaction.user.id).catch(() => null);
-  if (!actor) return interaction.reply({ content: 'Could not resolve your server membership.', ephemeral: true });
-  if (['security','verification','lockdown','unlock'].includes(name) && !interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-    return interaction.reply({ content: 'Administrator permission required.', ephemeral: true });
-  }
-  if (name === 'verify') {
-    const cfg = store.get(guild.id);
-    if (!cfg.verification.enabled || !cfg.verification.verifiedRoleId) {
-      return interaction.reply({ content: 'Verification is not configured on this server.', ephemeral: true });
-    }
-    const button = new ButtonBuilder().setCustomId('mina_verify_start').setLabel('Start verification').setStyle(ButtonStyle.Success);
-    return interaction.reply({ content: 'Complete a short arithmetic check to receive the verified role.', components: [new ActionRowBuilder().addComponents(button)], ephemeral: true });
-  }
-  if (name === 'verification') {
-    const sub = interaction.options.getSubcommand();
-    if (sub === 'panel') {
-      const channel = interaction.options.getChannel('channel');
-      if (!channel.isTextBased() || !channel.send) return interaction.reply({ content: 'Choose a text channel.', ephemeral: true });
-      const button = new ButtonBuilder().setCustomId('mina_verify_start').setLabel('Verify').setStyle(ButtonStyle.Success);
-      const embed = new EmbedBuilder().setColor(0x5865F2).setTitle('Server verification')
-        .setDescription('Press **Verify** and complete the short challenge to receive access.');
-      await channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(button)] });
-      return interaction.reply({ content: 'Verification panel posted in ' + channel.toString() + '.', ephemeral: true });
-    }
-    if (sub === 'setup') {
-      const verifiedRole = interaction.options.getRole('verified_role');
-      const quarantineRole = interaction.options.getRole('quarantine_role');
-      if (verifiedRole.id === quarantineRole.id) return interaction.reply({ content: 'Choose two different roles.', ephemeral: true });
-      store.update(guild.id, c => {
-        c.verification = { enabled: true, verifiedRoleId: verifiedRole.id, quarantineRoleId: quarantineRole.id };
-        c.quarantineRoleId = quarantineRole.id;
-      });
-      return interaction.reply({ content: 'Verification configured. Apply the quarantine role to @everyone permissions so unverified members cannot access restricted channels.', ephemeral: true });
-    }
-    store.update(guild.id, c => { c.verification.enabled = false; });
-    return interaction.reply({ content: 'Verification gate disabled.', ephemeral: true });
-  }
-  if (name === 'security') {
-    const sub = interaction.options.getSubcommand();
-    const cfg = store.get(guild.id);
-    if (sub === 'setup') {
-      store.update(guild.id, c => { c.enabled = true; c.antiNuke.enabled = true; c.antiRaid.enabled = true; c.automod.enabled = true; c.logChannelId = interaction.channelId; });
-      return interaction.reply({ content: 'Baseline protection enabled. This channel is now the security log channel. Use `/security status` to review settings, `/security module` to adjust modules, and `/security whitelist-add` to trust staff.', ephemeral: true });
-    }
-    if (sub === 'status') return interaction.reply({ content:
-      '**Mina Security**\nProtection: ' + (cfg.enabled ? 'ON' : 'OFF') +
-      '\nAnti-nuke: ' + (cfg.antiNuke.enabled ? 'ON' : 'OFF') +
-      '\nAnti-raid: ' + (cfg.antiRaid.enabled ? 'ON' : 'OFF') +
-      '\nAutoMod: ' + (cfg.automod.enabled ? 'ON' : 'OFF') +
-      '\nSuspicious-link filter: ' + (cfg.automod.linkFilter ? 'ON' : 'OFF') +
-      '\nVerification: ' + (cfg.verification.enabled ? 'ON' : 'OFF') +
-      '\nTrusted users: ' + cfg.trusted.length +
-      '\nTrusted roles: ' + (cfg.trustedRoles || []).length +
-      '\nRecorded incidents: ' + (cfg.incidents || []).length +
-      '\nLockdown: ' + (cfg.lockdown.active ? 'ACTIVE' : 'inactive'), ephemeral: true });
-    if (sub === 'enable') store.update(guild.id, c => { c.enabled = true; });
-    if (sub === 'disable') store.update(guild.id, c => { c.enabled = false; });
-    if (sub === 'log-channel') store.update(guild.id, c => { c.logChannelId = interaction.options.getChannel('channel').id; });
-    if (sub === 'whitelist-add') store.update(guild.id, c => { const id = interaction.options.getUser('user').id; if (!c.trusted.includes(id)) c.trusted.push(id); });
-    if (sub === 'whitelist-remove') store.update(guild.id, c => { c.trusted = c.trusted.filter(id => id !== interaction.options.getUser('user').id); });
-    if (sub === 'trust-role-add') store.update(guild.id, c => { const id = interaction.options.getRole('role').id; if (!c.trustedRoles.includes(id)) c.trustedRoles.push(id); });
-    if (sub === 'trust-role-remove') store.update(guild.id, c => { c.trustedRoles = c.trustedRoles.filter(id => id !== interaction.options.getRole('role').id); });
-    if (sub === 'threshold') {
-      const limit = interaction.options.getInteger('limit');
-      const windowMs = interaction.options.getInteger('window') * 1000;
-      store.update(guild.id, c => { c.antiNuke.limit = limit; c.antiNuke.windowMs = windowMs; });
-      return interaction.reply({ content: 'Anti-nuke threshold set to ' + limit + ' actions in ' + (windowMs / 1000) + ' seconds.', ephemeral: true });
-    }
-    if (sub === 'punishment') {
-      const action = interaction.options.getString('action');
-      store.update(guild.id, c => { c.antiNuke.punish = action; });
-      return interaction.reply({ content: 'Anti-nuke punishment set to ' + action + '.', ephemeral: true });
-    }
-    if (sub === 'module') {
-      const key = interaction.options.getString('name');
-      const enabled = interaction.options.getBoolean('enabled');
-      store.update(guild.id, c => { c[key].enabled = enabled; });
-      return interaction.reply({ content: key + ' protection ' + (enabled ? 'enabled' : 'disabled') + '.', ephemeral: true });
-    }
-    if (sub === 'incidents') {
-      const items = (cfg.incidents || []).slice(-10).reverse();
-      if (!items.length) return interaction.reply({ content: 'No security incidents recorded yet.', ephemeral: true });
-      const embed = new EmbedBuilder().setColor(0xED4245).setTitle('Recent security incidents')
-        .setDescription(items.map((item, i) => '**' + (i + 1) + '. ' + item.type + '** · ' + item.severity + '\n' + item.details + '\n' + new Date(item.at).toLocaleString()).join('\n\n').slice(0, 4000));
-      return interaction.reply({ embeds: [embed], ephemeral: true });
-    }
-    if (sub === 'quarantine-role') store.update(guild.id, c => { c.quarantineRoleId = interaction.options.getRole('role').id; });
-    if (sub === 'allow-domain' || sub === 'remove-domain') {
-      const raw = interaction.options.getString('domain').toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
-      if (!/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(raw)) {
-        return interaction.reply({ content: 'Enter a valid hostname only, such as example.com.', ephemeral: true });
-      }
-      store.update(guild.id, c => {
-        c.automod.allowedDomains = sub === 'allow-domain'
-          ? [...new Set([...c.automod.allowedDomains, raw])]
-          : c.automod.allowedDomains.filter(x => x !== raw);
-      });
-    }
-    return interaction.reply({ content: 'Security settings saved.', ephemeral: true });
-  }
-  if (name === 'lockdown') {
-    await security.lockdown(guild, 'Manually activated by ' + interaction.user.tag);
-    return interaction.reply({ content: 'Lockdown activated.', ephemeral: true });
-  }
-  if (name === 'unlock') {
-    await security.restoreLockdown(guild);
-    return interaction.reply({ content: 'Lockdown recovery completed.', ephemeral: true });
-  }
-  const user = interaction.options.getUser('user');
-  const target = await guild.members.fetch(user.id).catch(() => null);
-  if (!target) return interaction.reply({ content: 'Member not found.', ephemeral: true });
-  if (target.id === guild.ownerId || target.roles.highest.position >= actor.roles.highest.position) {
-    return interaction.reply({ content: 'Cannot moderate this member because of Discord role hierarchy.', ephemeral: true });
-  }
-  const reason = interaction.options.getString('reason') || 'No reason provided';
-  if (name === 'timeout') {
-    if (!actor.permissions.has(PermissionFlagsBits.ModerateMembers)) return interaction.reply({ content: 'You need Moderate Members permission.', ephemeral: true });
-    const minutes = interaction.options.getInteger('minutes');
-    if (!target.moderatable) return interaction.reply({ content: 'Mina cannot timeout this member. Check the bot role hierarchy and permissions.', ephemeral: true });
-    await target.timeout(minutes * 60000, reason);
-  } else if (name === 'kick') {
-    if (!actor.permissions.has(PermissionFlagsBits.KickMembers)) return interaction.reply({ content: 'You need Kick Members permission.', ephemeral: true });
-    if (!target.kickable) return interaction.reply({ content: 'Mina cannot kick this member. Check the bot role hierarchy and permissions.', ephemeral: true });
-    await target.kick(reason);
-  } else if (name === 'ban') {
-    if (!actor.permissions.has(PermissionFlagsBits.BanMembers)) return interaction.reply({ content: 'You need Ban Members permission.', ephemeral: true });
-    if (!target.bannable) return interaction.reply({ content: 'Mina cannot ban this member. Check the bot role hierarchy and permissions.', ephemeral: true });
-    await target.ban({ reason });
-  }
-  return interaction.reply({ content: user.tag + ' action completed.', ephemeral: true });
+const {SlashCommandBuilder,PermissionFlagsBits,ButtonBuilder,ButtonStyle,EmbedBuilder,ActionRowBuilder,ModalBuilder,TextInputBuilder,TextInputStyle}=require('discord.js');
+const store=require('./store'),security=require('./security'),music=require('./music'),utility=require('./utility'),spotify=require('./spotify');
+const challenges=new Map();
+const securityCommand=new SlashCommandBuilder().setName('security').setDescription('Configure Mina protection')
+.addSubcommand(s=>s.setName('setup').setDescription('Enable protection and set this channel as logs'))
+.addSubcommand(s=>s.setName('status').setDescription('Show protection status'))
+.addSubcommand(s=>s.setName('enable').setDescription('Enable protection')).addSubcommand(s=>s.setName('disable').setDescription('Disable protection'))
+.addSubcommand(s=>s.setName('log-channel').setDescription('Set security log channel').addChannelOption(o=>o.setName('channel').setDescription('Text channel').setRequired(true)))
+.addSubcommand(s=>s.setName('trust-user').setDescription('Trust a user').addUserOption(o=>o.setName('user').setDescription('User').setRequired(true)))
+.addSubcommand(s=>s.setName('untrust-user').setDescription('Remove trusted user').addUserOption(o=>o.setName('user').setDescription('User').setRequired(true)))
+.addSubcommand(s=>s.setName('trust-role').setDescription('Trust a role').addRoleOption(o=>o.setName('role').setDescription('Role').setRequired(true)))
+.addSubcommand(s=>s.setName('untrust-role').setDescription('Remove trusted role').addRoleOption(o=>o.setName('role').setDescription('Role').setRequired(true)))
+.addSubcommand(s=>s.setName('threshold').setDescription('Set anti-nuke threshold').addIntegerOption(o=>o.setName('actions').setDescription('Actions before punishment').setMinValue(2).setMaxValue(10).setRequired(true)).addIntegerOption(o=>o.setName('seconds').setDescription('Detection window').setMinValue(3).setMaxValue(60).setRequired(true)))
+.addSubcommand(s=>s.setName('punishment').setDescription('Set anti-nuke punishment').addStringOption(o=>o.setName('action').setDescription('Action').setRequired(true).addChoices({name:'Timeout',value:'timeout'},{name:'Kick',value:'kick'},{name:'Ban',value:'ban'})))
+.addSubcommand(s=>s.setName('module').setDescription('Toggle a protection module').addStringOption(o=>o.setName('name').setDescription('Module').setRequired(true).addChoices({name:'Anti-nuke',value:'antiNuke'},{name:'Anti-raid',value:'antiRaid'},{name:'AutoMod',value:'automod'})).addBooleanOption(o=>o.setName('enabled').setDescription('Enable it').setRequired(true)))
+.addSubcommand(s=>s.setName('incidents').setDescription('Show recent security incidents'))
+.addSubcommand(s=>s.setName('quarantine-role').setDescription('Set quarantine role').addRoleOption(o=>o.setName('role').setDescription('Role').setRequired(true)))
+.addSubcommand(s=>s.setName('allow-domain').setDescription('Allow a hostname').addStringOption(o=>o.setName('domain').setDescription('example.com').setRequired(true).setMaxLength(253)))
+.addSubcommand(s=>s.setName('remove-domain').setDescription('Remove an allowed hostname').addStringOption(o=>o.setName('domain').setDescription('example.com').setRequired(true).setMaxLength(253)))
+.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const verificationCommand=new SlashCommandBuilder().setName('verification').setDescription('Configure member verification')
+.addSubcommand(s=>s.setName('setup').setDescription('Set verified and quarantine roles').addRoleOption(o=>o.setName('verified_role').setDescription('Verified role').setRequired(true)).addRoleOption(o=>o.setName('quarantine_role').setDescription('Quarantine role').setRequired(true)))
+.addSubcommand(s=>s.setName('panel').setDescription('Post verification panel').addChannelOption(o=>o.setName('channel').setDescription('Channel').setRequired(true)))
+.addSubcommand(s=>s.setName('disable').setDescription('Disable verification')).setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+const musicCommand=new SlashCommandBuilder().setName('music').setDescription('Music player controls')
+.addSubcommand(s=>s.setName('play').setDescription('Play a song, URL or Spotify link').addStringOption(o=>o.setName('query').setDescription('Song, artist, URL or Spotify link').setRequired(true).setMaxLength(500)))
+.addSubcommand(s=>s.setName('pause').setDescription('Pause playback')).addSubcommand(s=>s.setName('resume').setDescription('Resume playback'))
+.addSubcommand(s=>s.setName('skip').setDescription('Skip current track')).addSubcommand(s=>s.setName('stop').setDescription('Stop and clear player'))
+.addSubcommand(s=>s.setName('queue').setDescription('Show upcoming tracks')).addSubcommand(s=>s.setName('nowplaying').setDescription('Show current track'))
+.addSubcommand(s=>s.setName('volume').setDescription('Set player volume').addIntegerOption(o=>o.setName('percent').setDescription('0–100').setMinValue(0).setMaxValue(100).setRequired(true)))
+.addSubcommand(s=>s.setName('loop').setDescription('Set repeat mode').addStringOption(o=>o.setName('mode').setDescription('Repeat mode').setRequired(true).addChoices({name:'Off',value:'off'},{name:'Track',value:'track'},{name:'Queue',value:'queue'})))
+.addSubcommand(s=>s.setName('shuffle').setDescription('Shuffle upcoming tracks')).addSubcommand(s=>s.setName('remove').setDescription('Remove a track by queue position').addIntegerOption(o=>o.setName('position').setDescription('Queue position').setMinValue(1).setRequired(true))).addSubcommand(s=>s.setName('clear').setDescription('Clear upcoming tracks'));
+const musicStandaloneCommands = [
+ new SlashCommandBuilder().setName('play').setDescription('Play a song or URL').addStringOption(o=>o.setName('query').setDescription('Song, artist or URL').setRequired(true).setMaxLength(500)),
+ new SlashCommandBuilder().setName('search').setDescription('Search music').addStringOption(o=>o.setName('query').setDescription('Song or artist').setRequired(true).setMaxLength(200)),
+ new SlashCommandBuilder().setName('pause').setDescription('Pause playback'),
+ new SlashCommandBuilder().setName('resume').setDescription('Resume playback'),
+ new SlashCommandBuilder().setName('skip').setDescription('Skip current track'),
+ new SlashCommandBuilder().setName('stop').setDescription('Stop and clear player'),
+ new SlashCommandBuilder().setName('queue').setDescription('Show music queue'),
+ new SlashCommandBuilder().setName('nowplaying').setDescription('Show current track'),
+ new SlashCommandBuilder().setName('volume').setDescription('Set volume').addIntegerOption(o=>o.setName('percent').setDescription('0 to 150').setMinValue(0).setMaxValue(150).setRequired(true)),
+ new SlashCommandBuilder().setName('loop').setDescription('Set repeat mode').addStringOption(o=>o.setName('mode').setDescription('Mode').setRequired(true).addChoices({name:'Off',value:'off'},{name:'Track',value:'track'},{name:'Queue',value:'queue'})),
+ new SlashCommandBuilder().setName('shuffle').setDescription('Shuffle queue'),
+ new SlashCommandBuilder().setName('clear').setDescription('Clear upcoming tracks'),
+ new SlashCommandBuilder().setName('remove').setDescription('Remove queue position').addIntegerOption(o=>o.setName('position').setDescription('Position').setMinValue(1).setRequired(true)),
+ new SlashCommandBuilder().setName('jump').setDescription('Jump to queue position').addIntegerOption(o=>o.setName('position').setDescription('Position').setMinValue(1).setRequired(true)),
+ new SlashCommandBuilder().setName('seek').setDescription('Seek to seconds').addNumberOption(o=>o.setName('seconds').setDescription('Seconds').setMinValue(0).setRequired(true)),
+ new SlashCommandBuilder().setName('filter').setDescription('Apply audio filter').addStringOption(o=>o.setName('name').setDescription('Filter').setRequired(true).addChoices(...['clear','bass','nightcore','daycore','8d','vaporwave','lofi','karaoke'].map(x=>({name:x,value:x})))),
+ new SlashCommandBuilder().setName('speed').setDescription('Set playback speed').addNumberOption(o=>o.setName('multiplier').setDescription('0.5 to 2').setMinValue(0.5).setMaxValue(2).setRequired(true)),
+ new SlashCommandBuilder().setName('autoplay').setDescription('Toggle autoplay'),
+ new SlashCommandBuilder().setName('join').setDescription('Join your voice channel'),
+ new SlashCommandBuilder().setName('previous').setDescription('Play previous track'),
+ new SlashCommandBuilder().setName('replay').setDescription('Replay current track')
+].map(c=>c.toJSON());
+const commands=[
+securityCommand.toJSON(),verificationCommand.toJSON(),new SlashCommandBuilder().setName('verify').setDescription('Start verification').toJSON(),musicCommand.toJSON(),...musicStandaloneCommands,
+new SlashCommandBuilder().setName('spotify').setDescription('Search Spotify catalogue').addSubcommand(s=>s.setName('search').setDescription('Search for a track').addStringOption(o=>o.setName('query').setDescription('Track or artist').setRequired(true).setMaxLength(150))).toJSON(),
+new SlashCommandBuilder().setName('ping').setDescription('Check bot latency').toJSON(),
+new SlashCommandBuilder().setName('avatar').setDescription('Show a user avatar').addUserOption(o=>o.setName('user').setDescription('User').setRequired(false)).toJSON(),
+new SlashCommandBuilder().setName('userinfo').setDescription('Show user information').addUserOption(o=>o.setName('user').setDescription('User').setRequired(false)).toJSON(),
+new SlashCommandBuilder().setName('serverinfo').setDescription('Show server information').toJSON(),new SlashCommandBuilder().setName('botinfo').setDescription('Show bot information').toJSON(),
+new SlashCommandBuilder().setName('calculate').setDescription('Calculate a basic expression').addStringOption(o=>o.setName('expression').setDescription('Example: (12+8)*3').setRequired(true).setMaxLength(120)).toJSON(),
+new SlashCommandBuilder().setName('poll').setDescription('Create a reaction poll').addStringOption(o=>o.setName('question').setDescription('Poll question').setRequired(true).setMaxLength(250)).addStringOption(o=>o.setName('option1').setDescription('First option').setRequired(true).setMaxLength(80)).addStringOption(o=>o.setName('option2').setDescription('Second option').setRequired(true).setMaxLength(80)).addStringOption(o=>o.setName('option3').setDescription('Third option').setRequired(false).setMaxLength(80)).addStringOption(o=>o.setName('option4').setDescription('Fourth option').setRequired(false).setMaxLength(80)).addStringOption(o=>o.setName('option5').setDescription('Fifth option').setRequired(false).setMaxLength(80)).toJSON(),
+new SlashCommandBuilder().setName('remind').setDescription('Create and manage reminders').addSubcommand(s=>s.setName('create').setDescription('Create a reminder').addStringOption(o=>o.setName('in').setDescription('Duration: 10m, 2h, 1d').setRequired(true)).addStringOption(o=>o.setName('message').setDescription('Reminder text').setRequired(true).setMaxLength(900))).addSubcommand(s=>s.setName('list').setDescription('List your reminders')).addSubcommand(s=>s.setName('cancel').setDescription('Cancel your reminder').addStringOption(o=>o.setName('id').setDescription('Reminder ID').setRequired(true))).toJSON(),
+new SlashCommandBuilder().setName('timeout').setDescription('Timeout a member').addUserOption(o=>o.setName('user').setDescription('Member').setRequired(true)).addIntegerOption(o=>o.setName('minutes').setDescription('1–40320 minutes').setMinValue(1).setMaxValue(40320).setRequired(true)).addStringOption(o=>o.setName('reason').setDescription('Reason').setMaxLength(400)).setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers).toJSON(),
+new SlashCommandBuilder().setName('kick').setDescription('Kick a member').addUserOption(o=>o.setName('user').setDescription('Member').setRequired(true)).addStringOption(o=>o.setName('reason').setDescription('Reason').setMaxLength(400)).setDefaultMemberPermissions(PermissionFlagsBits.KickMembers).toJSON(),
+new SlashCommandBuilder().setName('ban').setDescription('Ban a member').addUserOption(o=>o.setName('user').setDescription('Member').setRequired(true)).addStringOption(o=>o.setName('reason').setDescription('Reason').setMaxLength(400)).setDefaultMemberPermissions(PermissionFlagsBits.BanMembers).toJSON(),
+new SlashCommandBuilder().setName('lockdown').setDescription('Emergency server lockdown').setDefaultMemberPermissions(PermissionFlagsBits.Administrator).toJSON(),
+new SlashCommandBuilder().setName('unlock').setDescription('Restore channels after lockdown').setDefaultMemberPermissions(PermissionFlagsBits.Administrator).toJSON(),
+new SlashCommandBuilder().setName('help').setDescription('Show Mina command guide').toJSON()
+];
+async function securityRun(i){
+ const sub=i.options.getSubcommand(),cfg=store.get(i.guildId);
+ if(sub==='setup'){store.update(i.guildId,c=>{c.enabled=true;c.antiNuke.enabled=true;c.antiRaid.enabled=true;c.automod.enabled=true;c.logChannelId=i.channelId;});return i.reply({content:'Baseline security enabled. This channel is now the security log channel.',ephemeral:true});}
+ if(sub==='status')return i.reply({embeds:[new EmbedBuilder().setColor(0x5865F2).setTitle('Mina protection status').addFields({name:'Protection',value:cfg.enabled?'ON':'OFF',inline:true},{name:'Anti-nuke',value:cfg.antiNuke.enabled?'ON':'OFF',inline:true},{name:'Anti-raid',value:cfg.antiRaid.enabled?'ON':'OFF',inline:true},{name:'AutoMod',value:cfg.automod.enabled?'ON':'OFF',inline:true},{name:'Verification',value:cfg.verification.enabled?'ON':'OFF',inline:true},{name:'Incidents',value:String(cfg.incidents.length),inline:true},{name:'Trusted users / roles',value:cfg.trusted.length+' / '+cfg.trustedRoles.length,inline:true},{name:'Lockdown',value:cfg.lockdown.active?'ACTIVE':'inactive',inline:true})],ephemeral:true});
+ if(sub==='enable'||sub==='disable'){store.update(i.guildId,c=>c.enabled=sub==='enable');return i.reply({content:'Security '+(sub==='enable'?'enabled':'disabled')+'.',ephemeral:true});}
+ if(sub==='log-channel'){store.update(i.guildId,c=>c.logChannelId=i.options.getChannel('channel').id);return i.reply({content:'Security log channel updated.',ephemeral:true});}
+ if(sub==='trust-user'||sub==='untrust-user'){const uid=i.options.getUser('user').id;store.update(i.guildId,c=>{c.trusted=sub==='trust-user'?[...new Set([...c.trusted,uid])]:c.trusted.filter(x=>x!==uid);});return i.reply({content:'Trusted user list updated.',ephemeral:true});}
+ if(sub==='trust-role'||sub==='untrust-role'){const rid=i.options.getRole('role').id;store.update(i.guildId,c=>{c.trustedRoles=sub==='trust-role'?[...new Set([...c.trustedRoles,rid])]:c.trustedRoles.filter(x=>x!==rid);});return i.reply({content:'Trusted role list updated.',ephemeral:true});}
+ if(sub==='threshold'){const actions=i.options.getInteger('actions'),seconds=i.options.getInteger('seconds');store.update(i.guildId,c=>{c.antiNuke.limit=actions;c.antiNuke.windowMs=seconds*1000;});return i.reply({content:'Anti-nuke threshold updated.',ephemeral:true});}
+ if(sub==='punishment'){const action=i.options.getString('action');store.update(i.guildId,c=>c.antiNuke.punish=action);return i.reply({content:'Anti-nuke punishment set to '+action+'.',ephemeral:true});}
+ if(sub==='module'){const name=i.options.getString('name'),enabled=i.options.getBoolean('enabled');store.update(i.guildId,c=>c[name].enabled=enabled);return i.reply({content:name+' '+(enabled?'enabled':'disabled')+'.',ephemeral:true});}
+ if(sub==='incidents'){const items=cfg.incidents.slice(-10).reverse();if(!items.length)return i.reply({content:'No incidents recorded.',ephemeral:true});const embed=new EmbedBuilder().setColor(0xED4245).setTitle('Recent incidents').setDescription(items.map((x,n)=>(n+1)+'. **'+x.type+'** ('+x.severity+')\n'+x.details+'\n<t:'+Math.floor(new Date(x.at).getTime()/1000)+':R>').join('\n\n').slice(0,4000));return i.reply({embeds:[embed],ephemeral:true});}
+ if(sub==='quarantine-role'){store.update(i.guildId,c=>c.quarantineRoleId=i.options.getRole('role').id);return i.reply({content:'Quarantine role saved.',ephemeral:true});}
+ if(sub==='allow-domain'||sub==='remove-domain'){const domain=i.options.getString('domain').toLowerCase().trim().replace(/^https?:\/\//,'').replace(/\/$/,'');if(!/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain))return i.reply({content:'Enter a valid hostname such as example.com.',ephemeral:true});store.update(i.guildId,c=>{c.automod.allowedDomains=sub==='allow-domain'?[...new Set([...c.automod.allowedDomains,domain])]:c.automod.allowedDomains.filter(x=>x!==domain);});return i.reply({content:'Allowed domain list updated.',ephemeral:true});}
 }
-async function handleComponent(interaction) {
-  if (interaction.isButton() && interaction.customId === 'mina_verify_start') {
-    const a = Math.floor(Math.random() * 8) + 2;
-    const b = Math.floor(Math.random() * 8) + 2;
-    challenges.set(interaction.user.id + ':' + interaction.guildId, { answer: String(a + b), expires: Date.now() + 120000 });
-    const modal = new ModalBuilder().setCustomId('mina_verify_answer').setTitle('Mina verification');
-    const answer = new TextInputBuilder().setCustomId('answer').setLabel('What is ' + a + ' + ' + b + '?').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(2);
-    modal.addComponents(new ActionRowBuilder().addComponents(answer));
-    return interaction.showModal(modal);
-  }
-  if (interaction.isModalSubmit() && interaction.customId === 'mina_verify_answer') {
-    const key = interaction.user.id + ':' + interaction.guildId;
-    const challenge = challenges.get(key);
-    challenges.delete(key);
-    if (!challenge || challenge.expires < Date.now() || interaction.fields.getTextInputValue('answer').trim() !== challenge.answer) {
-      return interaction.reply({ content: 'Verification failed or expired. Run /verify to try again.', ephemeral: true });
-    }
-    const cfg = store.get(interaction.guildId);
-    const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
-    if (!member) return interaction.reply({ content: 'Could not find your server membership.', ephemeral: true });
-    const verified = await interaction.guild.roles.fetch(cfg.verification.verifiedRoleId).catch(() => null);
-    if (!verified || !member.manageable) return interaction.reply({ content: 'Mina cannot assign the verified role. Check the bot role hierarchy.', ephemeral: true });
-    await member.roles.add(verified, 'Mina verification completed');
-    const quarantineId = cfg.verification.quarantineRoleId || cfg.quarantineRoleId;
-    if (quarantineId) {
-      const quarantine = await interaction.guild.roles.fetch(quarantineId).catch(() => null);
-      if (quarantine && member.roles.cache.has(quarantine.id)) await member.roles.remove(quarantine, 'Mina verification completed').catch(() => null);
-    }
-    await security.log(interaction.guild, '✅ ' + interaction.user.tag + ' completed verification.');
-    return interaction.reply({ content: 'Verification successful. You now have access to verified channels.', ephemeral: true });
-  }
+async function verificationRun(i){
+ const sub=i.options.getSubcommand();
+ if(sub==='setup'){const verified=i.options.getRole('verified_role'),quarantine=i.options.getRole('quarantine_role');if(verified.id===quarantine.id)return i.reply({content:'Choose two different roles.',ephemeral:true});store.update(i.guildId,c=>{c.verification={enabled:true,verifiedRoleId:verified.id,quarantineRoleId:quarantine.id};c.quarantineRoleId=quarantine.id;});return i.reply({content:'Verification configured. Ensure the quarantine role cannot view restricted channels.',ephemeral:true});}
+ if(sub==='disable'){store.update(i.guildId,c=>c.verification.enabled=false);return i.reply({content:'Verification disabled.',ephemeral:true});}
+ const channel=i.options.getChannel('channel');if(!channel.isTextBased())return i.reply({content:'Choose a text channel.',ephemeral:true});
+ const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('Server verification').setDescription('Press the button and solve a short arithmetic challenge to unlock the server.');
+ const button=new ButtonBuilder().setCustomId('mina_verify_start').setLabel('Verify').setStyle(ButtonStyle.Success);
+ await channel.send({embeds:[embed],components:[new ActionRowBuilder().addComponents(button)]});return i.reply({content:'Verification panel posted.',ephemeral:true});
 }
-module.exports = { commands, execute, handleComponent };
+async function utilityRun(i,client){
+ const name=i.commandName;
+ if(name==='ping')return i.reply('🏓 Pong! Gateway: **'+Math.round(client.ws.ping)+'ms**.');
+ if(name==='avatar'){const user=i.options.getUser('user')||i.user,url=user.displayAvatarURL({size:1024,extension:'png'});return i.reply({embeds:[new EmbedBuilder().setColor(0x5865F2).setTitle((user.tag||user.username)+' avatar').setImage(url).setDescription('[Open image]('+url+')')]});}
+ if(name==='userinfo'){const user=i.options.getUser('user')||i.user,member=await i.guild.members.fetch(user.id).catch(()=>null);return i.reply({embeds:[utility.userEmbed(user,member)]});}
+ if(name==='serverinfo')return i.reply({embeds:[utility.serverEmbed(i.guild)]});
+ if(name==='botinfo')return i.reply({embeds:[new EmbedBuilder().setColor(0x5865F2).setTitle('Mina Bot').setThumbnail(client.user.displayAvatarURL()).addFields({name:'Servers',value:String(client.guilds.cache.size),inline:true},{name:'Users cached',value:String(client.users.cache.size),inline:true},{name:'Uptime',value:Math.floor(process.uptime()/60)+' minutes',inline:true},{name:'Node.js',value:process.version,inline:true})]});
+ if(name==='calculate'){try{return i.reply({embeds:[new EmbedBuilder().setColor(0x5865F2).setTitle('Calculator').addFields({name:'Expression',value:i.options.getString('expression')},{name:'Result',value:'**'+utility.calculator(i.options.getString('expression'))+'**'})]});}catch(e){return i.reply({content:e.message,ephemeral:true});}}
+ if(name==='poll'){const opts=['option1','option2','option3','option4','option5'].map(k=>i.options.getString(k)).filter(Boolean),emojis=['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('📊 '+i.options.getString('question')).setDescription(opts.map((x,n)=>emojis[n]+' '+x).join('\n')).setFooter({text:'Poll by '+i.user.tag});await i.reply({embeds:[embed]});const msg=await i.fetchReply();for(let n=0;n<opts.length;n++)await msg.react(emojis[n]).catch(()=>null);return;}
+ if(name==='remind'){const sub=i.options.getSubcommand(),cfg=store.get(i.guildId);if(sub==='create'){const duration=utility.parseDuration(i.options.getString('in'));if(!duration)return i.reply({content:'Use 15m, 2h or 1d (maximum 24 days).',ephemeral:true});const item=utility.addReminder(client,i.guildId,i.user.id,i.channelId,duration,i.options.getString('message'));return i.reply({content:'Reminder set. ID: '+item.id+' — <t:'+Math.floor(item.at/1000)+':R>',ephemeral:true});}if(sub==='list'){const mine=cfg.reminders.filter(x=>x.userId===i.user.id);return i.reply({content:mine.length?mine.map(x=>x.id+' · <t:'+Math.floor(x.at/1000)+':R> · '+x.text).join('\n').slice(0,1900):'You have no reminders.',ephemeral:true});}const ok=utility.cancelReminder(i.guildId,i.user.id,i.options.getString('id'));return i.reply({content:ok?'Reminder cancelled.':'Reminder not found.',ephemeral:true});}
+}
+async function execute(i,client,player){
+ if(!i.inGuild()&&!['ping','botinfo'].includes(i.commandName))return i.reply({content:'Use this command in a server.',ephemeral:true});
+ const name=i.commandName;
+ if(name==='help'){const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('Mina command guide').addFields({name:'Security',value:'/security setup · /security status · /verification setup · /lockdown · /unlock'},{name:'Music',value:'/play · /search · /pause · /resume · /skip · /queue · /nowplaying · /volume · /loop · /shuffle · /filter · /seek · /speed · /stop\\nPrefix: ,play · ,pause · ,resume · ,skip · ,queue · ,volume · ,loop · ,shuffle'},{name:'Utilities',value:'/ping · /avatar · /userinfo · /serverinfo · /botinfo · /calculate · /poll · /remind'},{name:'Moderation',value:'/timeout · /kick · /ban · /verify'},{name:'Spotify',value:'/spotify search · /music play with a Spotify track or playlist URL'});return i.reply({embeds:[embed],ephemeral:true});}
+ if(name==='security'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});return securityRun(i);}
+ if(name==='verification'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});return verificationRun(i);}
+ if(name==='verify'){const cfg=store.get(i.guildId);if(!cfg.verification.enabled)return i.reply({content:'Verification is not configured.',ephemeral:true});const button=new ButtonBuilder().setCustomId('mina_verify_start').setLabel('Start verification').setStyle(ButtonStyle.Success);return i.reply({content:'Press the button to start your verification challenge.',components:[new ActionRowBuilder().addComponents(button)],ephemeral:true});}
+ if(name==='music'||['play','search','pause','resume','skip','stop','queue','nowplaying','volume','loop','shuffle','clear','remove','jump','seek','filter','speed','autoplay','join','previous','replay'].includes(name)){
+ const action=name==='music'?i.options.getSubcommand():name;
+ const value=action==='play'||action==='search'?i.options.getString('query'):action==='volume'?i.options.getInteger('percent'):action==='loop'?i.options.getString('mode'):action==='remove'||action==='jump'?i.options.getInteger('position'):action==='seek'?i.options.getNumber('seconds'):action==='filter'?i.options.getString('name'):action==='speed'?i.options.getNumber('multiplier'):null;
+ const ctx={isInteraction:true,guild:i.guild,member:i.member,channel:i.channel,user:i.user,deferReply:()=>i.deferReply(),editReply:p=>i.editReply(p),reply:p=>i.reply(p)};
+ return music.execute(ctx,player,action,value);
+}
+ if(name==='spotify'){try{const tracks=await spotify.search(i.options.getString('query'),5);if(!tracks.length)return i.reply({content:'No Spotify tracks found.',ephemeral:true});const embed=new EmbedBuilder().setColor(0x1DB954).setTitle('Spotify search results').setDescription(tracks.map((t,n)=>(n+1)+'. **'+t.name+'** — '+t.artists.join(', ')+'\n[Open in Spotify]('+t.url+')').join('\n\n'));return i.reply({embeds:[embed],ephemeral:true});}catch(e){return i.reply({content:e.message+' Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to the environment.',ephemeral:true});}}
+ if(['ping','avatar','userinfo','serverinfo','botinfo','calculate','poll','remind'].includes(name))return utilityRun(i,client);
+ if(name==='lockdown'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});await security.lockdown(i.guild,'Manually activated by '+i.user.tag);return i.reply({content:'Lockdown activated.',ephemeral:true});}
+ if(name==='unlock'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});await security.restoreLockdown(i.guild);return i.reply({content:'Lockdown recovery completed.',ephemeral:true});}
+ if(['timeout','kick','ban'].includes(name)){const actor=await i.guild.members.fetch(i.user.id),user=i.options.getUser('user'),target=await i.guild.members.fetch(user.id).catch(()=>null);if(!target)return i.reply({content:'Member not found.',ephemeral:true});if(target.id===i.guild.ownerId||target.roles.highest.position>=actor.roles.highest.position)return i.reply({content:'Cannot moderate this member because of role hierarchy.',ephemeral:true});const reason=i.options.getString('reason')||'No reason provided';if(name==='timeout'){if(!actor.permissions.has(PermissionFlagsBits.ModerateMembers)||!target.moderatable)return i.reply({content:'Missing permission or target is above bot role.',ephemeral:true});await target.timeout(i.options.getInteger('minutes')*60000,reason);}if(name==='kick'){if(!actor.permissions.has(PermissionFlagsBits.KickMembers)||!target.kickable)return i.reply({content:'Missing permission or target is above bot role.',ephemeral:true});await target.kick(reason);}if(name==='ban'){if(!actor.permissions.has(PermissionFlagsBits.BanMembers)||!target.bannable)return i.reply({content:'Missing permission or target is above bot role.',ephemeral:true});await target.ban({reason});}await security.log(i.guild,'Moderation: '+user.tag+' was '+name+' by '+i.user.tag+'. Reason: '+reason);return i.reply({content:user.tag+' was '+name+'ed.',ephemeral:true});}
+}
+async function handleComponent(i){
+ if(i.isButton()&&i.customId==='mina_verify_start'){const a=Math.floor(Math.random()*8)+2,b=Math.floor(Math.random()*8)+2,key=i.guildId+':'+i.user.id;challenges.set(key,{answer:String(a+b),expires:Date.now()+180000});const modal=new ModalBuilder().setCustomId('mina_verify_answer').setTitle('Verification check');const input=new TextInputBuilder().setCustomId('answer').setLabel('What is '+a+' + '+b+'?').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(3);modal.addComponents(new ActionRowBuilder().addComponents(input));return i.showModal(modal);}
+ if(i.isModalSubmit()&&i.customId==='mina_verify_answer'){const key=i.guildId+':'+i.user.id,challenge=challenges.get(key);challenges.delete(key);if(!challenge||challenge.expires<Date.now()||i.fields.getTextInputValue('answer').trim()!==challenge.answer)return i.reply({content:'Verification failed or expired. Run /verify again.',ephemeral:true});const cfg=store.get(i.guildId),member=await i.guild.members.fetch(i.user.id).catch(()=>null);if(!member)return i.reply({content:'Could not find your membership.',ephemeral:true});const role=await i.guild.roles.fetch(cfg.verification.verifiedRoleId).catch(()=>null);if(!role||!member.manageable)return i.reply({content:'I cannot assign the verified role. Check role hierarchy.',ephemeral:true});await member.roles.add(role,'Mina verification completed');const quarantine=cfg.verification.quarantineRoleId?await i.guild.roles.fetch(cfg.verification.quarantineRoleId).catch(()=>null):null;if(quarantine&&member.roles.cache.has(quarantine.id))await member.roles.remove(quarantine,'Mina verification completed').catch(()=>null);await security.log(i.guild,'Member '+i.user.tag+' completed verification.');return i.reply({content:'Verification successful. Welcome!',ephemeral:true});}
+}
+module.exports={commands,execute,handleComponent};
