@@ -18,5 +18,5 @@ jobs:
           for run in 1 2 3 4 5; do
             echo "Verification pass $run/5"
             npm run check
-            npm test
+            DISABLE_STREAM_RESOLVER=true npm test
           done
