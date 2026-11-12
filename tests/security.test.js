@@ -14,6 +14,10 @@ test('guild defaults enable baseline protection and verification is opt-in', () 
   assert.equal(cfg.automod.heatEnabled, true);
   assert.equal(cfg.automod.heatThreshold, 100);
   assert.deepEqual(cfg.automod.blacklistedWords, []);
+  assert.equal(cfg.joinGate.enabled, false);
+  assert.equal(cfg.joinGate.action, 'quarantine');
+  assert.equal(cfg.antiRaid.panicEnabled, true);
+  assert.equal(cfg.antiRaid.panicJoinLimit, 6);
   assert.equal(cfg.verification.enabled, false);
   assert.deepEqual(cfg.trusted, []);
   assert.deepEqual(cfg.trustedRoles, []);
