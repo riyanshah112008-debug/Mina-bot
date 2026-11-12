@@ -1,6 +1,7 @@
 'use strict';
 const {SlashCommandBuilder,PermissionFlagsBits,ButtonBuilder,ButtonStyle,EmbedBuilder,ActionRowBuilder,ModalBuilder,TextInputBuilder,TextInputStyle}=require('discord.js');
 const store=require('./store'),security=require('./security'),music=require('./music'),utility=require('./utility'),spotify=require('./spotify');
+const { brandPayload } = require('./utils/embeds');
 const challenges=new Map();
 const securityCommand=new SlashCommandBuilder().setName('security').setDescription('Configure NovaBot protection')
 .addSubcommand(s=>s.setName('setup').setDescription('Enable protection and set this channel as logs'))
@@ -93,7 +94,7 @@ async function verificationRun(i){
  const channel=i.options.getChannel('channel');if(!channel.isTextBased())return i.reply({content:'Choose a text channel.',ephemeral:true});
  const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('Server verification').setDescription('Press the button and solve a short arithmetic challenge to unlock the server.');
  const button=new ButtonBuilder().setCustomId('mina_verify_start').setLabel('Verify').setStyle(ButtonStyle.Success);
- await channel.send({embeds:[embed],components:[new ActionRowBuilder().addComponents(button)]});return i.reply({content:'Verification panel posted.',ephemeral:true});
+ await channel.send({...brandPayload({embeds:[embed]}),components:[new ActionRowBuilder().addComponents(button)]});return i.reply({content:'Verification panel posted.',ephemeral:true});
 }
 async function utilityRun(i,client){
  const name=i.commandName;
