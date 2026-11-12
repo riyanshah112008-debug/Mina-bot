@@ -116,7 +116,7 @@ async function execute(i,client,player){
  if(name==='music'||['play','search','pause','resume','skip','stop','queue','nowplaying','volume','loop','shuffle','clear','remove','jump','seek','filter','speed','autoplay','join','previous','replay'].includes(name)){
  const action=name==='music'?i.options.getSubcommand():name;
  const value=action==='play'?i.options.getString('song'):action==='search'?i.options.getString('query'):action==='volume'?i.options.getInteger('amount'):action==='loop'?i.options.getString('mode'):action==='remove'||action==='jump'?i.options.getInteger('position'):action==='seek'?i.options.getNumber('seconds'):action==='filter'?i.options.getString('name'):action==='speed'?i.options.getNumber('multiplier'):null;
- const ctx={isInteraction:true,guild:i.guild,member:i.member,channel:i.channel,user:i.user,deferReply:()=>i.deferReply(),editReply:p=>i.editReply(p),reply:p=>i.reply(p)};
+ const ctx={isInteraction:true,interaction:i,guild:i.guild,member:i.member,channel:i.channel,user:i.user,deferReply:()=>i.deferReply(),editReply:p=>i.editReply(p),reply:p=>i.reply(p)};
  return music.execute(ctx,player,action,value);
 }
  if(name==='spotify'){try{const tracks=await spotify.search(i.options.getString('query'),5);if(!tracks.length)return i.reply({content:'No Spotify tracks found.',ephemeral:true});const embed=new EmbedBuilder().setColor(0x1DB954).setTitle('Spotify search results').setDescription(tracks.map((t,n)=>(n+1)+'. **'+t.name+'** — '+t.artists.join(', ')+'\n[Open in Spotify]('+t.url+')').join('\n\n'));return i.reply({embeds:[embed],ephemeral:true});}catch(e){return i.reply({content:e.message+' Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to the environment.',ephemeral:true});}}
