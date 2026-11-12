@@ -1,8 +1,8 @@
 {
-  "name": "mina-bot",
+  "name": "novabot-bot",
   "version": "4.0.0",
   "private": true,
-  "description": "Mina — Discord security, music and utility bot",
+  "description": "NovaBot — Discord security, music and utility bot",
   "main": "src/index.js",
   "engines": {
     "node": ">=22.12.0"
