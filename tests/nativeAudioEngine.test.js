@@ -4,6 +4,8 @@ const assert = require('node:assert/strict');
 const audio = require('../src/utils/nativeAudioEngine');
 const Player = audio.NovaBotGuildPlayer || audio.StarryGuildPlayer;
 const getExternalCatalogSearchUrls = audio.getExternalCatalogSearchUrls;
+const resolver = require('../src/utils/streamResolverClient');
+test.after(() => { try { resolver.process?.kill(); } catch (_) {} });
 
 test('one failed audio track advances the queue only once', () => {
     const player = new Player(null, 'test-guild', null, null);
