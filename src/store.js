@@ -13,6 +13,8 @@ const defaults = () => ({
     inviteFilter: true, linkFilter: true, allowedDomains: []
   },
   trusted: [],
+  trustedRoles: [],
+  incidents: [],
   logChannelId: null,
   quarantineRoleId: null,
   verification: { enabled: false, verifiedRoleId: null, quarantineRoleId: null },
@@ -46,6 +48,8 @@ function get(guildId) {
     cfg[group] = { ...base[group], ...(cfg[group] || {}) };
   }
   if (!Array.isArray(cfg.trusted)) cfg.trusted = [];
+  if (!Array.isArray(cfg.trustedRoles)) cfg.trustedRoles = [];
+  if (!Array.isArray(cfg.incidents)) cfg.incidents = [];
   if (!Array.isArray(cfg.automod.allowedDomains)) cfg.automod.allowedDomains = [];
   return cfg;
 }
