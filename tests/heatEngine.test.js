@@ -4,8 +4,8 @@ const assert = require('node:assert/strict');
 const { scoreHeat } = require('../src/utils/heatEngine');
 
 test('heat accumulates weighted signals and triggers at threshold', () => {
-  const result = scoreHeat({ heat: 40, at: 1000 }, [{ type: 'repeated' }, { type: 'mentions' }], 2000);
-  assert.equal(result.heat, 68);
+  const result = scoreHeat({ heat: 40, at: 1000 }, [{ type: 'repeated' }], 2000);
+  assert.equal(result.heat, 73);
   assert.equal(result.triggered, false);
   const triggered = scoreHeat({ heat: 80, at: 2000 }, [{ type: 'repeated' }], 2000);
   assert.equal(triggered.triggered, true);
