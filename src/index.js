@@ -3,7 +3,9 @@ require('dotenv').config();
 const http = require('node:http');
 const { Client, GatewayIntentBits, Partials, REST, Routes, Events } = require('discord.js');
 const { Player } = require('discord-player');
-const { DefaultExtractors } = require('@discord-player/extractor');
+const { SoundCloudExtractor, VimeoExtractor, ReverbnationExtractor, AttachmentExtractor } = require('@discord-player/extractor');
+const ffmpegPath = require('ffmpeg-static');
+if (ffmpegPath) process.env.FFMPEG_PATH = ffmpegPath;
 const store = require('./store');
 const security = require('./security');
 const commands = require('./commands');
@@ -23,7 +25,7 @@ const healthServer = http.createServer((req,res) => {
 healthServer.listen(port,'0.0.0.0');
 client.once(Events.ClientReady,async ready => {
   console.log('[Mina] Online as '+ready.user.tag);
-  try { await player.extractors.loadMulti(DefaultExtractors); console.log('[Mina] Music extractors loaded.'); }
+  try { await player.extractors.loadMulti([SoundCloudExtractor, VimeoExtractor, ReverbnationExtractor, AttachmentExtractor]); console.log('[Mina] Music extractors loaded.'); }
   catch(error) { console.error('[Mina] Extractor setup failed:',error.message); }
   try {
     const rest=new REST({version:'10'}).setToken(token);
