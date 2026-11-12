@@ -1,9 +1,9 @@
 'use strict';
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { createMusicManager: createStarryMusicManager } = require('./utils/musicManager');
-const { StarryAudioEngine } = require('./utils/nativeAudioEngine');
+const { createMusicManager: createNovaBotMusicManager } = require('./utils/musicManager');
+const { NovaBotAudioEngine } = require('./utils/nativeAudioEngine');
 function createMusicManager(client) {
-  const manager = createStarryMusicManager(client);
+  const manager = createNovaBotMusicManager(client);
   manager.client = client;
   return manager;
 }
@@ -11,7 +11,7 @@ function fmt(ms){if(!ms||!Number.isFinite(Number(ms)))return 'LIVE';const s=Math
 function trackEmbed(track,player){const e=new EmbedBuilder().setColor(0x5865F2).setTitle(String(track?.title||'Unknown track').slice(0,240)).setURL(track?.uri||'https://discord.com').setDescription('**Artist:** '+String(track?.author||'Unknown').slice(0,150)+'\n**Duration:** '+(track?.isStream?'LIVE':fmt(track?.length))+'\n**Queue:** '+(player?.queue?.length||0)+' upcoming\n**Volume:** '+(player?.volume||100)+'% · **Loop:** '+(player?.loop||'none'));if(track?.thumbnail)e.setThumbnail(track.thumbnail);if(track?.requester?.username)e.setFooter({text:'Requested by '+track.requester.username});return e;}
 function controlRows(){return [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('mina_music_pause').setLabel('Pause').setEmoji('⏸️').setStyle(ButtonStyle.Primary),new ButtonBuilder().setCustomId('mina_music_skip').setLabel('Skip').setEmoji('⏭️').setStyle(ButtonStyle.Secondary),new ButtonBuilder().setCustomId('mina_music_loop').setLabel('Loop').setEmoji('🔁').setStyle(ButtonStyle.Secondary),new ButtonBuilder().setCustomId('mina_music_stop').setLabel('Stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger)),new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('mina_music_shuffle').setLabel('Shuffle').setEmoji('🔀').setStyle(ButtonStyle.Secondary),new ButtonBuilder().setCustomId('mina_music_vol_down').setLabel('Vol −').setStyle(ButtonStyle.Secondary),new ButtonBuilder().setCustomId('mina_music_vol_up').setLabel('Vol +').setStyle(ButtonStyle.Secondary))];}
 function guard(ctx){const v=ctx.member?.voice?.channel;if(!v)return {error:'❌ Join a voice channel first.'};const me=ctx.guild?.members?.me;if(me&&!v.permissionsFor(me)?.has(['Connect','Speak']))return {error:'❌ I need Connect and Speak permissions.'};return {voice:v};}
-function getPlayer(manager,guildId){return manager?.getPlayer?.(guildId)||StarryAudioEngine.getPlayer(guildId,manager?.client)||null;}
+function getPlayer(manager,guildId){return manager?.getPlayer?.(guildId)||NovaBotAudioEngine.getPlayer(guildId,manager?.client)||null;}
 function isNativePlayer(p){return Boolean(p&&Array.isArray(p.queue)&&typeof p.playNext==='function');}
 async function play(ctx,manager,query){
  const g=guard(ctx); if(g.error)return ctx.reply(g.error);
@@ -32,22 +32,22 @@ async function play(ctx,manager,query){
     if(!p.playing&&!p.paused)await p.play();
     return sendResult({embeds:[trackEmbed(result.tracks[0],p)]});
    }
-  }catch(error){console.warn('[Mina/Starry Music] Lavalink route failed; switching to native audio:',error.message||error);}
+  }catch(error){console.warn('[NovaBot/NovaBot Music] Lavalink route failed; switching to native audio:',error.message||error);}
  }
- // Exact Starry native audio fallback: no Lavalink node is needed for this route.
+ // Exact NovaBot native audio fallback: no Lavalink node is needed for this route.
  try{
-  const result=await StarryAudioEngine.search(query,ctx.user);
+  const result=await NovaBotAudioEngine.search(query,ctx.user);
   if(!result?.tracks?.length)return sendResult('❌ No playable results found for that song.');
-  const native=StarryAudioEngine.getOrCreatePlayer(manager?.client||ctx.guild.client,ctx.guild.id,g.voice,ctx.channel);
+  const native=NovaBotAudioEngine.getOrCreatePlayer(manager?.client||ctx.guild.client,ctx.guild.id,g.voice,ctx.channel);
   native.voiceChannel=g.voice;native.textChannel=ctx.channel;native.loadingMessage=loading;
   native.queue.push(...result.tracks);
-  if(!native.currentTrack)native.playNext().catch(error=>console.warn('[Mina/Starry Native Audio] Playback error:',error.message||error));
+  if(!native.currentTrack)native.playNext().catch(error=>console.warn('[NovaBot/NovaBot Native Audio] Playback error:',error.message||error));
   const first=result.tracks[0];
   const payload=native.buildNowPlayingPayload(first)||{embeds:[trackEmbed({title:first.title,author:first.author,uri:first.url,length:first.duration,thumbnail:first.thumbnail,requester:first.requester},native)]};
   return sendResult(payload);
  }catch(error){
-  console.error('[Mina/Starry Native Audio] Search/play failed:',error);
-  return sendResult('❌ Starry audio could not resolve this track. Try another title or direct YouTube/SoundCloud link.');
+  console.error('[NovaBot/NovaBot Native Audio] Search/play failed:',error);
+  return sendResult('❌ NovaBot audio could not resolve this track. Try another title or direct YouTube/SoundCloud link.');
  }
 }
 async function execute(ctx,manager,action,value){
@@ -56,7 +56,7 @@ async function execute(ctx,manager,action,value){
  if(action==='join'){
   const g=guard(ctx);if(g.error)return ctx.reply(g.error);
   if(!p||isNativePlayer(p)){
-   p=StarryAudioEngine.getOrCreatePlayer(manager?.client||ctx.guild.client,ctx.guild.id,g.voice,ctx.channel);
+   p=NovaBotAudioEngine.getOrCreatePlayer(manager?.client||ctx.guild.client,ctx.guild.id,g.voice,ctx.channel);
    p.voiceChannel=g.voice;p.textChannel=ctx.channel;await p.connect();
   }else{
    if(p.voiceId!==g.voice.id)await p.setVoiceChannel(g.voice.id);
@@ -73,7 +73,7 @@ async function execute(ctx,manager,action,value){
  }
  if(action==='nowplaying'||action==='np')return current?ctx.reply(native?p.buildNowPlayingPayload(current):{embeds:[trackEmbed(current,p)]}):ctx.reply('Nothing is playing.');
  const voiceId=native?p.voiceChannel?.id:p.voiceId;
- if(ctx.member?.voice?.channelId!==voiceId)return ctx.reply('Join Mina’s voice channel to control playback.');
+ if(ctx.member?.voice?.channelId!==voiceId)return ctx.reply('Join NovaBot’s voice channel to control playback.');
  if(native){
   if(action==='pause'){p.pause(true);return ctx.reply('⏸️ Paused.');}
   if(action==='resume'){p.pause(false);return ctx.reply('▶️ Resumed.');}
@@ -111,7 +111,7 @@ async function execute(ctx,manager,action,value){
  return ctx.reply('Unknown music command. Try ,musichelp.');
 }
 function context(m){return {isInteraction:false,guild:m.guild,member:m.member,channel:m.channel,user:m.author,reply:x=>m.reply(x)};}
-async function handlePrefix(message,client){if(!message.guild||message.author.bot||!message.content)return false;const prefix=process.env.PREFIX||',';const content=message.content.trim();const used=[...new Set([prefix,',','.'])].sort((a,b)=>b.length-a.length).find(x=>x&&content.toLowerCase().startsWith(x.toLowerCase()));if(!used)return false;const args=content.slice(used.length).trim().split(/\s+/),raw=(args.shift()||'').toLowerCase();const aliases={p:'play',add:'play',np:'nowplaying',prev:'previous',back:'previous',summon:'join',connect:'join',vol:'volume',q:'queue',repeat:'loop',next:'skip',dc:'stop',find:'search'};const action=aliases[raw]||raw;const valid=['play','pause','resume','skip','stop','queue','nowplaying','volume','loop','shuffle','clear','remove','jump','replay','previous','join','search','autoplay','filter','speed','seek','help'];if(!valid.includes(action))return false;if(action==='help')return message.reply('🎵 **Mina Music**\n,play <song/URL> · ,pause · ,resume · ,skip · ,stop · ,queue · ,nowplaying\n,volume <0-150> · ,loop <off/track/queue> · ,shuffle · ,remove <position> · ,clear · ,jump <position> · ,seek <seconds> · ,filter <name> · ,speed <0.5-2>');return execute(context(message),client.manager,action,args.join(' '));}
+async function handlePrefix(message,client){if(!message.guild||message.author.bot||!message.content)return false;const prefix=process.env.PREFIX||',';const content=message.content.trim();const used=[...new Set([prefix,',','.'])].sort((a,b)=>b.length-a.length).find(x=>x&&content.toLowerCase().startsWith(x.toLowerCase()));if(!used)return false;const args=content.slice(used.length).trim().split(/\s+/),raw=(args.shift()||'').toLowerCase();const aliases={p:'play',add:'play',np:'nowplaying',prev:'previous',back:'previous',summon:'join',connect:'join',vol:'volume',q:'queue',repeat:'loop',next:'skip',dc:'stop',find:'search'};const action=aliases[raw]||raw;const valid=['play','pause','resume','skip','stop','queue','nowplaying','volume','loop','shuffle','clear','remove','jump','replay','previous','join','search','autoplay','filter','speed','seek','help'];if(!valid.includes(action))return false;if(action==='help')return message.reply('🎵 **NovaBot Music**\n,play <song/URL> · ,pause · ,resume · ,skip · ,stop · ,queue · ,nowplaying\n,volume <0-150> · ,loop <off/track/queue> · ,shuffle · ,remove <position> · ,clear · ,jump <position> · ,seek <seconds> · ,filter <name> · ,speed <0.5-2>');return execute(context(message),client.manager,action,args.join(' '));}
 async function handleButton(i,client){
  if(!i.customId.startsWith('mina_music_'))return false;
  const a=i.customId.slice(11),p=getPlayer(client.manager,i.guildId);
@@ -145,9 +145,9 @@ async function autocomplete(interaction,client){
   const hasReadyNode=Boolean(client.manager?.shoukaku&&[...client.manager.shoukaku.nodes.values()].some(n=>n.state===1));
   let tracks=[];
   if(hasReadyNode){const result=await client.manager.search(focused,{requester:interaction.user});tracks=result?.tracks||[];}
-  if(!tracks.length){const result=await StarryAudioEngine.search(focused,interaction.user);tracks=result?.tracks||[];}
+  if(!tracks.length){const result=await NovaBotAudioEngine.search(focused,interaction.user);tracks=result?.tracks||[];}
   const choices=tracks.slice(0,25).map(track=>({name:[track.title,track.author].filter(Boolean).join(' — ').slice(0,100)||'Unknown track',value:String(track.uri||track.url||[track.author,track.title].filter(Boolean).join(' - ')||focused).slice(0,100)}));
   return interaction.respond(choices);
- }catch(error){console.warn('[Mina/Starry Music] Autocomplete failed:',error.message||error);return interaction.respond([]);}
+ }catch(error){console.warn('[NovaBot/NovaBot Music] Autocomplete failed:',error.message||error);return interaction.respond([]);}
 }
 module.exports={createMusicManager,execute,handlePrefix,handleButton,autocomplete,trackEmbed,controlRows};
