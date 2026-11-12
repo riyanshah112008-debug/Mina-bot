@@ -4,7 +4,9 @@
   "private": true,
   "description": "Mina — Discord security, music and utility bot",
   "main": "src/index.js",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
@@ -16,6 +18,7 @@
     "discord-player": "^6.7.1",
     "discord.js": "^14.19.3",
     "dotenv": "^16.4.7",
-    "mathjs": "^14.8.1"
+    "mathjs": "^14.8.1",
+    "ffmpeg-static": "^5.2.0"
   }
 }
