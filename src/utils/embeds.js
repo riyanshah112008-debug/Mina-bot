@@ -6,8 +6,8 @@ const FOOTER = 'NovaBot • Server Management';
 
 function classify(message) {
   const value = String(message || '');
-  if (/\b(error|failed|cannot|could not|missing permission|not found|invalid|❌|🛑)\b/i.test(value)) return { title: 'NovaBot • Error', color: COLORS.danger };
-  if (/\b(warning|注意|⚠️|🚨)\b/i.test(value)) return { title: 'NovaBot • Warning', color: COLORS.warning };
+  if (/\\b(error|failed|cannot|could not|missing permission|not found|invalid)\\b/i.test(value) || /[❌🛑]/u.test(value)) return { title: 'NovaBot • Error', color: COLORS.danger };
+  if (/\\b(warning|注意)\\b/i.test(value) || /[⚠️🚨]/u.test(value)) return { title: 'NovaBot • Warning', color: COLORS.warning };
   if (/\b(success|enabled|disabled|saved|updated|completed|joined|paused|resumed|skipped|stopped|cancelled|set)\b|[✅🎉🔓🔒]/i.test(value)) return { title: 'NovaBot • Success', color: COLORS.success };
   return { title: 'NovaBot • Notice', color: COLORS.primary };
 }
