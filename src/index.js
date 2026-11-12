@@ -35,10 +35,17 @@ healthServer.listen(port, '0.0.0.0', () => console.log('[Mina] Health endpoint l
 
 client.once(Events.ClientReady, async ready => {
   console.log('[Mina] Online as ' + ready.user.tag);
+  if (process.env.GUILD_ID) {
+    const configuredGuild = await ready.guilds.fetch(process.env.GUILD_ID).catch(() => null);
+    if (!configuredGuild) console.warn('[Mina] GUILD_ID is set, but the bot cannot access that guild. Check the ID and invite.');
+  }
   try {
     const rest = new REST({ version: '10' }).setToken(token);
-    await rest.put(Routes.applicationCommands(clientId), { body: commandModule.commands });
-    console.log('[Mina] Registered ' + commandModule.commands.length + ' slash commands.');
+    const route = process.env.GUILD_ID
+      ? Routes.applicationGuildCommands(clientId, process.env.GUILD_ID)
+      : Routes.applicationCommands(clientId);
+    await rest.put(route, { body: commandModule.commands });
+    console.log('[Mina] Registered ' + commandModule.commands.length + ' slash commands' + (process.env.GUILD_ID ? ' for guild ' + process.env.GUILD_ID : ' globally') + '.');
   } catch (error) {
     console.error('[Mina] Slash command registration failed:', error.message);
   }
@@ -47,6 +54,9 @@ client.on(Events.InteractionCreate, async interaction => {
   try {
     if (interaction.isButton() || interaction.isModalSubmit()) return await commandModule.handleComponent(interaction);
     if (!interaction.isChatInputCommand()) return;
+    if (process.env.GUILD_ID && interaction.guildId !== process.env.GUILD_ID) {
+      return interaction.reply({ content: 'This bot is configured for a different server.', ephemeral: true }).catch(() => null);
+    }
     await commandModule.execute(interaction);
   }
   catch (error) {
