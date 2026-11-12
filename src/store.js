@@ -5,7 +5,7 @@ const dataDir = path.resolve(process.env.DATA_DIR || './data');
 const file = path.join(dataDir, 'guilds.json');
 const defaults = () => ({
   enabled: true,
-  antiNuke: { enabled: true, windowMs: 10000, limit: 3, lockdown: true, punish: 'timeout' },
+  antiNuke: { enabled: true, windowMs: 10000, limit: 3, minuteLimit: 5, hourLimit: 12, lockdown: true, quarantineHold: true, punish: 'timeout' },
   antiRaid: { enabled: true, windowMs: 15000, joinLimit: 8, minAccountAgeMs: 86400000, panicEnabled: true, panicJoinLimit: 6, panicDurationMs: 600000, panicUntil: 0 },
   joinGate: { enabled: false, minAccountAgeMs: 0, requireAvatar: false, usernameFilter: true, action: 'quarantine' },
   automod: { enabled: true, heatEnabled: true, heatThreshold: 100, heatDecayPerSecond: 2, windowMs: 7000, messageLimit: 6, mentionLimit: 5, attachmentLimit: 3, inviteFilter: true, linkFilter: true, webhookFilter: true, blacklistedWords: [], timeoutBaseMs: 300000, timeoutCapMs: 86400000, allowedDomains: [] },
