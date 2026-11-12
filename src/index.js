@@ -8,11 +8,13 @@ const store = require('./store');
 const security = require('./security');
 const commands = require('./commands');
 const utility = require('./utility');
+const music = require('./music');
 
 const token = process.env.DISCORD_TOKEN, clientId = process.env.CLIENT_ID;
 if (!token || !clientId) { console.error('Missing DISCORD_TOKEN or CLIENT_ID.'); process.exit(1); }
 const client = new Client({ intents: [GatewayIntentBits.Guilds,GatewayIntentBits.GuildMembers,GatewayIntentBits.GuildModeration,GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent,GatewayIntentBits.GuildVoiceStates], partials: [Partials.Channel,Partials.GuildMember,Partials.Message] });
 const player = new Player(client); client.player = player;
+music.bindEvents(player);
 const port = Number(process.env.PORT || 10000);
 const healthServer = http.createServer((req,res) => {
   if (req.url === '/health' || req.url === '/ping') { res.writeHead(200,{'content-type':'application/json'}); return res.end(JSON.stringify({status:'ok',bot:client.isReady()?'online':'starting',uptime:process.uptime()})); }
