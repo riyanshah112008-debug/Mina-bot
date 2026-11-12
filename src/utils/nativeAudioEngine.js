@@ -396,6 +396,7 @@ class NovaBotGuildPlayer {
         this.playbackStartTime = 0;
         this.disconnectTimeout = null;
         this._isSeeking = false;
+        this._trackEndHandled = false;
 
         // Initialize Discord.js AudioPlayer with Play on no-subscriber behavior and high jitter tolerance
         this.player = createAudioPlayer({
@@ -420,24 +421,27 @@ class NovaBotGuildPlayer {
             this.isPlaying = true;
         });
 
+        // Idle and error can both fire for one broken stream. Claim the track end once.
         this.player.on(AudioPlayerStatus.Idle, () => {
-            if (this.destroyed || this._isSeeking) return;
-            if (this.isPlaying) {
-                this.isPlaying = false;
-                this.handleTrackEnd();
-            } else if (this.currentTrack) {
-                // If stream died immediately without playing (e.g. 0-byte stream / 403 / network drop)
+            if (this.destroyed || this._isSeeking || !this.currentTrack || this._trackEndHandled) return;
+            if (!this.isPlaying) {
                 console.warn(`⚠️ [Audio Stream Failover] Track "${this.currentTrack.title}" ended before playing. Advancing...`);
-                this.handleTrackEnd();
             }
+            this.finishTrackOnce();
         });
 
         this.player.on('error', (error) => {
             console.warn(`⚠️ [Audio Stream Engine Status in ${this.guildId}]:`, error.message || error);
-            if (this.destroyed) return;
-            this.isPlaying = false;
-            this.handleTrackEnd();
+            this.finishTrackOnce();
         });
+    }
+
+    finishTrackOnce() {
+        if (this.destroyed || this._isSeeking || !this.currentTrack || this._trackEndHandled) return false;
+        this._trackEndHandled = true;
+        this.isPlaying = false;
+        this.handleTrackEnd();
+        return true;
     }
 
     async connect() {
@@ -701,6 +705,7 @@ class NovaBotGuildPlayer {
             this.previousTrack = this.currentTrack;
         }
         this.currentTrack = track;
+        this._trackEndHandled = false;
 
         try {
             await this.configureAudioQuality();
@@ -849,7 +854,7 @@ class NovaBotGuildPlayer {
             if (this.textChannel) {
                 this.textChannel.send(`⚠️ Could not stream **${track.title}**: ${err.message || 'Source stream unreachable'}`).catch(() => {});
             }
-            this.handleTrackEnd();
+            this.finishTrackOnce();
         }
     }
 
@@ -1687,6 +1692,62 @@ class NovaBotAudioEngine {
                 return { type: 'TRACK', tracks };
             }
         } catch (scErr) {}
+
+        // 10. Deezer catalogue fallback (metadata is resolved to a playable stream below).
+        try {
+            const dzResponse = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(query)}&limit=8`, {
+                signal: AbortSignal.timeout(7000)
+            });
+            if (dzResponse.ok) {
+                const dzData = await dzResponse.json();
+                const dzItems = Array.isArray(dzData.data) ? dzData.data : [];
+                if (dzItems.length) {
+                    const items = dzItems.filter(item => item && item.title && item.artist?.name);
+                    const best = items[0];
+                    if (best) {
+                        tracks.push({
+                            title: best.title,
+                            author: best.artist.name,
+                            album: best.album?.title || 'Deezer',
+                            url: best.link || `https://www.deezer.com/track/${best.id}`,
+                            duration: Number(best.duration || 180) * 1000,
+                            thumbnail: best.album?.cover_xl || best.album?.cover_big,
+                            source: 'Deezer',
+                            requester
+                        });
+                        return { type: 'TRACK', tracks };
+                    }
+                }
+            }
+        } catch (dzSearchError) {
+            console.warn('⚠️ [Deezer Search]:', dzSearchError.message || dzSearchError);
+        }
+
+        // 11. Apple Music/iTunes catalogue fallback (preview URLs are deliberately not used for playback).
+        try {
+            const itunesResponse = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=8`, {
+                signal: AbortSignal.timeout(7000)
+            });
+            if (itunesResponse.ok) {
+                const itunesData = await itunesResponse.json();
+                const best = Array.isArray(itunesData.results) ? itunesData.results.find(item => item.trackName && item.artistName) : null;
+                if (best) {
+                    tracks.push({
+                        title: best.trackName,
+                        author: best.artistName,
+                        album: best.collectionName || 'Apple Music',
+                        url: best.trackViewUrl || query,
+                        duration: Number(best.trackTimeMillis || 180000),
+                        thumbnail: (best.artworkUrl100 || '').replace('100x100bb', '600x600bb'),
+                        source: 'Apple Music',
+                        requester
+                    });
+                    return { type: 'TRACK', tracks };
+                }
+            }
+        } catch (appleSearchError) {
+            console.warn('⚠️ [Apple Music Search]:', appleSearchError.message || appleSearchError);
+        }
 
         return { type: 'TRACK', tracks: [] };
     }
