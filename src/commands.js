@@ -18,6 +18,12 @@ const commands = [
     .addSubcommand(s => s.setName('whitelist-remove').setDescription('Remove a trusted user').addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
     .addSubcommand(s => s.setName('trust-role-add').setDescription('Trust members with a role').addRoleOption(o => o.setName('role').setDescription('Trusted role').setRequired(true)))
     .addSubcommand(s => s.setName('trust-role-remove').setDescription('Remove a trusted role').addRoleOption(o => o.setName('role').setDescription('Role').setRequired(true)))
+    .addSubcommand(s => s.setName('threshold').setDescription('Configure the anti-nuke action threshold')
+      .addIntegerOption(o => o.setName('limit').setDescription('Actions before punishment (2–10)').setMinValue(2).setMaxValue(10).setRequired(true))
+      .addIntegerOption(o => o.setName('window').setDescription('Detection window in seconds (3–60)').setMinValue(3).setMaxValue(60).setRequired(true)))
+    .addSubcommand(s => s.setName('punishment').setDescription('Set anti-nuke punishment')
+      .addStringOption(o => o.setName('action').setDescription('Punishment action').setRequired(true).addChoices(
+        { name: 'Timeout', value: 'timeout' }, { name: 'Kick', value: 'kick' }, { name: 'Ban', value: 'ban' })))
     .addSubcommand(s => s.setName('module').setDescription('Enable or disable a protection module')
       .addStringOption(o => o.setName('name').setDescription('Protection module').setRequired(true).addChoices(
         { name: 'Anti-nuke', value: 'antiNuke' }, { name: 'Anti-raid', value: 'antiRaid' }, { name: 'AutoMod', value: 'automod' }))
@@ -114,6 +120,17 @@ async function execute(interaction) {
     if (sub === 'whitelist-remove') store.update(guild.id, c => { c.trusted = c.trusted.filter(id => id !== interaction.options.getUser('user').id); });
     if (sub === 'trust-role-add') store.update(guild.id, c => { const id = interaction.options.getRole('role').id; if (!c.trustedRoles.includes(id)) c.trustedRoles.push(id); });
     if (sub === 'trust-role-remove') store.update(guild.id, c => { c.trustedRoles = c.trustedRoles.filter(id => id !== interaction.options.getRole('role').id); });
+    if (sub === 'threshold') {
+      const limit = interaction.options.getInteger('limit');
+      const windowMs = interaction.options.getInteger('window') * 1000;
+      store.update(guild.id, c => { c.antiNuke.limit = limit; c.antiNuke.windowMs = windowMs; });
+      return interaction.reply({ content: 'Anti-nuke threshold set to ' + limit + ' actions in ' + (windowMs / 1000) + ' seconds.', ephemeral: true });
+    }
+    if (sub === 'punishment') {
+      const action = interaction.options.getString('action');
+      store.update(guild.id, c => { c.antiNuke.punish = action; });
+      return interaction.reply({ content: 'Anti-nuke punishment set to ' + action + '.', ephemeral: true });
+    }
     if (sub === 'module') {
       const key = interaction.options.getString('name');
       const enabled = interaction.options.getBoolean('enabled');
