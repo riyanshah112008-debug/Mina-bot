@@ -11,7 +11,7 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --test",
-    "check": "node --check src/index.js && node --check src/commands.js && node --check src/store.js && node --check src/security.js && node --check src/music.js && node --check src/utility.js && node --check src/spotify.js && node --check src/utils/musicManager.js && node --check src/utils/nativeAudioEngine.js && node --check src/utils/streamResolverClient.js"
+    "check": "node --check src/index.js && node --check src/utils/embeds.js && node --check src/commands.js && node --check src/store.js && node --check src/security.js && node --check src/music.js && node --check src/utility.js && node --check src/spotify.js && node --check src/utils/musicManager.js && node --check src/utils/nativeAudioEngine.js && node --check src/utils/streamResolverClient.js"
   },
   "dependencies": {
     "discord.js": "^14.19.3",

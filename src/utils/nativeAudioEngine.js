@@ -32,6 +32,7 @@ const {
 } = require('discord.js');
 const { getGuildLanguageSync, localizePayload, t } = require('./i18n');
 const config = require('../config');
+const { brandPayload } = require('./embeds');
 
 const MUSIC_BASE_URL = (process.env.PUBLIC_URL || process.env.FRONTEND_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 10000}`).replace(/\/+$/, '');
 const MUSIC_DASHBOARD_URL = `${MUSIC_BASE_URL}/music.html`;
@@ -533,7 +534,7 @@ class NovaBotGuildPlayer {
                                 .setTitle(nextSong.title ? nextSong.title.substring(0, 90) : 'Recommended Song')
                                 .setDescription(`🎵 Playing next recommended song by **${nextSong.author}**!\n*Mastering: Empowering Hi-Fi Active*`)
                                 .setFooter({ text: 'Continuous playback active • Click 📻 in player or use ,autoplay to toggle' });
-                            this.textChannel.send({ embeds: [autoEmbed] }).catch(() => {});
+                            this.textChannel.send(brandPayload({ embeds: [autoEmbed] })).catch(() => {});
                         }
                         this.queue.push(nextSong);
                         return this.playNext();
@@ -546,7 +547,7 @@ class NovaBotGuildPlayer {
             if (hadTrack && !this.destroyed) {
                 if (this.textChannel) {
                     const lang = this.guildId ? getGuildLanguageSync(this.guildId) : 'en';
-                    this.textChannel.send(t(lang, 'music.queue_ended', { play_cmd: '`,play <song>`' })).catch(() => {});
+                    this.textChannel.send(brandPayload(t(lang, 'music.queue_ended', { play_cmd: '`,play <song>`' }))).catch(() => {});
                 }
                 try { require('../modules/musicController').update(this.guildId, this.client); } catch (e) {}
             }
@@ -852,7 +853,7 @@ class NovaBotGuildPlayer {
                 this.loadingMessage = null;
             }
             if (this.textChannel) {
-                this.textChannel.send(`⚠️ Could not stream **${track.title}**: ${err.message || 'Source stream unreachable'}`).catch(() => {});
+                this.textChannel.send(brandPayload(`⚠️ Could not stream **${track.title}**: ${err.message || 'Source stream unreachable'}`)).catch(() => {});
             }
             this.handleTrackEnd(track);
         }
@@ -981,7 +982,7 @@ class NovaBotGuildPlayer {
 
         if (updateOnly && this.nowPlayingMessage) {
             try {
-                await this.nowPlayingMessage.edit(panelPayload);
+                await this.nowPlayingMessage.edit(brandPayload(panelPayload));
                 return;
             } catch (e) {}
         }
@@ -991,7 +992,7 @@ class NovaBotGuildPlayer {
             this.nowPlayingMessage = null;
         }
 
-        this.nowPlayingMessage = await this.textChannel.send(panelPayload).catch(() => null);
+        this.nowPlayingMessage = await this.textChannel.send(brandPayload(panelPayload)).catch(() => null);
     }
 
     pause(shouldPause) {
