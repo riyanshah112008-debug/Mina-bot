@@ -22,7 +22,7 @@ The bot stores server configuration and reminders in `DATA_DIR/guilds.json`. Use
 - `/spotify search` searches Spotify metadata.
 - Spotify track and playlist links can be resolved to track metadata and queued by matching the title/artist against the configured audio extractors.
 
-Spotify provides catalogue metadata, not a playable audio stream. Playback is performed by Discord Player using supported audio extractors; Spotify Premium is not required. Track matching can differ from the original Spotify recording. Source availability and extractor terms/availability can change.
+Spotify provides catalogue metadata, not a playable audio stream. Playback is performed by Discord Player using supported audio extractors; Spotify Premium is not required. Track matching can differ from the original Spotify recording. Music search uses SoundCloud; direct SoundCloud, Vimeo and Reverbnation URLs are supported by the official extractors. Some SoundCloud tracks cannot be streamed due to source restrictions. Source availability and extractor terms/availability can change.
 
 ## Security and moderation
 - Anti-nuke: audit-log monitoring for channel/role changes, permission overwrite changes, bans, kicks, webhook changes, member role changes and bot additions.
