@@ -2,6 +2,7 @@
 const {SlashCommandBuilder,PermissionFlagsBits,ButtonBuilder,ButtonStyle,EmbedBuilder,ActionRowBuilder,ModalBuilder,TextInputBuilder,TextInputStyle}=require('discord.js');
 const store=require('./store'),security=require('./security'),music=require('./music'),utility=require('./utility'),spotify=require('./spotify');
 const { brandPayload } = require('./utils/embeds');
+const moderation = require('./moderation');
 const challenges=new Map();
 const securityCommand=new SlashCommandBuilder().setName('security').setDescription('Configure NovaBot protection')
 .addSubcommand(s=>s.setName('setup').setDescription('Enable protection and set this channel as logs'))
@@ -74,6 +75,13 @@ new SlashCommandBuilder().setName('remind').setDescription('Create and manage re
 new SlashCommandBuilder().setName('timeout').setDescription('Timeout a member').addUserOption(o=>o.setName('user').setDescription('Member').setRequired(true)).addIntegerOption(o=>o.setName('minutes').setDescription('1–40320 minutes').setMinValue(1).setMaxValue(40320).setRequired(true)).addStringOption(o=>o.setName('reason').setDescription('Reason').setMaxLength(400)).setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers).toJSON(),
 new SlashCommandBuilder().setName('kick').setDescription('Kick a member').addUserOption(o=>o.setName('user').setDescription('Member').setRequired(true)).addStringOption(o=>o.setName('reason').setDescription('Reason').setMaxLength(400)).setDefaultMemberPermissions(PermissionFlagsBits.KickMembers).toJSON(),
 new SlashCommandBuilder().setName('ban').setDescription('Ban a member').addUserOption(o=>o.setName('user').setDescription('Member').setRequired(true)).addStringOption(o=>o.setName('reason').setDescription('Reason').setMaxLength(400)).setDefaultMemberPermissions(PermissionFlagsBits.BanMembers).toJSON(),
+new SlashCommandBuilder().setName('warn').setDescription('Warn a member and record a case').addUserOption(o=>o.setName('user').setDescription('Member').setRequired(true)).addStringOption(o=>o.setName('reason').setDescription('Reason').setMaxLength(400)).setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers).toJSON(),
+new SlashCommandBuilder().setName('warnings').setDescription('View a member warning history').addUserOption(o=>o.setName('user').setDescription('Member').setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers).toJSON(),
+new SlashCommandBuilder().setName('clearwarnings').setDescription('Clear a member warning history').addUserOption(o=>o.setName('user').setDescription('Member').setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages).toJSON(),
+new SlashCommandBuilder().setName('purge').setDescription('Bulk delete recent messages').addIntegerOption(o=>o.setName('amount').setDescription('Number of messages (2–100)').setMinValue(2).setMaxValue(100).setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages).toJSON(),
+new SlashCommandBuilder().setName('slowmode').setDescription('Set this channel slowmode').addIntegerOption(o=>o.setName('seconds').setDescription('0 to disable, maximum 21600 seconds').setMinValue(0).setMaxValue(21600).setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels).toJSON(),
+new SlashCommandBuilder().setName('nick').setDescription('Change or clear a member nickname').addUserOption(o=>o.setName('user').setDescription('Member').setRequired(true)).addStringOption(o=>o.setName('nickname').setDescription('New nickname; omit to clear').setMaxLength(32)).setDefaultMemberPermissions(PermissionFlagsBits.ManageNicknames).toJSON(),
+new SlashCommandBuilder().setName('unban').setDescription('Unban a user by Discord ID').addStringOption(o=>o.setName('user_id').setDescription('User ID').setRequired(true).setMinLength(17).setMaxLength(20)).addStringOption(o=>o.setName('reason').setDescription('Reason').setMaxLength(400)).setDefaultMemberPermissions(PermissionFlagsBits.BanMembers).toJSON(),
 new SlashCommandBuilder().setName('lockdown').setDescription('Emergency server lockdown').setDefaultMemberPermissions(PermissionFlagsBits.Administrator).toJSON(),
 new SlashCommandBuilder().setName('unlock').setDescription('Restore channels after lockdown').setDefaultMemberPermissions(PermissionFlagsBits.Administrator).toJSON(),
 new SlashCommandBuilder().setName('help').setDescription('Show NovaBot command guide').toJSON()
@@ -135,7 +143,79 @@ async function execute(i,client,player){
  if(['ping','avatar','userinfo','serverinfo','botinfo','calculate','poll','remind'].includes(name))return utilityRun(i,client);
  if(name==='lockdown'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});await security.lockdown(i.guild,'Manually activated by '+i.user.tag);return i.reply({content:'Lockdown activated.',ephemeral:true});}
  if(name==='unlock'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});await security.restoreLockdown(i.guild);return i.reply({content:'Lockdown recovery completed.',ephemeral:true});}
- if(['timeout','kick','ban'].includes(name)){const actor=await i.guild.members.fetch(i.user.id),user=i.options.getUser('user'),target=await i.guild.members.fetch(user.id).catch(()=>null);if(!target)return i.reply({content:'Member not found.',ephemeral:true});if(target.id===i.guild.ownerId||target.roles.highest.position>=actor.roles.highest.position)return i.reply({content:'Cannot moderate this member because of role hierarchy.',ephemeral:true});const reason=i.options.getString('reason')||'No reason provided';if(name==='timeout'){if(!actor.permissions.has(PermissionFlagsBits.ModerateMembers)||!target.moderatable)return i.reply({content:'Missing permission or target is above bot role.',ephemeral:true});await target.timeout(i.options.getInteger('minutes')*60000,reason);}if(name==='kick'){if(!actor.permissions.has(PermissionFlagsBits.KickMembers)||!target.kickable)return i.reply({content:'Missing permission or target is above bot role.',ephemeral:true});await target.kick(reason);}if(name==='ban'){if(!actor.permissions.has(PermissionFlagsBits.BanMembers)||!target.bannable)return i.reply({content:'Missing permission or target is above bot role.',ephemeral:true});await target.ban({reason});}await security.log(i.guild,'Moderation: '+user.tag+' was '+name+' by '+i.user.tag+'. Reason: '+reason);return i.reply({content:user.tag+' was '+name+'ed.',ephemeral:true});}
+ if(['timeout','kick','ban'].includes(name)){
+ const actor=await i.guild.members.fetch(i.user.id),user=i.options.getUser('user'),target=await i.guild.members.fetch(user.id).catch(()=>null);
+ if(!target)return i.reply({content:'Member not found in this server.',ephemeral:true});
+ const hierarchy=moderation.canActOnTarget(actor,target,i.guild.members.me);
+ if(!hierarchy.ok)return i.reply({content:hierarchy.reason,ephemeral:true});
+ const reason=i.options.getString('reason')||'No reason provided';
+ if(name==='timeout'){
+  if(!actor.permissions.has(PermissionFlagsBits.ModerateMembers)||!target.moderatable)return i.reply({content:'Missing Moderate Members permission or target cannot be timed out.',ephemeral:true});
+  await target.timeout(i.options.getInteger('minutes')*60000,reason);
+ } else if(name==='kick'){
+  if(!actor.permissions.has(PermissionFlagsBits.KickMembers)||!target.kickable)return i.reply({content:'Missing Kick Members permission or target cannot be kicked.',ephemeral:true});
+  await target.kick(reason);
+ } else {
+  if(!actor.permissions.has(PermissionFlagsBits.BanMembers)||!target.bannable)return i.reply({content:'Missing Ban Members permission or target cannot be banned.',ephemeral:true});
+  await target.ban({reason});
+ }
+ await security.log(i.guild,'Moderation: '+user.tag+' was '+name+' by '+i.user.tag+'. Reason: '+reason);
+ return i.reply({content:user.tag+' was '+(name==='timeout'?'timed out':name+'ed')+'.',ephemeral:true});
+}
+if(name==='warn'){
+ const actor=await i.guild.members.fetch(i.user.id),user=i.options.getUser('user'),target=await i.guild.members.fetch(user.id).catch(()=>null);
+ if(!target)return i.reply({content:'Member not found in this server.',ephemeral:true});
+ const hierarchy=moderation.canActOnTarget(actor,target,i.guild.members.me);if(!hierarchy.ok)return i.reply({content:hierarchy.reason,ephemeral:true});
+ if(!actor.permissions.has(PermissionFlagsBits.ModerateMembers))return i.reply({content:'Moderate Members permission required.',ephemeral:true});
+ const reason=i.options.getString('reason')||'No reason provided',item=moderation.addWarning(i.guildId,user.id,i.user.id,reason);
+ await security.log(i.guild,'⚠️ **Warning #'+item.id+'** · '+user.tag+' warned by '+i.user.tag+'. Reason: '+reason);
+ return i.reply({content:'Warning #'+item.id+' recorded for '+user.tag+'.',ephemeral:true});
+}
+if(name==='warnings'){
+ const user=i.options.getUser('user'),items=moderation.getWarnings(i.guildId,user.id);
+ if(!items.length)return i.reply({content:user.tag+' has no recorded warnings.',ephemeral:true});
+ const lines=items.slice(-15).map(x=>'**#'+x.id+'** · '+(x.type||'warning')+' · '+x.reason+' · <t:'+Math.floor(new Date(x.at).getTime()/1000)+':R>');
+ return i.reply({embeds:[new EmbedBuilder().setColor(0xF1C40F).setTitle('Warning history · '+user.tag).setDescription(lines.join('\\n').slice(0,4000))],ephemeral:true});
+}
+if(name==='clearwarnings'){
+ if(!i.memberPermissions.has(PermissionFlagsBits.ManageMessages))return i.reply({content:'Manage Messages permission required.',ephemeral:true});
+ const user=i.options.getUser('user'),removed=moderation.clearWarnings(i.guildId,user.id,i.user.id);
+ await security.log(i.guild,'🧹 Cleared '+removed+' warning(s) for '+user.tag+' by '+i.user.tag+'.');
+ return i.reply({content:'Cleared '+removed+' warning(s) for '+user.tag+'.',ephemeral:true});
+}
+if(name==='purge'){
+ if(!i.memberPermissions.has(PermissionFlagsBits.ManageMessages))return i.reply({content:'Manage Messages permission required.',ephemeral:true});
+ const amount=i.options.getInteger('amount');
+ await i.deferReply({ephemeral:true});
+ const deleted=await i.channel.bulkDelete(amount,true);
+ await security.log(i.guild,'🧹 '+i.user.tag+' bulk-deleted '+deleted.size+' messages in #'+i.channel.name+'.');
+ return i.editReply('Deleted '+deleted.size+' recent messages. Messages older than 14 days are skipped by Discord.');
+}
+if(name==='slowmode'){
+ if(!i.memberPermissions.has(PermissionFlagsBits.ManageChannels))return i.reply({content:'Manage Channels permission required.',ephemeral:true});
+ const seconds=i.options.getInteger('seconds');
+ await i.channel.setRateLimitPerUser(seconds,'Changed by '+i.user.tag);
+ await security.log(i.guild,'🐢 Slowmode set to '+seconds+'s in #'+i.channel.name+' by '+i.user.tag+'.');
+ return i.reply({content:seconds?'Slowmode set to '+seconds+' seconds.':'Slowmode disabled.',ephemeral:true});
+}
+if(name==='nick'){
+ const actor=await i.guild.members.fetch(i.user.id),user=i.options.getUser('user'),target=await i.guild.members.fetch(user.id).catch(()=>null);
+ if(!target)return i.reply({content:'Member not found in this server.',ephemeral:true});
+ const hierarchy=moderation.canActOnTarget(actor,target,i.guild.members.me);if(!hierarchy.ok)return i.reply({content:hierarchy.reason,ephemeral:true});
+ if(!actor.permissions.has(PermissionFlagsBits.ManageNicknames)||!target.manageable)return i.reply({content:'Missing Manage Nicknames permission or target cannot be edited.',ephemeral:true});
+ await target.setNickname(i.options.getString('nickname'), 'Nickname changed by '+i.user.tag);
+ return i.reply({content:'Nickname updated for '+user.tag+'.',ephemeral:true});
+}
+if(name==='unban'){
+ if(!i.memberPermissions.has(PermissionFlagsBits.BanMembers))return i.reply({content:'Ban Members permission required.',ephemeral:true});
+ const id=i.options.getString('user_id'),reason=i.options.getString('reason')||'No reason provided';
+ if(!/^\\d{17,20}$/.test(id))return i.reply({content:'Enter a valid Discord user ID.',ephemeral:true});
+ const existing=await i.guild.bans.fetch(id).catch(()=>null);
+ if(!existing)return i.reply({content:'That user is not currently banned.',ephemeral:true});
+ await i.guild.members.unban(id,reason);
+ await security.log(i.guild,'🔓 User '+id+' unbanned by '+i.user.tag+'. Reason: '+reason);
+ return i.reply({content:'User '+id+' has been unbanned.',ephemeral:true});
+}
 }
 async function handleComponent(i){
  if(i.isButton()&&i.customId==='mina_verify_start'){const a=Math.floor(Math.random()*8)+2,b=Math.floor(Math.random()*8)+2,key=i.guildId+':'+i.user.id;challenges.set(key,{answer:String(a+b),expires:Date.now()+180000});const modal=new ModalBuilder().setCustomId('mina_verify_answer').setTitle('Verification check');const input=new TextInputBuilder().setCustomId('answer').setLabel('What is '+a+' + '+b+'?').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(3);modal.addComponents(new ActionRowBuilder().addComponents(input));return i.showModal(modal);}
