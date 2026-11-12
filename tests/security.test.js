@@ -11,6 +11,9 @@ test('guild defaults enable baseline protection and verification is opt-in', () 
   assert.equal(cfg.antiRaid.enabled, true);
   assert.equal(cfg.automod.enabled, true);
   assert.equal(cfg.automod.linkFilter, true);
+  assert.equal(cfg.automod.heatEnabled, true);
+  assert.equal(cfg.automod.heatThreshold, 100);
+  assert.deepEqual(cfg.automod.blacklistedWords, []);
   assert.equal(cfg.verification.enabled, false);
   assert.deepEqual(cfg.trusted, []);
   assert.deepEqual(cfg.trustedRoles, []);
