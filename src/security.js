@@ -10,9 +10,9 @@ const recentTimes = (map, key, now, windowMs) => {
   map.set(key, values);
   return values;
 };
-const isTrusted = (cfg, id, guild) => {
-  if (id === guild.ownerId || cfg.trusted.includes(id)) return true;
-  const member = guild.members.cache.get(id);
+const isTrusted = async (cfg, id, guild) => {
+  if (id === guild.ownerId || id === guild.client.user?.id || cfg.trusted.includes(id)) return true;
+  const member = guild.members.cache.get(id) || await guild.members.fetch(id).catch(() => null);
   return Boolean(member && (cfg.trustedRoles || []).some(roleId => member.roles.cache.has(roleId)));
 };
 function recordIncident(guild, type, actorId, details, severity = 'high') {
@@ -79,7 +79,7 @@ async function handleDestructiveAudit(entry, label) {
   const cfg = store.get(guild.id);
   if (!cfg.enabled || !cfg.antiNuke.enabled) return;
   const executor = entry.executor;
-  if (!executor || isTrusted(cfg, executor.id, guild)) return;
+  if (!executor || await isTrusted(cfg, executor.id, guild)) return;
   if (entry.action === AuditLogEvent.RoleUpdate && !(entry.changes || []).some(change => change.key === 'permissions')) return;
   if (entry.action === AuditLogEvent.MemberRoleUpdate && !(entry.changes || []).some(change => change.key === '$add' || change.key === '$remove')) return;
   recordIncident(guild, label, executor.id, 'Audit-log action by ' + executor.tag + '; target ' + (entry.targetId || 'unknown'));
@@ -102,8 +102,11 @@ async function handleDestructiveAudit(entry, label) {
   await log(guild, '⚠️ Anti-nuke: ' + executor.tag + ' performed ' + label + ' (' + list.length + '/' + cfg.antiNuke.limit + ').');
   if (list.length >= cfg.antiNuke.limit) {
     const member = await guild.members.fetch(executor.id).catch(() => null);
-    if (member?.moderatable) {
-      await member.timeout(60 * 60 * 1000, 'Mina anti-nuke threshold exceeded').catch(() => null);
+    if (member) {
+      const reason = 'Mina anti-nuke threshold exceeded';
+      if (cfg.antiNuke.punish === 'ban' && member.bannable) await member.ban({ reason }).catch(() => null);
+      else if (cfg.antiNuke.punish === 'kick' && member.kickable) await member.kick(reason).catch(() => null);
+      else if (member.moderatable) await member.timeout(60 * 60 * 1000, reason).catch(() => null);
     }
     recordIncident(guild, 'anti-nuke threshold', executor.id, 'Threshold ' + cfg.antiNuke.limit + ' reached in ' + Math.round(cfg.antiNuke.windowMs / 1000) + ' seconds', 'critical');
     actionBuckets.set(key, []);
@@ -112,7 +115,7 @@ async function handleDestructiveAudit(entry, label) {
 }
 async function onJoin(member) {
   const cfg = store.get(member.guild.id);
-  if (!cfg.enabled || isTrusted(cfg, member.id, member.guild)) return;
+  if (!cfg.enabled || await isTrusted(cfg, member.id, member.guild)) return;
   const age = Date.now() - member.user.createdTimestamp;
   const verification = cfg.verification || {};
   const quarantineId = verification.enabled
@@ -160,7 +163,7 @@ function isSuspiciousLink(content, allowedDomains) {
 async function onMessage(message) {
   if (!message.guild || message.author.bot || message.webhookId) return false;
   const cfg = store.get(message.guild.id);
-  if (!cfg.enabled || !cfg.automod.enabled || isTrusted(cfg, message.author.id, message.guild)) return false;
+  if (!cfg.enabled || !cfg.automod.enabled || await isTrusted(cfg, message.author.id, message.guild)) return false;
   const key = message.guild.id + ':' + message.author.id;
   const now = Date.now();
   const list = (messageBuckets.get(key) || []).filter(x => now - x.at < cfg.automod.windowMs);
