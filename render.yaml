@@ -17,12 +17,6 @@ services:
         sync: false
       - key: PREFIX
         value: ,
-      - key: LAVALINK_URL
-        sync: false
-      - key: LAVALINK_AUTH
-        sync: false
-      - key: LAVALINK_SECURE
-        value: 'true'
       - key: SPOTIFY_CLIENT_ID
         sync: false
       - key: SPOTIFY_CLIENT_SECRET
