@@ -1,5 +1,5 @@
 // ==========================================
-// 🛡️ Starry BOT CONFIGURATION
+// 🛡️ NovaBot BOT CONFIGURATION
 // ==========================================
 
 module.exports = {
@@ -85,5 +85,5 @@ module.exports = {
     },
 
     // Multi-bot cluster metadata
-    CLUSTER_NAME: 'Starry-Starry-Network'
+    CLUSTER_NAME: 'NovaBot-NovaBot-Network'
 };
