@@ -135,7 +135,7 @@ async function onJoin(member) {
   if (gate.enabled) {
     if (gate.minAccountAgeMs > 0 && age < gate.minAccountAgeMs) violations.push('new account');
     if (gate.requireAvatar && !member.user.avatar) violations.push('no avatar');
-    if (gate.usernameFilter && /discord(?:app)?\\.com\\/invite\\/|discord\\.gg\\//i.test(member.user.username)) violations.push('advertising username');
+    if (gate.usernameFilter && /discord(?:app)?\.com\/invite\/|discord\.gg\//i.test(member.user.username)) violations.push('advertising username');
   }
 
   if (violations.length) {
