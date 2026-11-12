@@ -10,6 +10,7 @@ const messageBuckets = new Map();
 const joinBuckets = new Map();
 const heatBuckets = new Map();
 const strikeBuckets = new Map();
+const raidJoiners = new Map();
 
 function recent(map, key, now, windowMs) {
   const list = (map.get(key) || []).filter(item => now - item < windowMs);
@@ -126,28 +127,62 @@ async function handleDestructiveAudit(entry, label) {
 async function onJoin(member) {
   const cfg = store.get(member.guild.id);
   if (!cfg.enabled || await trusted(cfg, member.id, member.guild)) return;
-  const age = Date.now() - member.user.createdTimestamp;
+
+  const now = Date.now();
+  const age = now - member.user.createdTimestamp;
+  const gate = cfg.joinGate;
+  const violations = [];
+  if (gate.enabled) {
+    if (gate.minAccountAgeMs > 0 && age < gate.minAccountAgeMs) violations.push('new account');
+    if (gate.requireAvatar && !member.user.avatar) violations.push('no avatar');
+    if (gate.usernameFilter && /discord(?:app)?\\.com\\/invite\\/|discord\\.gg\\//i.test(member.user.username)) violations.push('advertising username');
+  }
+
+  if (violations.length) {
+    incident(member.guild, 'join gate', member.id, 'Join filters: ' + violations.join(', '), 'high');
+    await log(member.guild, '🚧 Join Gate flagged ' + member.user.tag + ': ' + violations.join(', '));
+    if (gate.action === 'ban' && member.bannable) {
+      await member.ban({ reason: 'NovaBot Join Gate: ' + violations.join(', ') }).catch(() => null);
+      return;
+    }
+    if (gate.action === 'kick' && member.kickable) {
+      await member.kick('NovaBot Join Gate: ' + violations.join(', ')).catch(() => null);
+      return;
+    }
+  }
+
   const verification = cfg.verification;
   const quarantineId = verification.enabled
     ? verification.quarantineRoleId
-    : cfg.antiRaid.enabled && age < cfg.antiRaid.minAccountAgeMs ? cfg.quarantineRoleId : null;
-
+    : (violations.length || (cfg.antiRaid.enabled && age < cfg.antiRaid.minAccountAgeMs))
+      ? cfg.quarantineRoleId : null;
   if (quarantineId) {
     const role = await member.guild.roles.fetch(quarantineId).catch(() => null);
-    if (role && member.manageable) await member.roles.add(role, 'NovaBot verification/anti-raid gate').catch(() => null);
+    if (role && member.manageable && !member.roles.cache.has(role.id)) {
+      await member.roles.add(role, 'NovaBot Join Gate / verification / anti-raid gate').catch(() => null);
+    }
   }
+
   if (age < cfg.antiRaid.minAccountAgeMs) {
     incident(member.guild, 'young account join', member.id, 'Account age below configured minimum', 'medium');
     await log(member.guild, '🛡️ Young account joined: ' + member.user.tag);
   }
+
   if (!cfg.antiRaid.enabled) return;
-  const joins = recent(joinBuckets, member.guild.id, Date.now(), cfg.antiRaid.windowMs);
-  joins.push(Date.now());
+  raidJoiners.set(member.guild.id + ':' + member.id, now);
+  const joins = recent(joinBuckets, member.guild.id, now, cfg.antiRaid.windowMs);
+  joins.push(now);
+
+  if (cfg.antiRaid.panicEnabled && joins.length >= cfg.antiRaid.panicJoinLimit && now >= cfg.antiRaid.panicUntil) {
+    const panicUntil = now + cfg.antiRaid.panicDurationMs;
+    store.update(member.guild.id, config => { config.antiRaid.panicUntil = panicUntil; });
+    incident(member.guild, 'join raid panic', member.id, joins.length + ' joins triggered a ' + Math.round(cfg.antiRaid.panicDurationMs / 60000) + ' minute panic window', 'critical');
+    await log(member.guild, '🚨 **Join Raid panic activated.** New joiners will be temporarily blocked from sending messages.');
+  }
   if (joins.length >= cfg.antiRaid.joinLimit) {
     await lockdown(member.guild, joins.length + ' joins within raid detection window');
   }
 }
-
 function suspiciousLink(content, allowed = []) {
   const allow = new Set(allowed.map(value => value.toLowerCase().replace(/^www\./, '')));
   for (const raw of content.match(/https?:\/\/[^\s<>]+/gi) || []) {
@@ -175,6 +210,18 @@ async function onMessage(message) {
   if (!message.webhookId && await trusted(cfg, message.author.id, message.guild)) return false;
 
   const now = Date.now();
+  const raidKey = message.guild.id + ':' + message.author.id;
+  const joinedAt = raidJoiners.get(raidKey);
+  if (!message.webhookId && cfg.antiRaid.panicEnabled && now < cfg.antiRaid.panicUntil &&
+      joinedAt && now - joinedAt <= cfg.antiRaid.panicDurationMs && !await trusted(cfg, message.author.id, message.guild)) {
+    await message.delete().catch(() => null);
+    if (message.member?.moderatable) {
+      await message.member.timeout(Math.max(60000, cfg.antiRaid.panicUntil - now), 'NovaBot Join Raid panic').catch(() => null);
+    }
+    incident(message.guild, 'join raid panic action', message.author.id, 'Message blocked during active join-raid panic', 'high');
+    await log(message.guild, '🚨 Join Raid panic action on ' + (message.author.tag || message.author.username));
+    return true;
+  }
   const key = message.guild.id + ':' + (message.webhookId || message.author.id);
   const list = (messageBuckets.get(key) || []).filter(item => now - item.at < automod.windowMs);
   const content = String(message.content || '').toLowerCase();
