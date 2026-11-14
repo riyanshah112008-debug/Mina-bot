@@ -5,20 +5,30 @@ const { brandPayload } = require('./utils/embeds');
 const moderation = require('./moderation');
 const challenges=new Map();
 function moderationCaseEmbed({ action, target, moderator, reason, guild, details }) {
- const colors={warn:0xF1C40F,timeout:0xE67E22,kick:0xE67E22,ban:0xED4245,unban:0x57F287,purge:0x5865F2,slowmode:0x5865F2,nick:0x5865F2,clearwarnings:0x57F287,lockdown:0xED4245,unlock:0x57F287};
- const labels={warn:'Member Warned',timeout:'Member Timed Out',kick:'Member Kicked',ban:'Member Banned',unban:'User Unbanned',purge:'Messages Purged',slowmode:'Slowmode Updated',nick:'Nickname Updated',clearwarnings:'Warnings Cleared',lockdown:'Server Lockdown Enabled',unlock:'Server Lockdown Released'};
- const embed=new EmbedBuilder().setColor(colors[action]||0x5865F2).setTitle(labels[action]||'Moderation Action').setTimestamp();
- if(guild?.name) embed.setAuthor({name:guild.name+' • Moderation',...(guild.iconURL()?{iconURL:guild.iconURL()}:{})});
- if(target){
-  const user=target.user||target;
-  embed.setDescription('**Member**\n'+(user.tag||user.username||'Unknown user')+' · <@'+user.id+'>');
-  if(typeof user.displayAvatarURL==='function')embed.setThumbnail(user.displayAvatarURL({size:256}));
-  embed.addFields({name:'User ID',value:String(user.id),inline:true});
- } else if(details) embed.setDescription(details);
- if(moderator)embed.addFields({name:'Moderator',value:(moderator.tag||moderator.username||'Unknown')+' · <@'+moderator.id+'>',inline:true});
- if(details && target)embed.addFields({name:'Details',value:String(details).slice(0,1024),inline:false});
- if(reason)embed.addFields({name:'Reason',value:String(reason).slice(0,1024),inline:false});
- embed.setFooter({text:'NovaBot Moderation'+(target?' • '+target.id:'')});
+ const labels={warn:'Warn',timeout:'Timeout',kick:'Kick',ban:'Ban',unban:'Unban',purge:'Purge',slowmode:'Slowmode',nick:'Nickname change',clearwarnings:'Clear warnings',lockdown:'Lockdown',unlock:'Unlock'};
+ const plurals={warn:'warnings',timeout:'timeouts',kick:'kicks',ban:'bans',unban:'unbans',purge:'purges',slowmode:'slowmode changes',nick:'nickname changes',clearwarnings:'warning clears',lockdown:'lockdowns',unlock:'unlock actions'};
+ const user=target?.user||target;
+ const userId=user?.id||String(details||'').match(/\d{17,20}/)?.[0];
+ const mention=userId?'<@'+userId+'>':'';
+ const reasonText=String(reason||'No reason.');
+ const moderatorText=moderator?'<@'+moderator.id+'>':'Unknown moderator';
+ const subject=mention||(details?String(details).replace(/\*\*/g,'').slice(0,900):'No target details.');
+ const plural=plurals[action]||'actions';
+ const description=[
+  '📋 **Reason:** '+reasonText,
+  '👤 **Moderator:** '+moderatorText,
+  '',
+  '✅ **Successful '+plural+'**',
+  '▶️ '+subject,
+  '',
+  '❌ **Unsuccessful '+plural+'**',
+  'No '+plural+' failed!'
+ ].join('\n').slice(0,4096);
+ const embed=new EmbedBuilder().setTitle((labels[action]||'Moderation')+' result:').setDescription(description);
+ if(guild?.name) embed.setAuthor({name:guild.name+' ★ •\nModeration',...(guild.iconURL()?{iconURL:guild.iconURL()}:{})});
+ const time=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+ embed.setFooter({text:'Mina Moderation'+(userId?' • '+userId:'')+' | Today at '+time});
+ if(user&&typeof user.displayAvatarURL==='function') embed.setThumbnail(user.displayAvatarURL({size:256}));
  return embed;
 }
 
@@ -370,4 +380,4 @@ async function handlePrefix(message) {
  return false;
 }
 
-module.exports={commands,execute,handleComponent,handlePrefix};
+module.exports={commands,execute,handleComponent,handlePrefix,moderationCaseEmbed};
