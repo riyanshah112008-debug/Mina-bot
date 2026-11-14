@@ -1,7 +1,7 @@
 'use strict';
 const {SlashCommandBuilder,PermissionFlagsBits,ButtonBuilder,ButtonStyle,EmbedBuilder,ActionRowBuilder,ModalBuilder,TextInputBuilder,TextInputStyle}=require('discord.js');
 const store=require('./store'),security=require('./security'),music=require('./music'),utility=require('./utility'),spotify=require('./spotify');
-const { brandPayload } = require('./utils/embeds');
+const { brandPayload, buildModerationEmbed } = require('./utils/embeds');
 const moderation = require('./moderation');
 const challenges=new Map();
 const securityCommand=new SlashCommandBuilder().setName('security').setDescription('Configure NovaBot protection')
@@ -149,9 +149,11 @@ async function execute(i,client,player){
  const hierarchy=moderation.canActOnTarget(actor,target,i.guild.members.me);
  if(!hierarchy.ok)return i.reply({content:hierarchy.reason,ephemeral:true});
  const reason=i.options.getString('reason')||'No reason provided';
+ let duration;
  if(name==='timeout'){
   if(!actor.permissions.has(PermissionFlagsBits.ModerateMembers)||!target.moderatable)return i.reply({content:'Missing Moderate Members permission or target cannot be timed out.',ephemeral:true});
-  await target.timeout(i.options.getInteger('minutes')*60000,reason);
+  duration=i.options.getInteger('minutes');
+  await target.timeout(duration*60000,reason);
  } else if(name==='kick'){
   if(!actor.permissions.has(PermissionFlagsBits.KickMembers)||!target.kickable)return i.reply({content:'Missing Kick Members permission or target cannot be kicked.',ephemeral:true});
   await target.kick(reason);
@@ -159,8 +161,10 @@ async function execute(i,client,player){
   if(!actor.permissions.has(PermissionFlagsBits.BanMembers)||!target.bannable)return i.reply({content:'Missing Ban Members permission or target cannot be banned.',ephemeral:true});
   await target.ban({reason});
  }
- await security.log(i.guild,'Moderation: '+user.tag+' was '+name+' by '+i.user.tag+'. Reason: '+reason);
- return i.reply({content:user.tag+' was '+(name==='timeout'?'timed out':name+'ed')+'.',ephemeral:true});
+ const caseId=Date.now().toString(36).toUpperCase();
+ const embed=buildModerationEmbed({action:name,target,moderator:actor,reason,duration:duration?duration+' minute(s)':null,caseId,guild:i.guild});
+ await security.log(i.guild,{embeds:[embed]});
+ return i.reply({embeds:[embed],ephemeral:true});
 }
 if(name==='warn'){
  const actor=await i.guild.members.fetch(i.user.id),user=i.options.getUser('user'),target=await i.guild.members.fetch(user.id).catch(()=>null);
@@ -311,19 +315,28 @@ async function handlePrefix(message) {
     return true;
    }
    await target.timeout(minutes * 60000, timeoutReason);
-   await message.reply(target.user.tag + ' timed out for ' + minutes + ' minute(s).').catch(() => null);
+   const caseId = Date.now().toString(36).toUpperCase();
+   const embed = buildModerationEmbed({ action: 'timeout', target, moderator: message.member, reason: timeoutReason, duration: minutes + ' minute(s)', caseId, guild: message.guild });
+   await security.log(message.guild, { embeds: [embed] });
+   await message.reply({ embeds: [embed] }).catch(() => null);
    return true;
   }
   if (name === 'kick') {
    if (!requirePerm(PermissionFlagsBits.KickMembers) || !target.kickable) return deny();
    await target.kick(reason);
-   await message.reply(target.user.tag + ' kicked.').catch(() => null);
+   const caseId = Date.now().toString(36).toUpperCase();
+   const embed = buildModerationEmbed({ action: 'kick', target, moderator: message.member, reason, caseId, guild: message.guild });
+   await security.log(message.guild, { embeds: [embed] });
+   await message.reply({ embeds: [embed] }).catch(() => null);
    return true;
   }
   if (name === 'ban') {
    if (!requirePerm(PermissionFlagsBits.BanMembers) || !target.bannable) return deny();
    await target.ban({ reason });
-   await message.reply(target.user.tag + ' banned.').catch(() => null);
+   const caseId = Date.now().toString(36).toUpperCase();
+   const embed = buildModerationEmbed({ action: 'ban', target, moderator: message.member, reason, caseId, guild: message.guild });
+   await security.log(message.guild, { embeds: [embed] });
+   await message.reply({ embeds: [embed] }).catch(() => null);
    return true;
   }
   if (name === 'nick') {

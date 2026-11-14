@@ -43,7 +43,10 @@ async function log(guild, message) {
   if (!id) return;
   const channel = guild.channels.cache.get(id) || await guild.channels.fetch(id).catch(() => null);
   if (channel?.isTextBased() && channel.send) {
-    await channel.send(brandPayload({ content: message.slice(0, 4000) })).catch(() => null);
+    const payload = typeof message === 'string'
+      ? brandPayload({ content: message.slice(0, 4000) })
+      : message;
+    await channel.send(payload).catch(() => null);
   }
 }
 
