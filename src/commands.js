@@ -259,7 +259,7 @@ async function handlePrefix(message) {
   if (!requirePerm(PermissionFlagsBits.Administrator)) return deny();
   if (name === 'lockdown') await security.lockdown(message.guild, 'Manually activated by ' + message.author.tag);
   else await security.restoreLockdown(message.guild);
-  await message.reply(name === 'lockdown' ? '🚨 Lockdown activated.' : '🔓 Lockdown released.').catch(() => null);
+  await message.reply({ embeds: [moderationCaseEmbed({ action:name, moderator:message.author, reason:'Manual action', guild:message.guild })] }).catch(() => null);
   return true;
  }
  if (name === 'purge') {
@@ -271,7 +271,7 @@ async function handlePrefix(message) {
   }
   const deleted = await message.channel.bulkDelete(amount, true).catch(() => null);
   await security.log(message.guild, message.author.tag + ' bulk-deleted ' + (deleted?.size || 0) + ' messages in #' + message.channel.name + '.');
-  await message.channel.send('Deleted ' + (deleted?.size || 0) + ' recent messages.').then(m => setTimeout(() => m.delete().catch(() => null), 5000)).catch(() => null);
+  await message.channel.send({ embeds: [moderationCaseEmbed({ action:'purge', moderator:message.author, guild:message.guild, details:'**Channel**\\n<#'+message.channelId+'>\\n\\n**Deleted**\\n'+(deleted?.size||0)+' recent message(s)' })] }).then(m => setTimeout(() => m.delete().catch(() => null), 8000)).catch(() => null);
   return true;
  }
  if (name === 'slowmode') {
@@ -282,7 +282,7 @@ async function handlePrefix(message) {
    return true;
   }
   await message.channel.setRateLimitPerUser(seconds, 'Changed by ' + message.author.tag);
-  await message.reply(seconds ? 'Slowmode set to ' + seconds + ' seconds.' : 'Slowmode disabled.').catch(() => null);
+  await message.reply({ embeds: [moderationCaseEmbed({ action:'slowmode', moderator:message.author, guild:message.guild, details:'**Channel**\\n<#'+message.channelId+'>\\n\\n**Slowmode**\\n'+(seconds?seconds+' seconds':'Disabled') })] }).catch(() => null);
   return true;
  }
  if (['warn', 'warnings', 'clearwarnings', 'timeout', 'kick', 'ban', 'nick'].includes(name)) {
@@ -303,7 +303,7 @@ async function handlePrefix(message) {
    if (!requirePerm(PermissionFlagsBits.ModerateMembers)) return deny();
    const item = moderation.addWarning(message.guildId, target.id, message.author.id, reason);
    await security.log(message.guild, 'Warning #' + item.id + ' · ' + target.user.tag + ' by ' + message.author.tag + '. Reason: ' + reason);
-   await message.reply('Warning #' + item.id + ' recorded for ' + target.user.tag + '.').catch(() => null);
+   await message.reply({ embeds: [moderationCaseEmbed({ action:'warn', target, moderator:message.author, reason:'Warning #'+item.id+' · '+reason, guild:message.guild })] }).catch(() => null);
    return true;
   }
   if (name === 'warnings') {
@@ -316,7 +316,7 @@ async function handlePrefix(message) {
   if (name === 'clearwarnings') {
    if (!requirePerm(PermissionFlagsBits.ManageMessages)) return deny();
    const count = moderation.clearWarnings(message.guildId, target.id, message.author.id);
-   await message.reply('Cleared ' + count + ' warning(s) for ' + target.user.tag + '.').catch(() => null);
+   await message.reply({ embeds: [moderationCaseEmbed({ action:'clearwarnings', target, moderator:message.author, reason:count+' warning(s) removed', guild:message.guild })] }).catch(() => null);
    return true;
   }
   if (name === 'timeout') {
@@ -328,25 +328,25 @@ async function handlePrefix(message) {
     return true;
    }
    await target.timeout(minutes * 60000, timeoutReason);
-   await message.reply(target.user.tag + ' timed out for ' + minutes + ' minute(s).').catch(() => null);
+   await message.reply({ embeds: [moderationCaseEmbed({ action:'timeout', target, moderator:message.author, reason:timeoutReason, guild:message.guild, details:'Duration: '+minutes+' minute(s)' })] }).catch(() => null);
    return true;
   }
   if (name === 'kick') {
    if (!requirePerm(PermissionFlagsBits.KickMembers) || !target.kickable) return deny();
    await target.kick(reason);
-   await message.reply(target.user.tag + ' kicked.').catch(() => null);
+   await message.reply({ embeds: [moderationCaseEmbed({ action:'kick', target, moderator:message.author, reason, guild:message.guild })] }).catch(() => null);
    return true;
   }
   if (name === 'ban') {
    if (!requirePerm(PermissionFlagsBits.BanMembers) || !target.bannable) return deny();
    await target.ban({ reason });
-   await message.reply(target.user.tag + ' banned.').catch(() => null);
+   await message.reply({ embeds: [moderationCaseEmbed({ action:'ban', target, moderator:message.author, reason, guild:message.guild })] }).catch(() => null);
    return true;
   }
   if (name === 'nick') {
    if (!requirePerm(PermissionFlagsBits.ManageNicknames) || !target.manageable) return deny();
    await target.setNickname(cleanArgs || null, 'Changed by ' + message.author.tag);
-   await message.reply('Nickname updated for ' + target.user.tag + '.').catch(() => null);
+   await message.reply({ embeds: [moderationCaseEmbed({ action:'nick', target, moderator:message.author, reason:'Nickname changed to '+(cleanArgs||'the account username'), guild:message.guild })] }).catch(() => null);
    return true;
   }
  }
@@ -363,7 +363,7 @@ async function handlePrefix(message) {
    return true;
   }
   await message.guild.members.unban(id, args.slice(id.length).trim() || 'No reason provided');
-  await message.reply('User ' + id + ' unbanned.').catch(() => null);
+  await message.reply({ embeds: [moderationCaseEmbed({ action:'unban', moderator:message.author, reason:args.slice(id.length).trim()||'No reason provided', guild:message.guild, details:'**User ID**\\n'+id })] }).catch(() => null);
   return true;
  }
  return false;
