@@ -32,7 +32,7 @@ test('explicit failure indicators take precedence over success keywords', () => 
 });
 
 test('Discord missing-permission API codes are classified as permission notices', () => {
-  assert.equal(classify('Discord API error 50013 Missing Permissions').kind, 'failure');
+  assert.equal(classify('Discord API error 50013 Missing Permissions').kind, 'permission');
   assert.equal(classify('Missing Access (50001)').kind, 'permission');
   assert.equal(classify('You do not have the required permissions').kind, 'notice');
   assert.equal(classify('Manage Messages permission denied').kind, 'permission');
