@@ -16,7 +16,7 @@ function truncateDescription(value, maxLength = MAX_DESCRIPTION_LENGTH) {
 // not an internal application crash. Keep the reason visible and actionable.
 function classify(message) {
   const value = String(message || '');
-  if (/\b(?:missing|lacking|lack(?:s)?|denied|insufficient|not granted)\s+(?:bot\s+)?permissions?\b|\bpermissions?\s+(?:are\s+)?(?:missing|denied|not granted)\b|\bmissing access\b|\bnot authori[sz]ed\b|\b50013\b|\b50001\b/i.test(value)) {
+  if (/\b(?:missing|lacking|lack(?:s)?|denied|insufficient|not granted)\s+(?:(?:[a-z][a-z'-]*\s+){0,5})permissions?\b|\bpermissions?\s+(?:are\s+)?(?:missing|denied|not granted)\b|\bmissing access\b|\bnot authori[sz]ed\b|\b50013\b|\b50001\b/i.test(value)) {
     return { title: 'Unsuccessful Operation!', color: COLORS.danger, kind: 'permission' };
   }
   // Explicit failure markers must win over success words such as "set" or "updated".
