@@ -146,7 +146,7 @@ async function utilityRun(i,client){
 async function execute(i,client,player){
  if(!i.inGuild()&&!['ping','botinfo'].includes(i.commandName))return i.reply({content:'Use this command in a server.',ephemeral:true});
  const name=i.commandName;
- if(name==='help'){const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('NovaBot command guide').addFields({name:'Security',value:'/security setup · /security status · /verification setup · /lockdown · /unlock'},{name:'Music',value:'/play · /search · /pause · /resume · /skip · /queue · /nowplaying · /volume · /loop · /shuffle · /filter · /seek · /speed · /stop\\nPrefix: ,play · ,pause · ,resume · ,skip · ,queue · ,volume · ,loop · ,shuffle'},{name:'Utilities',value:'/ping · /avatar · /userinfo · /serverinfo · /botinfo · /calculate · /poll · /remind'},{name:'Moderation',value:'/timeout · /kick · /ban · /verify'},{name:'Spotify',value:'/spotify search · /music play with a Spotify track or playlist URL'});return i.reply({embeds:[embed],ephemeral:true});}
+ if(name==='help'){const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('NovaBot command guide').addFields({name:'Security',value:'/security setup · /security status · /verification setup · /lockdown · /unlock'},{name:'Music',value:'/play · /search · /pause · /resume · /skip · /queue · /nowplaying · /volume · /loop · /shuffle · /filter · /seek · /speed · /stop\nPrefix: ,play · ,pause · ,resume · ,skip · ,queue · ,volume · ,loop · ,shuffle'},{name:'Utilities',value:'/ping · /avatar · /userinfo · /serverinfo · /botinfo · /calculate · /poll · /remind'},{name:'Moderation',value:'/timeout · /kick · /ban · /verify'},{name:'Spotify',value:'/spotify search · /music play with a Spotify track or playlist URL'});return i.reply({embeds:[embed],ephemeral:true});}
  if(name==='security'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});return securityRun(i);}
  if(name==='verification'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});return verificationRun(i);}
  if(name==='verify'){const cfg=store.get(i.guildId);if(!cfg.verification.enabled)return i.reply({content:'Verification is not configured.',ephemeral:true});const button=new ButtonBuilder().setCustomId('mina_verify_start').setLabel('Start verification').setStyle(ButtonStyle.Success);return i.reply({content:'Press the button to start your verification challenge.',components:[new ActionRowBuilder().addComponents(button)],ephemeral:true});}
@@ -192,7 +192,7 @@ if(name==='warnings'){
  const user=i.options.getUser('user'),items=moderation.getWarnings(i.guildId,user.id);
  if(!items.length)return i.reply({content:user.tag+' has no recorded warnings.',ephemeral:true});
  const lines=items.slice(-15).map(x=>'**#'+x.id+'** · '+(x.type||'warning')+' · '+x.reason+' · <t:'+Math.floor(new Date(x.at).getTime()/1000)+':R>');
- return i.reply({embeds:[new EmbedBuilder().setColor(0xF1C40F).setTitle('Warning history · '+user.tag).setDescription(lines.join('\\n').slice(0,4000))],ephemeral:true});
+ return i.reply({embeds:[new EmbedBuilder().setColor(0xF1C40F).setTitle('Warning history · '+user.tag).setDescription(lines.join('\n').slice(0,4000))],ephemeral:true});
 }
 if(name==='clearwarnings'){
  if(!i.memberPermissions.has(PermissionFlagsBits.ManageMessages))return i.reply({content:'Manage Messages permission required.',ephemeral:true});
@@ -271,7 +271,7 @@ async function handlePrefix(message) {
   }
   const deleted = await message.channel.bulkDelete(amount, true).catch(() => null);
   await security.log(message.guild, message.author.tag + ' bulk-deleted ' + (deleted?.size || 0) + ' messages in #' + message.channel.name + '.');
-  await message.channel.send({ embeds: [moderationCaseEmbed({ action:'purge', moderator:message.author, guild:message.guild, details:'**Channel**\\n<#'+message.channelId+'>\\n\\n**Deleted**\\n'+(deleted?.size||0)+' recent message(s)' })] }).then(m => setTimeout(() => m.delete().catch(() => null), 8000)).catch(() => null);
+  await message.channel.send({ embeds: [moderationCaseEmbed({ action:'purge', moderator:message.author, guild:message.guild, details:'**Channel**\n<#'+message.channelId+'>\n\n**Deleted**\n'+(deleted?.size||0)+' recent message(s)' })] }).then(m => setTimeout(() => m.delete().catch(() => null), 8000)).catch(() => null);
   return true;
  }
  if (name === 'slowmode') {
@@ -282,7 +282,7 @@ async function handlePrefix(message) {
    return true;
   }
   await message.channel.setRateLimitPerUser(seconds, 'Changed by ' + message.author.tag);
-  await message.reply({ embeds: [moderationCaseEmbed({ action:'slowmode', moderator:message.author, guild:message.guild, details:'**Channel**\\n<#'+message.channelId+'>\\n\\n**Slowmode**\\n'+(seconds?seconds+' seconds':'Disabled') })] }).catch(() => null);
+  await message.reply({ embeds: [moderationCaseEmbed({ action:'slowmode', moderator:message.author, guild:message.guild, details:'**Channel**\n<#'+message.channelId+'>\n\n**Slowmode**\n'+(seconds?seconds+' seconds':'Disabled') })] }).catch(() => null);
   return true;
  }
  if (['warn', 'warnings', 'clearwarnings', 'timeout', 'kick', 'ban', 'nick'].includes(name)) {
@@ -363,7 +363,7 @@ async function handlePrefix(message) {
    return true;
   }
   await message.guild.members.unban(id, args.slice(id.length).trim() || 'No reason provided');
-  await message.reply({ embeds: [moderationCaseEmbed({ action:'unban', moderator:message.author, reason:args.slice(id.length).trim()||'No reason provided', guild:message.guild, details:'**User ID**\\n'+id })] }).catch(() => null);
+  await message.reply({ embeds: [moderationCaseEmbed({ action:'unban', moderator:message.author, reason:args.slice(id.length).trim()||'No reason provided', guild:message.guild, details:'**User ID**\n'+id })] }).catch(() => null);
   return true;
  }
  return false;
