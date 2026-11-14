@@ -2,14 +2,26 @@
 const { EmbedBuilder } = require('discord.js');
 
 const COLORS = Object.freeze({ primary: 0x5865F2, success: 0x57F287, warning: 0xFEE75C, danger: 0xED4245 });
-const FOOTER = 'NovaBot • Server Management';
+const FOOTER = 'Mina Bot • Server Management';
 
 function classify(message) {
   const value = String(message || '');
-  if (/\b(error|failed|cannot|could not|missing permission|not found|invalid)\b/i.test(value) || /[❌🛑]/u.test(value)) return { title: 'NovaBot • Error', color: COLORS.danger };
-  if (/\b(warning|注意)\b/i.test(value) || /[⚠️🚨]/u.test(value)) return { title: 'NovaBot • Warning', color: COLORS.warning };
-  if (/\b(success|enabled|disabled|saved|updated|completed|joined|paused|resumed|skipped|stopped|cancelled|set)\b|[✅🎉🔓🔒]/i.test(value)) return { title: 'NovaBot • Success', color: COLORS.success };
-  return { title: 'NovaBot • Notice', color: COLORS.primary };
+
+  // Wick-style red embeds communicate a missing Discord permission or role
+  // hierarchy requirement; they are not generic command/runtime failures.
+  if (/\b(permission required|missing permission|missing permissions|lacks? (?:the )?(?:required )?permission|not have permission|cannot manage|role hierarchy|move (?:the )?mina bot role)\b/i.test(value) || /\b50013\b/.test(value)) {
+    return { title: 'Mina Bot • Permission Required', color: COLORS.danger };
+  }
+  if (/\b(error|failed|cannot|could not|not found|invalid)\b/i.test(value) || /[❌🛑]/u.test(value)) {
+    return { title: 'Mina Bot • Unsuccessful Operation', color: COLORS.danger };
+  }
+  if (/\b(warning|注意)\b/i.test(value) || /[⚠️🚨]/u.test(value)) {
+    return { title: 'Mina Bot • Warning', color: COLORS.warning };
+  }
+  if (/\b(success|enabled|disabled|saved|updated|completed|joined|paused|resumed|skipped|stopped|cancelled|set)\b|[✅🎉🔓🔒]/i.test(value)) {
+    return { title: 'Mina Bot • Successful Operation', color: COLORS.success };
+  }
+  return { title: 'Mina Bot • Notice', color: COLORS.primary };
 }
 
 function brandEmbed(embed) {
@@ -46,11 +58,11 @@ function brandInteraction(interaction) {
 }
 
 function brandMessage(message) {
-  if (!message || typeof message.edit !== 'function' || message.__novaBranded) return message;
+  if (!message || typeof message.edit !== 'function' || message.__minaBranded) return message;
   const original = message.edit.bind(message);
   message.edit = (payload, ...args) => original(brandPayload(payload), ...args);
-  Object.defineProperty(message, '__novaBranded', { value: true });
+  Object.defineProperty(message, '__minaBranded', { value: true });
   return message;
 }
 
-module.exports = { COLORS, brandPayload, brandInteraction, brandMessage, brandEmbed };
+module.exports = { COLORS, classify, brandPayload, brandInteraction, brandMessage, brandEmbed };
