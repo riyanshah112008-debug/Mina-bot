@@ -380,4 +380,4 @@ async function handlePrefix(message) {
  return false;
 }
 
-module.exports={commands,execute,handleComponent,handlePrefix};
+module.exports={commands,execute,handleComponent,handlePrefix,moderationCaseEmbed};
