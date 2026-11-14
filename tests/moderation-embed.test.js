@@ -13,7 +13,7 @@ test('moderation result follows Wick-style layout and emoji labels', () => {
   });
   const data = embed.toJSON();
   assert.equal(data.title, 'Kick result:');
-  assert.match(data.author.name, /Test Server ★ •\\nModeration/);
+  assert.match(data.author.name, /Test Server ★ •\nModeration/);
   assert.match(data.description, /📋 \\*\\*Reason:\\*\\* Repeated spam/);
   assert.match(data.description, /👤 \\*\\*Moderator:\\*\\* <@22345678901234567>/);
   assert.match(data.description, /✅ \\*\\*Successful kicks\\*\\*/);
