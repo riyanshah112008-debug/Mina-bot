@@ -1,7 +1,7 @@
 'use strict';
 const {SlashCommandBuilder,PermissionFlagsBits,ButtonBuilder,ButtonStyle,EmbedBuilder,ActionRowBuilder,ModalBuilder,TextInputBuilder,TextInputStyle}=require('discord.js');
 const store=require('./store'),security=require('./security'),music=require('./music'),utility=require('./utility'),spotify=require('./spotify');
-const { brandPayload } = require('./utils/embeds');
+const { brandPayload, buildModerationEmbed } = require('./utils/embeds');
 const moderation = require('./moderation');
 const challenges=new Map();
 const securityCommand=new SlashCommandBuilder().setName('security').setDescription('Configure NovaBot protection')
@@ -311,19 +311,28 @@ async function handlePrefix(message) {
     return true;
    }
    await target.timeout(minutes * 60000, timeoutReason);
-   await message.reply(target.user.tag + ' timed out for ' + minutes + ' minute(s).').catch(() => null);
+   const caseId = Date.now().toString(36).toUpperCase();
+   const embed = buildModerationEmbed({ action: 'timeout', target, moderator: message.member, reason: timeoutReason, duration: minutes + ' minute(s)', caseId, guild: message.guild });
+   await security.log(message.guild, { embeds: [embed] });
+   await message.reply({ embeds: [embed] }).catch(() => null);
    return true;
   }
   if (name === 'kick') {
    if (!requirePerm(PermissionFlagsBits.KickMembers) || !target.kickable) return deny();
    await target.kick(reason);
-   await message.reply(target.user.tag + ' kicked.').catch(() => null);
+   const caseId = Date.now().toString(36).toUpperCase();
+   const embed = buildModerationEmbed({ action: 'kick', target, moderator: message.member, reason, caseId, guild: message.guild });
+   await security.log(message.guild, { embeds: [embed] });
+   await message.reply({ embeds: [embed] }).catch(() => null);
    return true;
   }
   if (name === 'ban') {
    if (!requirePerm(PermissionFlagsBits.BanMembers) || !target.bannable) return deny();
    await target.ban({ reason });
-   await message.reply(target.user.tag + ' banned.').catch(() => null);
+   const caseId = Date.now().toString(36).toUpperCase();
+   const embed = buildModerationEmbed({ action: 'ban', target, moderator: message.member, reason, caseId, guild: message.guild });
+   await security.log(message.guild, { embeds: [embed] });
+   await message.reply({ embeds: [embed] }).catch(() => null);
    return true;
   }
   if (name === 'nick') {
