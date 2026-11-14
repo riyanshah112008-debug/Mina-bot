@@ -4,6 +4,24 @@ const store=require('./store'),security=require('./security'),music=require('./m
 const { brandPayload } = require('./utils/embeds');
 const moderation = require('./moderation');
 const challenges=new Map();
+function moderationCaseEmbed({ action, target, moderator, reason, guild, details }) {
+ const colors={warn:0xF1C40F,timeout:0xE67E22,kick:0xE67E22,ban:0xED4245,unban:0x57F287,purge:0x5865F2,slowmode:0x5865F2,nick:0x5865F2,clearwarnings:0x57F287,lockdown:0xED4245,unlock:0x57F287};
+ const labels={warn:'Member Warned',timeout:'Member Timed Out',kick:'Member Kicked',ban:'Member Banned',unban:'User Unbanned',purge:'Messages Purged',slowmode:'Slowmode Updated',nick:'Nickname Updated',clearwarnings:'Warnings Cleared',lockdown:'Server Lockdown Enabled',unlock:'Server Lockdown Released'};
+ const embed=new EmbedBuilder().setColor(colors[action]||0x5865F2).setTitle(labels[action]||'Moderation Action').setTimestamp();
+ if(guild?.name) embed.setAuthor({name:guild.name+' • Moderation',...(guild.iconURL()?{iconURL:guild.iconURL()}:{})});
+ if(target){
+  const user=target.user||target;
+  embed.setDescription('**Member**\n'+(user.tag||user.username||'Unknown user')+' · <@'+user.id+'>');
+  if(typeof user.displayAvatarURL==='function')embed.setThumbnail(user.displayAvatarURL({size:256}));
+  embed.addFields({name:'User ID',value:String(user.id),inline:true});
+ } else if(details) embed.setDescription(details);
+ if(moderator)embed.addFields({name:'Moderator',value:(moderator.tag||moderator.username||'Unknown')+' · <@'+moderator.id+'>',inline:true});
+ if(details && target)embed.addFields({name:'Details',value:String(details).slice(0,1024),inline:false});
+ if(reason)embed.addFields({name:'Reason',value:String(reason).slice(0,1024),inline:false});
+ embed.setFooter({text:'NovaBot Moderation'+(target?' • '+target.id:'')});
+ return embed;
+}
+
 const securityCommand=new SlashCommandBuilder().setName('security').setDescription('Configure NovaBot protection')
 .addSubcommand(s=>s.setName('setup').setDescription('Enable protection and set this channel as logs'))
 .addSubcommand(s=>s.setName('status').setDescription('Show protection status'))
@@ -129,7 +147,7 @@ async function utilityRun(i,client){
 async function execute(i,client,player){
  if(!i.inGuild()&&!['ping','botinfo'].includes(i.commandName))return i.reply({content:'Use this command in a server.',ephemeral:true});
  const name=i.commandName;
- if(name==='help'){const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('NovaBot command guide').addFields({name:'Security',value:'/security setup · /security status · /verification setup · /lockdown · /unlock'},{name:'Music',value:'/play · /search · /pause · /resume · /skip · /queue · /nowplaying · /volume · /loop · /shuffle · /filter · /seek · /speed · /stop\\nPrefix: ,play · ,pause · ,resume · ,skip · ,queue · ,volume · ,loop · ,shuffle'},{name:'Utilities',value:'/ping · /avatar · /userinfo · /serverinfo · /botinfo · /calculate · /poll · /remind'},{name:'Moderation',value:'/timeout · /kick · /ban · /verify'},{name:'Spotify',value:'/spotify search · /music play with a Spotify track or playlist URL'});return i.reply({embeds:[embed],ephemeral:true});}
+ if(name==='help'){const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('NovaBot command guide').addFields({name:'Security',value:'/security setup · /security status · /verification setup · /lockdown · /unlock'},{name:'Music',value:'/play · /search · /pause · /resume · /skip · /queue · /nowplaying · /volume · /loop · /shuffle · /filter · /seek · /speed · /stop\nPrefix: ,play · ,pause · ,resume · ,skip · ,queue · ,volume · ,loop · ,shuffle'},{name:'Utilities',value:'/ping · /avatar · /userinfo · /serverinfo · /botinfo · /calculate · /poll · /remind'},{name:'Moderation',value:'/timeout · /kick · /ban · /verify'},{name:'Spotify',value:'/spotify search · /music play with a Spotify track or playlist URL'});return i.reply({embeds:[embed],ephemeral:true});}
  if(name==='security'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});return securityRun(i);}
  if(name==='verification'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});return verificationRun(i);}
  if(name==='verify'){const cfg=store.get(i.guildId);if(!cfg.verification.enabled)return i.reply({content:'Verification is not configured.',ephemeral:true});const button=new ButtonBuilder().setCustomId('mina_verify_start').setLabel('Start verification').setStyle(ButtonStyle.Success);return i.reply({content:'Press the button to start your verification challenge.',components:[new ActionRowBuilder().addComponents(button)],ephemeral:true});}
@@ -160,7 +178,7 @@ async function execute(i,client,player){
   await target.ban({reason});
  }
  await security.log(i.guild,'Moderation: '+user.tag+' was '+name+' by '+i.user.tag+'. Reason: '+reason);
- return i.reply({content:user.tag+' was '+(name==='timeout'?'timed out':name+'ed')+'.',ephemeral:true});
+ return i.reply({embeds:[moderationCaseEmbed({action:name,target,moderator:i.user,reason ,guild:i.guild,details:name==='timeout'?'Duration: '+i.options.getInteger('minutes')+' minute(s)':undefined})],ephemeral:true});
 }
 if(name==='warn'){
  const actor=await i.guild.members.fetch(i.user.id),user=i.options.getUser('user'),target=await i.guild.members.fetch(user.id).catch(()=>null);
@@ -169,19 +187,19 @@ if(name==='warn'){
  if(!actor.permissions.has(PermissionFlagsBits.ModerateMembers))return i.reply({content:'Moderate Members permission required.',ephemeral:true});
  const reason=i.options.getString('reason')||'No reason provided',item=moderation.addWarning(i.guildId,user.id,i.user.id,reason);
  await security.log(i.guild,'⚠️ **Warning #'+item.id+'** · '+user.tag+' warned by '+i.user.tag+'. Reason: '+reason);
- return i.reply({content:'Warning #'+item.id+' recorded for '+user.tag+'.',ephemeral:true});
+ return i.reply({embeds:[moderationCaseEmbed({action:'warn',target,moderator:i.user,reason:'Warning #'+item.id+' · '+reason,guild:i.guild})],ephemeral:true});
 }
 if(name==='warnings'){
  const user=i.options.getUser('user'),items=moderation.getWarnings(i.guildId,user.id);
  if(!items.length)return i.reply({content:user.tag+' has no recorded warnings.',ephemeral:true});
  const lines=items.slice(-15).map(x=>'**#'+x.id+'** · '+(x.type||'warning')+' · '+x.reason+' · <t:'+Math.floor(new Date(x.at).getTime()/1000)+':R>');
- return i.reply({embeds:[new EmbedBuilder().setColor(0xF1C40F).setTitle('Warning history · '+user.tag).setDescription(lines.join('\\n').slice(0,4000))],ephemeral:true});
+ return i.reply({embeds:[new EmbedBuilder().setColor(0xF1C40F).setTitle('Warning history · '+user.tag).setDescription(lines.join('\n').slice(0,4000))],ephemeral:true});
 }
 if(name==='clearwarnings'){
  if(!i.memberPermissions.has(PermissionFlagsBits.ManageMessages))return i.reply({content:'Manage Messages permission required.',ephemeral:true});
  const user=i.options.getUser('user'),removed=moderation.clearWarnings(i.guildId,user.id,i.user.id);
  await security.log(i.guild,'🧹 Cleared '+removed+' warning(s) for '+user.tag+' by '+i.user.tag+'.');
- return i.reply({content:'Cleared '+removed+' warning(s) for '+user.tag+'.',ephemeral:true});
+ return i.reply({embeds:[moderationCaseEmbed({action:'clearwarnings',target:user,moderator:i.user,reason:removed+' warning(s) removed',guild:i.guild})],ephemeral:true});
 }
 if(name==='purge'){
  if(!i.memberPermissions.has(PermissionFlagsBits.ManageMessages))return i.reply({content:'Manage Messages permission required.',ephemeral:true});
@@ -189,14 +207,14 @@ if(name==='purge'){
  await i.deferReply({ephemeral:true});
  const deleted=await i.channel.bulkDelete(amount,true);
  await security.log(i.guild,'🧹 '+i.user.tag+' bulk-deleted '+deleted.size+' messages in #'+i.channel.name+'.');
- return i.editReply('Deleted '+deleted.size+' recent messages. Messages older than 14 days are skipped by Discord.');
+ return i.editReply({embeds:[moderationCaseEmbed({action:'purge',moderator:i.user,reason:'Deleted '+deleted.size+' recent messages in #'+i.channel.name+'.',guild:i.guild,details:'**Channel**\n<#'+i.channelId+'>\n\n**Deleted**\n'+deleted.size+' message(s)'})]});
 }
 if(name==='slowmode'){
  if(!i.memberPermissions.has(PermissionFlagsBits.ManageChannels))return i.reply({content:'Manage Channels permission required.',ephemeral:true});
  const seconds=i.options.getInteger('seconds');
  await i.channel.setRateLimitPerUser(seconds,'Changed by '+i.user.tag);
  await security.log(i.guild,'🐢 Slowmode set to '+seconds+'s in #'+i.channel.name+' by '+i.user.tag+'.');
- return i.reply({content:seconds?'Slowmode set to '+seconds+' seconds.':'Slowmode disabled.',ephemeral:true});
+ return i.reply({embeds:[moderationCaseEmbed({action:'slowmode',moderator:i.user,reason:'Changed in #'+i.channel.name,guild:i.guild,details:'**Slowmode**\n'+(seconds?seconds+' seconds':'Disabled')})],ephemeral:true});
 }
 if(name==='nick'){
  const actor=await i.guild.members.fetch(i.user.id),user=i.options.getUser('user'),target=await i.guild.members.fetch(user.id).catch(()=>null);
@@ -204,7 +222,7 @@ if(name==='nick'){
  const hierarchy=moderation.canActOnTarget(actor,target,i.guild.members.me);if(!hierarchy.ok)return i.reply({content:hierarchy.reason,ephemeral:true});
  if(!actor.permissions.has(PermissionFlagsBits.ManageNicknames)||!target.manageable)return i.reply({content:'Missing Manage Nicknames permission or target cannot be edited.',ephemeral:true});
  await target.setNickname(i.options.getString('nickname'), 'Nickname changed by '+i.user.tag);
- return i.reply({content:'Nickname updated for '+user.tag+'.',ephemeral:true});
+ return i.reply({embeds:[moderationCaseEmbed({action:'nick',target,moderator:i.user,reason:'Nickname changed to '+(i.options.getString('nickname')||'the account username'),guild:i.guild})],ephemeral:true});
 }
 if(name==='unban'){
  if(!i.memberPermissions.has(PermissionFlagsBits.BanMembers))return i.reply({content:'Ban Members permission required.',ephemeral:true});
@@ -214,7 +232,7 @@ if(name==='unban'){
  if(!existing)return i.reply({content:'That user is not currently banned.',ephemeral:true});
  await i.guild.members.unban(id,reason);
  await security.log(i.guild,'🔓 User '+id+' unbanned by '+i.user.tag+'. Reason: '+reason);
- return i.reply({content:'User '+id+' has been unbanned.',ephemeral:true});
+ return i.reply({embeds:[moderationCaseEmbed({action:'unban',moderator:i.user,reason:reason,guild:i.guild,details:'**User ID**\n'+id})],ephemeral:true});
 }
 }
 async function handleComponent(i){
@@ -242,7 +260,7 @@ async function handlePrefix(message) {
   if (!requirePerm(PermissionFlagsBits.Administrator)) return deny();
   if (name === 'lockdown') await security.lockdown(message.guild, 'Manually activated by ' + message.author.tag);
   else await security.restoreLockdown(message.guild);
-  await message.reply(name === 'lockdown' ? '🚨 Lockdown activated.' : '🔓 Lockdown released.').catch(() => null);
+  await message.reply({ embeds: [moderationCaseEmbed({ action:name, moderator:message.author, reason:'Manual action', guild:message.guild })] }).catch(() => null);
   return true;
  }
  if (name === 'purge') {
@@ -254,7 +272,7 @@ async function handlePrefix(message) {
   }
   const deleted = await message.channel.bulkDelete(amount, true).catch(() => null);
   await security.log(message.guild, message.author.tag + ' bulk-deleted ' + (deleted?.size || 0) + ' messages in #' + message.channel.name + '.');
-  await message.channel.send('Deleted ' + (deleted?.size || 0) + ' recent messages.').then(m => setTimeout(() => m.delete().catch(() => null), 5000)).catch(() => null);
+  await message.channel.send({ embeds: [moderationCaseEmbed({ action:'purge', moderator:message.author, guild:message.guild, details:'**Channel**\n<#'+message.channelId+'>\n\n**Deleted**\n'+(deleted?.size||0)+' recent message(s)' })] }).then(m => setTimeout(() => m.delete().catch(() => null), 8000)).catch(() => null);
   return true;
  }
  if (name === 'slowmode') {
@@ -265,7 +283,7 @@ async function handlePrefix(message) {
    return true;
   }
   await message.channel.setRateLimitPerUser(seconds, 'Changed by ' + message.author.tag);
-  await message.reply(seconds ? 'Slowmode set to ' + seconds + ' seconds.' : 'Slowmode disabled.').catch(() => null);
+  await message.reply({ embeds: [moderationCaseEmbed({ action:'slowmode', moderator:message.author, guild:message.guild, details:'**Channel**\n<#'+message.channelId+'>\n\n**Slowmode**\n'+(seconds?seconds+' seconds':'Disabled') })] }).catch(() => null);
   return true;
  }
  if (['warn', 'warnings', 'clearwarnings', 'timeout', 'kick', 'ban', 'nick'].includes(name)) {
@@ -286,7 +304,7 @@ async function handlePrefix(message) {
    if (!requirePerm(PermissionFlagsBits.ModerateMembers)) return deny();
    const item = moderation.addWarning(message.guildId, target.id, message.author.id, reason);
    await security.log(message.guild, 'Warning #' + item.id + ' · ' + target.user.tag + ' by ' + message.author.tag + '. Reason: ' + reason);
-   await message.reply('Warning #' + item.id + ' recorded for ' + target.user.tag + '.').catch(() => null);
+   await message.reply({ embeds: [moderationCaseEmbed({ action:'warn', target, moderator:message.author, reason:'Warning #'+item.id+' · '+reason, guild:message.guild })] }).catch(() => null);
    return true;
   }
   if (name === 'warnings') {
@@ -299,7 +317,7 @@ async function handlePrefix(message) {
   if (name === 'clearwarnings') {
    if (!requirePerm(PermissionFlagsBits.ManageMessages)) return deny();
    const count = moderation.clearWarnings(message.guildId, target.id, message.author.id);
-   await message.reply('Cleared ' + count + ' warning(s) for ' + target.user.tag + '.').catch(() => null);
+   await message.reply({ embeds: [moderationCaseEmbed({ action:'clearwarnings', target, moderator:message.author, reason:count+' warning(s) removed', guild:message.guild })] }).catch(() => null);
    return true;
   }
   if (name === 'timeout') {
@@ -311,25 +329,25 @@ async function handlePrefix(message) {
     return true;
    }
    await target.timeout(minutes * 60000, timeoutReason);
-   await message.reply(target.user.tag + ' timed out for ' + minutes + ' minute(s).').catch(() => null);
+   await message.reply({ embeds: [moderationCaseEmbed({ action:'timeout', target, moderator:message.author, reason:timeoutReason, guild:message.guild, details:'Duration: '+minutes+' minute(s)' })] }).catch(() => null);
    return true;
   }
   if (name === 'kick') {
    if (!requirePerm(PermissionFlagsBits.KickMembers) || !target.kickable) return deny();
    await target.kick(reason);
-   await message.reply(target.user.tag + ' kicked.').catch(() => null);
+   await message.reply({ embeds: [moderationCaseEmbed({ action:'kick', target, moderator:message.author, reason, guild:message.guild })] }).catch(() => null);
    return true;
   }
   if (name === 'ban') {
    if (!requirePerm(PermissionFlagsBits.BanMembers) || !target.bannable) return deny();
    await target.ban({ reason });
-   await message.reply(target.user.tag + ' banned.').catch(() => null);
+   await message.reply({ embeds: [moderationCaseEmbed({ action:'ban', target, moderator:message.author, reason, guild:message.guild })] }).catch(() => null);
    return true;
   }
   if (name === 'nick') {
    if (!requirePerm(PermissionFlagsBits.ManageNicknames) || !target.manageable) return deny();
    await target.setNickname(cleanArgs || null, 'Changed by ' + message.author.tag);
-   await message.reply('Nickname updated for ' + target.user.tag + '.').catch(() => null);
+   await message.reply({ embeds: [moderationCaseEmbed({ action:'nick', target, moderator:message.author, reason:'Nickname changed to '+(cleanArgs||'the account username'), guild:message.guild })] }).catch(() => null);
    return true;
   }
  }
@@ -346,7 +364,7 @@ async function handlePrefix(message) {
    return true;
   }
   await message.guild.members.unban(id, args.slice(id.length).trim() || 'No reason provided');
-  await message.reply('User ' + id + ' unbanned.').catch(() => null);
+  await message.reply({ embeds: [moderationCaseEmbed({ action:'unban', moderator:message.author, reason:args.slice(id.length).trim()||'No reason provided', guild:message.guild, details:'**User ID**\n'+id })] }).catch(() => null);
   return true;
  }
  return false;
