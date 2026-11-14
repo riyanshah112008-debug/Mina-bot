@@ -69,7 +69,7 @@ client.on(Events.InteractionCreate,async interaction => {
     await commands.execute(interaction,client,player);
   } catch(error) {
     console.error('[NovaBot] Interaction error:',error);
-    const payload={content:'That command failed. Check bot permissions and try again.',ephemeral:true};
+    const missingPermission = Number(error?.code || error?.rawError?.code) === 50013;\n    const payload={content:missingPermission ? 'Missing permission: Mina Bot does not have the required server or channel permission for this action. Grant the permission to Mina Bot and try again.' : 'The operation could not be completed. Please try again.',ephemeral:true};
     if(interaction.replied||interaction.deferred) await interaction.followUp(payload).catch(()=>null); else await interaction.reply(payload).catch(()=>null);
   }
 });
