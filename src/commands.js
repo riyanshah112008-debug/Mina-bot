@@ -16,6 +16,7 @@ function moderationCaseEmbed({ action, target, moderator, reason, guild, details
   embed.addFields({name:'User ID',value:String(user.id),inline:true});
  } else if(details) embed.setDescription(details);
  if(moderator)embed.addFields({name:'Moderator',value:(moderator.tag||moderator.username||'Unknown')+' · <@'+moderator.id+'>',inline:true});
+ if(details && target)embed.addFields({name:'Details',value:String(details).slice(0,1024),inline:false});
  if(reason)embed.addFields({name:'Reason',value:String(reason).slice(0,1024),inline:false});
  embed.setFooter({text:'NovaBot Moderation'+(target?' • '+target.id:'')});
  return embed;
@@ -177,7 +178,7 @@ async function execute(i,client,player){
   await target.ban({reason});
  }
  await security.log(i.guild,'Moderation: '+user.tag+' was '+name+' by '+i.user.tag+'. Reason: '+reason);
- return i.reply({embeds:[moderationCaseEmbed({action:name,target,moderator:i.user,reason: name==='timeout'?reason:reason+(name==='timeout'?'':'') ,guild:i.guild,details:name==='timeout'?'Duration: '+i.options.getInteger('minutes')+' minute(s)':undefined})],ephemeral:true});
+ return i.reply({embeds:[moderationCaseEmbed({action:name,target,moderator:i.user,reason ,guild:i.guild,details:name==='timeout'?'Duration: '+i.options.getInteger('minutes')+' minute(s)':undefined})],ephemeral:true});
 }
 if(name==='warn'){
  const actor=await i.guild.members.fetch(i.user.id),user=i.options.getUser('user'),target=await i.guild.members.fetch(user.id).catch(()=>null);
@@ -198,7 +199,7 @@ if(name==='clearwarnings'){
  if(!i.memberPermissions.has(PermissionFlagsBits.ManageMessages))return i.reply({content:'Manage Messages permission required.',ephemeral:true});
  const user=i.options.getUser('user'),removed=moderation.clearWarnings(i.guildId,user.id,i.user.id);
  await security.log(i.guild,'🧹 Cleared '+removed+' warning(s) for '+user.tag+' by '+i.user.tag+'.');
- return i.reply({embeds:[moderationCaseEmbed({action:'clearwarnings',target,moderator:i.user,reason:removed+' warning(s) removed',guild:i.guild})],ephemeral:true});
+ return i.reply({embeds:[moderationCaseEmbed({action:'clearwarnings',target:user,moderator:i.user,reason:removed+' warning(s) removed',guild:i.guild})],ephemeral:true});
 }
 if(name==='purge'){
  if(!i.memberPermissions.has(PermissionFlagsBits.ManageMessages))return i.reply({content:'Manage Messages permission required.',ephemeral:true});
