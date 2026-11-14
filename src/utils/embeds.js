@@ -46,7 +46,7 @@ function classify(message) {
 function brandEmbed(embed) {
   const result = EmbedBuilder.from(embed);
   const current = result.data.footer?.text;
-  result.setFooter({ text: current ? current + ' • ' + FOOTER : FOOTER });
+  if (!current || !/NovaBot/i.test(current)) result.setFooter({ text: current ? current + ' • ' + FOOTER : FOOTER });
   if (!result.data.timestamp) result.setTimestamp();
   if (!result.data.color) result.setColor(COLORS.primary);
   return result;
