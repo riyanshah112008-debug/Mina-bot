@@ -16,12 +16,12 @@ function truncateDescription(value, maxLength = MAX_DESCRIPTION_LENGTH) {
 // not an internal application crash. Keep the reason visible and actionable.
 function classify(message) {
   const value = String(message || '');
+  if (/\b(?:missing|lacking|lack(?:s)?|denied|insufficient|not granted)\s+(?:bot\s+)?permissions?\b|\bpermissions?\s+(?:are\s+)?(?:missing|denied|not granted)\b|\bmissing access\b|\bnot authori[sz]ed\b|\b50013\b|\b50001\b/i.test(value)) {
+    return { title: 'Unsuccessful Operation!', color: COLORS.danger, kind: 'permission' };
+  }
   // Explicit failure markers must win over success words such as "set" or "updated".
   if (/\b(error|failed|failure|exception|could not|cannot|unable to|invalid)\b|[❌🛑]/i.test(value)) {
     return { title: 'Mina • Operation Failed', color: COLORS.danger, kind: 'failure' };
-  }
-  if (/\b(?:missing|lacking|lack(?:s)?|denied|insufficient|not granted)\s+(?:bot\s+)?permissions?\b|\bpermissions?\s+(?:are\s+)?(?:missing|denied|not granted)\b|\bmissing access\b|\bnot authori[sz]ed\b|\b50013\b|\b50001\b/i.test(value)) {
-    return { title: 'Unsuccessful Operation!', color: COLORS.danger, kind: 'permission' };
   }
   if (/\b(warning|注意)\b/i.test(value) || /[⚠️🚨]/u.test(value)) {
     return { title: 'Mina • Warning', color: COLORS.warning, kind: 'warning' };
