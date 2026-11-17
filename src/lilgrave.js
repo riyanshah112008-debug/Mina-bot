@@ -87,7 +87,7 @@ async function handleStaffLeave(message) {
     }
   } catch (error) {
     console.error('[Lilgrave] Staff leave assistant failed:', error.message);
-    await message.reply({ content: 'Thank you for informing us. Could you please clarify the expected duration of your absence?', allowedMentions: { repliedUser: false } }).catch(() => null);
+    // Do not guess relevance when the AI service is unavailable; stay silent.
   }
 }
 
