@@ -5,7 +5,7 @@ const http = require('node:http');
 const { Client, GatewayIntentBits, Partials, REST, Routes, Events } = require('discord.js');
 const store = require('./store');
 const security = require('./security');
-const commands = require('./commands');
+const commands = require('./commands');\nconst lilgrave = require('./lilgrave');
 const utility = require('./utility');
 const music = require('./music');
 const { brandInteraction } = require('./utils/embeds');
@@ -54,7 +54,7 @@ client.once(Events.ClientReady,async ready => {
   try {
     const rest=new REST({version:'10'}).setToken(token);
     const route=process.env.GUILD_ID?Routes.applicationGuildCommands(clientId,process.env.GUILD_ID):Routes.applicationCommands(clientId);
-    await rest.put(route,{body:commands.commands}); console.log('[NovaBot] Registered '+commands.commands.length+' commands.');
+    await rest.put(route,{body:[...commands.commands,...lilgrave.commands]}); console.log('[NovaBot] Registered '+commands.commands.length+' commands.');
   } catch(error) { console.error('[NovaBot] Command registration failed:',error.message); }
   utility.resumeReminders(client);
 });
@@ -66,7 +66,7 @@ client.on(Events.InteractionCreate,async interaction => {
     if(interaction.isButton()||interaction.isModalSubmit()) return await commands.handleComponent(interaction);
     if(!interaction.isChatInputCommand()) return;
     if(process.env.GUILD_ID&&interaction.guildId!==process.env.GUILD_ID) return interaction.reply({content:'This bot is configured for a different server.',ephemeral:true});
-    await commands.execute(interaction,client,player);
+    if (['punishment-setup','staff-leave-setup'].includes(interaction.commandName)) return await lilgrave.execute(interaction);\n    await commands.execute(interaction,client,player);
   } catch(error) {
     console.error('[NovaBot] Interaction error:',error);
     const payload={content:'That command failed. Check bot permissions and try again.',ephemeral:true};
@@ -74,7 +74,7 @@ client.on(Events.InteractionCreate,async interaction => {
   }
 });
 client.on(Events.MessageCreate,message=>music.handlePrefix(message,client).catch(error=>console.error('[NovaBot] Prefix command error:',error)));
-client.on(Events.MessageCreate,message=>commands.handlePrefix(message).catch(error=>console.error('[NovaBot] Moderation prefix error:',error)));
+client.on(Events.MessageCreate,message=>commands.handlePrefix(message).catch(error=>console.error('[NovaBot] Moderation prefix error:',error)));\nclient.on(Events.MessageCreate,message=>lilgrave.handleMessage(message).catch(error=>console.error('[Lilgrave] Message handler error:',error)));
 client.on(Events.GuildMemberAdd,member=>security.onJoin(member).catch(console.error));
 client.on(Events.MessageCreate,message=>security.onMessage(message).catch(console.error));
 client.on(Events.GuildAuditLogEntryCreate,entry=>{ const item=security.auditTypes.find(([type])=>type===entry.action); if(item) security.handleDestructiveAudit(entry,item[1]).catch(console.error); });
