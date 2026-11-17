@@ -10,7 +10,8 @@ const defaults = () => ({
   joinGate: { enabled: false, minAccountAgeMs: 0, requireAvatar: false, usernameFilter: true, action: 'quarantine' },
   automod: { enabled: true, heatEnabled: true, heatThreshold: 100, heatDecayPerSecond: 2, windowMs: 7000, messageLimit: 6, mentionLimit: 5, attachmentLimit: 3, inviteFilter: true, linkFilter: true, webhookFilter: true, blacklistedWords: [], timeoutBaseMs: 300000, timeoutCapMs: 86400000, allowedDomains: [] },
   trusted: [], trustedRoles: [], incidents: [], warnings: [], nextCaseId: 0, logChannelId: null, quarantineRoleId: null,
-  verification: { enabled: false, verifiedRoleId: null, quarantineRoleId: null },\n  lilgrave: { punishment: { channelId: null, enabled: false }, leave: { channelId: null, enabled: false } },
+  verification: { enabled: false, verifiedRoleId: null, quarantineRoleId: null },
+  lilgrave: { punishment: { channelId: null, enabled: false }, leave: { channelId: null, enabled: false } },
   lockdown: { active: false, changed: [] }, music: { defaultVolume: 70, maxVolume: 100 }, reminders: []
 });
 let cache = {};
@@ -24,7 +25,8 @@ function get(guildId) {
   const cfg = cache[guildId], base = defaults();
   for (const key of Object.keys(base)) if (cfg[key] === undefined) cfg[key] = base[key];
   for (const key of ['antiNuke','antiRaid','joinGate','automod','verification','lockdown','music']) cfg[key] = { ...base[key], ...(cfg[key] || {}) };
-  cfg.lilgrave = { punishment: { channelId: null, enabled: false, ...(cfg.lilgrave?.punishment || {}) }, leave: { channelId: null, enabled: false, ...(cfg.lilgrave?.leave || {}) } };\n  for (const key of ['trusted','trustedRoles','incidents','warnings','reminders']) if (!Array.isArray(cfg[key])) cfg[key] = [];
+  cfg.lilgrave = { punishment: { channelId: null, enabled: false, ...(cfg.lilgrave?.punishment || {}) }, leave: { channelId: null, enabled: false, ...(cfg.lilgrave?.leave || {}) } };
+  for (const key of ['trusted','trustedRoles','incidents','warnings','reminders']) if (!Array.isArray(cfg[key])) cfg[key] = [];
   if (!Array.isArray(cfg.automod.allowedDomains)) cfg.automod.allowedDomains = [];
   if (!Array.isArray(cfg.automod.blacklistedWords)) cfg.automod.blacklistedWords = [];
   cfg.automod.heatThreshold = Math.min(500, Math.max(10, Number(cfg.automod.heatThreshold) || 100));
