@@ -55,6 +55,6 @@ test('leave setup supports Discord channel and role pickers plus manual ID fallb
   assert.match(source, /lilgrave_leave:select-staff/);
   assert.match(source, /lilgrave_leave:select-demoted/);
   assert.match(source, /Leave channel ID/);
-  assert.match(source, /Demotion \/ review role IDs/);
+  assert.match(source, /Reviewer role IDs/);
   assert.match(router, /isChannelSelectMenu\(\) \|\| interaction\.isRoleSelectMenu\(\)/);
 });
