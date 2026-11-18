@@ -34,7 +34,7 @@ function panelPayload(guild, cfg) {
       '**Open cases:** ' + (leave.requests || []).filter(item => ['pending','approved'].includes(item.status)).length,
       '',
       'Requests are detected from messages containing leave/absence wording and a duration (for example: “I need sick leave for 2 days”). The bot acknowledges only detected requests.'
-    ].join('\\n'));
+    ].join('\n'));
   const rows = [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('lilgrave_leave:settings').setLabel('Configure panel').setStyle(ButtonStyle.Primary),
@@ -112,7 +112,7 @@ async function handleComponent(interaction) {
   if (action === 'refresh') return interaction.update(panelPayload(interaction.guild, cfg));
   if (action === 'cases') {
     const cases = (cfg.lilgrave.leave.requests || []).slice(-12).reverse();
-    const lines = cases.map(item => '• <@' + item.userId + '> — **' + item.status + '** — ' + item.durationLabel + (item.dueAt ? ' — due <t:' + Math.floor(item.dueAt / 1000) + ':R>' : '')).join('\\n');
+    const lines = cases.map(item => '• <@' + item.userId + '> — **' + item.status + '** — ' + item.durationLabel + (item.dueAt ? ' — due <t:' + Math.floor(item.dueAt / 1000) + ':R>' : '')).join('\n');
     return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle('Recent leave cases').setDescription(lines || 'No leave cases recorded.')], ephemeral: true });
   }
   if (action === 'toggle') {
