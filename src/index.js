@@ -80,7 +80,7 @@ client.on(Events.InteractionCreate,async interaction => {
     if (interaction.commandName === 'features') return await features.execute(interaction);
     const feature = features.commandFeature(interaction.commandName);
     if (feature && !features.isEnabled(interaction.guildId, feature)) return interaction.reply({content:'This feature is currently disabled in this server. An administrator can enable it with /features.',ephemeral:true});
-    if (['punishment-setup','staff-leave-setup'].includes(interaction.commandName)) return await lilgrave.execute(interaction);
+    if (['punishment-setup','staff-leave-setup','leave-return'].includes(interaction.commandName)) return await lilgrave.execute(interaction);
     await commands.execute(interaction,client,player);
   } catch(error) {
     console.error('[NovaBot] Interaction error:',error);
