@@ -42,3 +42,12 @@ test('leave request acknowledgement is a single-line reply and only follows a re
   assert.match(source, /if \(!parsed\) return/);
   assert.match(source, /if \(await handleReply\(message\)\) return/);
 });
+
+test('leave requests notify configured reviewer roles and provide decision buttons', () => {
+  const source = require('node:fs').readFileSync(require.resolve('../src/lilgrave'), 'utf8');
+  assert.match(source, /reviewerRoles\.map\(id => '<@&' \+ id \+ '>'\)/);
+  assert.match(source, /lilgrave_leave:decision:approve:/);
+  assert.match(source, /lilgrave_leave:decision:reject:/);
+  assert.match(source, /You do not have a configured leave-review authority role/);
+  assert.match(source, /interaction\.update\(\{ content: result, components: \[\]/);
+});
