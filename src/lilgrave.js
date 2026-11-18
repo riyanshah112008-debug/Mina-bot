@@ -13,8 +13,9 @@ const setupCommand = new SlashCommandBuilder().setName('staff-leave-setup').setD
 const returnCommand = new SlashCommandBuilder().setName('leave-return').setDescription('Report that you have returned from approved leave');
 const commands = [punishmentCommand.toJSON(), setupCommand.toJSON(), returnCommand.toJSON()];
 const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/';
+const retiredModels = new Set(['gemini-2.0-flash', 'gemini-2.0-flash-001', 'gemini-2.0-flash-lite', 'gemini-2.0-flash-lite-001']);
 const configuredModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-const model = configuredModel; 
+const model = retiredModels.has(configuredModel) ? 'gemini-3.8-flash' : configuredModel; 
 async function askGemini(parts, instruction) {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
   if (!key) throw new Error('Gemini API key is not configured (set GEMINI_API_KEY)');
