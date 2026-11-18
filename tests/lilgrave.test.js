@@ -13,7 +13,7 @@ test('leave parser accepts explicit leave duration and rejects ordinary chat', (
 test('leave setup exposes the management panel and return command', () => {
   const names = lilgrave.commands.map(command => command.name);
   assert.ok(names.includes('staff-leave-setup'));
-  assert.ok(names.includes('leave-return'));
+  assert.ok(names.includes('leave-return'));\n  assert.ok(names.includes('punishment-setup'));\n  assert.equal(typeof lilgrave.verifyPunishment, 'function');
 });
 
 test('leave configuration defaults include role authority and persistent request tracking', () => {
