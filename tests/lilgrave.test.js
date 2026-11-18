@@ -40,5 +40,8 @@ test('leave request acknowledgement is a single-line reply and only follows a re
   assert.match(source, /await message\.react\('✅'\)/);
   assert.match(source, /Leave request received — awaiting staff review\./);
   assert.match(source, /if \(!parsed\) return/);
+  assert.match(source, /const authorityRoles = \(cfg\.authorityRoleIds \|\| \[\]\)/);
+  assert.match(source, /allowedMentions: \{ roles: authorityRoles, repliedUser: false \}/);
+  assert.match(source, /request\.notifiedRoleIds = authorityRoles/);
   assert.match(source, /if \(await handleReply\(message\)\) return/);
 });
