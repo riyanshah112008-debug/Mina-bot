@@ -58,7 +58,7 @@ client.once(Events.ClientReady,async ready => {
     const route=process.env.GUILD_ID?Routes.applicationGuildCommands(clientId,process.env.GUILD_ID):Routes.applicationCommands(clientId);
     await rest.put(route,{body:[...commands.commands,...lilgrave.commands,...features.commands]}); console.log('[NovaBot] Registered '+commands.commands.length+' commands.');
   } catch(error) { console.error('[NovaBot] Command registration failed:',error.message); }
-  utility.resumeReminders(client);
+  utility.resumeReminders(client);\n  lilgrave.start(client);
 });
 client.on(Events.InteractionCreate,async interaction => {
   if (!interaction.isAutocomplete()) brandInteraction(interaction);
@@ -71,7 +71,7 @@ client.on(Events.InteractionCreate,async interaction => {
       if (!features.isEnabled(interaction.guildId, 'music')) return interaction.reply({content:'Music is disabled in this server.',ephemeral:true});
       return await music.handleButton(interaction,client);
     }
-    if(interaction.isButton() && interaction.customId.startsWith('lilgrave_features:')) return await features.handleComponent(interaction);
+    if(interaction.isButton() && interaction.customId.startsWith('lilgrave_leave:demote:')) return await lilgrave.handleDemotionButton(interaction);\n    if(interaction.isButton() && interaction.customId.startsWith('lilgrave_leave:')) return await lilgrave.handleComponent(interaction);\n    if(interaction.isModalSubmit() && interaction.customId === 'lilgrave_leave:save') return await lilgrave.handleModal(interaction);\n    if(interaction.isButton() && interaction.customId.startsWith('lilgrave_features:')) return await features.handleComponent(interaction);
     if(interaction.isStringSelectMenu() && interaction.customId==='lilgrave_features:select') return await features.handleComponent(interaction);
     if(interaction.isButton() && interaction.customId==='mina_verify_start' && !features.isEnabled(interaction.guildId,'verification')) return interaction.reply({content:'Verification is disabled in this server.',ephemeral:true});
     if(interaction.isButton()||interaction.isModalSubmit()) return await commands.handleComponent(interaction);
