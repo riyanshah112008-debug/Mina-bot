@@ -10,6 +10,31 @@ test('leave parser accepts explicit leave duration and rejects ordinary chat', (
   assert.equal(lilgrave.parseLeave('I need leave'), null);
 });
 
+
+test('proof claim parser extracts action, Discord target ID and reason', () => {
+  assert.deepEqual(
+    lilgrave.parsePunishmentClaim('Action: Ban\\nUser ID: 123456789012345678\\nReason: repeated spam links'),
+    { userId: '123456789012345678', action: 'ban', reason: 'repeated spam links' }
+  );
+  assert.deepEqual(
+    lilgrave.parsePunishmentClaim('Action: Kick | Target: <@!234567890123456789> | Reason: harassment'),
+    { userId: '234567890123456789', action: 'kick', reason: 'harassment' }
+  );
+  assert.equal(lilgrave.parsePunishmentClaim('Action: timeout\\nUser ID: 123456789012345678\\nReason: abuse').action, 'timeout');
+});
+
+test('proof validator reports incomplete or unreadable evidence and reacts only to a verified correct result', () => {
+  const source = require('node:fs').readFileSync(require.resolve('../src/lilgrave'), 'utf8');
+  assert.match(source, /Proof rejected: missing/);
+  assert.match(source, /Proof rejected: attach a clear screenshot/);
+  assert.match(source, /verdict\.verdict === 'correct'/);
+  assert.match(source, /await message\.react\('✅'\)/);
+  assert.match(source, /Proof rejected: /);
+  assert.match(source, /Proof not verified: /);
+  assert.match(source, /Proof not checked: evidence service failed/);
+  assert.match(source, /punishmentChecksCompleted/);
+});
+
 test('leave setup exposes the management panel and return command', () => {
   const names = lilgrave.commands.map(command => command.name);
   assert.ok(names.includes('staff-leave-setup'));
