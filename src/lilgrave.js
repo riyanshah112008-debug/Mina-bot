@@ -87,7 +87,7 @@ async function handleReply(message) {
   if (!message.reference?.messageId || !message.guild) return false;
   const cfg = store.get(message.guildId).lilgrave.leave;
   const requests = cfg.requests || [];
-  const request = requests.find(item => item.ackMessageId === message.reference.messageId);
+  const request = requests.find(item => item.ackMessageId === message.reference.messageId || item.messageId === message.reference.messageId);
   if (!request || request.status !== 'pending') return false;
   const member = await message.guild.members.fetch(message.author.id).catch(() => null);
   if (!isAuthority(member, cfg)) return false;
