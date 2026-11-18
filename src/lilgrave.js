@@ -258,7 +258,7 @@ async function handleApplicationSubmit(interaction) {
   const startText = interaction.fields.getTextInputValue('start').trim();
   const days = Number(interaction.fields.getTextInputValue('days').trim());
   const startAt = Date.parse(startText + 'T00:00:00.000Z');
-  if (!reason || !/^\\d{4}-\\d{2}-\\d{2}$/.test(startText) || !Number.isFinite(startAt) || new Date(startAt).toISOString().slice(0, 10) !== startText || !Number.isInteger(days) || days < 1 || days > 30) {
+  if (!reason || !/^\d{4}-\d{2}-\d{2}$/.test(startText) || !Number.isFinite(startAt) || new Date(startAt).toISOString().slice(0, 10) !== startText || !Number.isInteger(days) || days < 1 || days > 30) {
     return interaction.reply({ content: 'Please enter a valid reason, start date (YYYY-MM-DD), and duration from 1 to 30 days.', ephemeral: true });
   }
   const channel = await interaction.guild.channels.fetch(leave.channelId).catch(() => null);
@@ -267,7 +267,7 @@ async function handleApplicationSubmit(interaction) {
   leave.requests = Array.isArray(leave.requests) ? leave.requests : [];
   leave.requests.push(request);
   leave.requests = leave.requests.slice(-500);
-  const roles = (leave.authorityRoleIds || []).filter(id => /^\\d{17,20}$/.test(id));
+  const roles = (leave.authorityRoleIds || []).filter(id => /^\d{17,20}$/.test(id));
   const embed = new EmbedBuilder().setColor(0xF1C40F).setTitle('New Staff Leave Application')
     .addFields(
       { name: 'Applicant', value: '<@' + request.userId + '>', inline: true },
