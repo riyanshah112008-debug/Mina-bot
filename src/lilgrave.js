@@ -64,7 +64,7 @@ async function handleMessage(message) {
   if (!message.guild || message.author.bot || message.webhookId) return;
   const cfg = store.get(message.guildId).lilgrave.leave;
   if (!cfg.enabled || message.channelId !== cfg.channelId) return;
-  const parsed = parseLeave(message.content);
+  if (await handleReply(message)) return;\n  const parsed = parseLeave(message.content);
   if (!parsed) return;
   const requests = cfg.requests || [];
   if (requests.some(item => item.messageId === message.id)) return;
