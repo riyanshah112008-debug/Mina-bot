@@ -82,7 +82,13 @@ async function verifyPunishment(message) {
         if (!result.ok) continue;
         const bytes = Buffer.from(await result.arrayBuffer());
         if (!bytes.length || bytes.length > 6 * 1024 * 1024 || totalBytes + bytes.length > 12 * 1024 * 1024) continue;
-        const mimeType = (result.headers.get('content-type') || attachment.contentType || '').split(';')[0].toLowerCase();
+        let mimeType = (result.headers.get('content-type') || attachment.contentType || '').split(';')[0].toLowerCase();
+        if (!mimeType.startsWith('image/')) {
+          const fileName = attachment.name || attachment.url || '';
+          const extension = (fileName.match(/\.(png|jpe?g|webp|gif)(?:[?#\s]|$)/i) || [])[1];
+          const mimeByExtension = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
+          mimeType = extension ? mimeByExtension[extension.toLowerCase()] : '';
+        }
         if (!mimeType.startsWith('image/')) continue;
         totalBytes += bytes.length;
         parts.push({ inlineData: { mimeType, data: bytes.toString('base64') } });
