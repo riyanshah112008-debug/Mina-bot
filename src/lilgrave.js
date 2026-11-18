@@ -85,15 +85,12 @@ async function verifyPunishment(message) {
 async function handleStaffLeave(message) {
   const cfg = store.get(message.guildId).lilgrave.leave;
   if (!cfg.enabled || message.channelId !== cfg.channelId) return;
-  const text = message.content.trim();
-  if (!text || text.length < 8) return;
+  // This is a dedicated leave-request channel: acknowledge every human post directly.
+  // Do not call Gemini here; an AI/API outage must never prevent the requested tick reaction.
   try {
-    const answer = await askGemini([{ text: text.slice(0, 2500) }], 'You are Lilgrave, a strict staff leave request classifier. Decide whether this message is genuinely a staff leave or absence request. A message asking for leave for a period of time is relevant. Unrelated conversation is not relevant. Respond ONLY as JSON: {"relevant":true|false}.');
-    const result = parseJson(answer);
-    if (result.relevant === true) await message.react('✅');
+    await message.react('✅');
   } catch (error) {
-    console.error('[Lilgrave] Staff leave assistant failed:', error.message);
-    // Keep the channel free of guessed replies; log the actionable API error for the operator.
+    console.error('[Lilgrave] Could not add ✅ to staff leave message in channel ' + message.channelId + ':', error.message);
   }
 }
 
