@@ -33,8 +33,7 @@ function panelPayload(guild, cfg) {
       '**Reminder:** ' + (leave.reminderHours ?? 12) + ' hour(s) before return',
       '',
       'Requests are detected from messages containing leave/absence wording and a duration (for example: “I need sick leave for 2 days”). The bot acknowledges only detected requests.'
-    ].join('
-'));
+    ].join('\\n'));
   const rows = [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('lilgrave_leave:settings').setLabel('Configure panel').setStyle(ButtonStyle.Primary),
