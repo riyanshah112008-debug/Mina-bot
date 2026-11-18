@@ -52,3 +52,10 @@ The Render blueprint exposes `/health`. A sleeping/free host cannot provide reli
 
 ## Security notes
 Anti-nuke is reactive to audit-log events and cannot guarantee prevention of every action. Configure role hierarchy carefully and test lockdown/verification in a private server before production use.
+
+
+## Lilgrave assistants
+- Run `/staff-leave-setup` and select the staff leave channel with `enabled: true`. Enabling this command also enables the Lilgrave group in `/features`.
+- Run `/punishment-setup` separately to configure the punishment evidence channel.
+- Set `GEMINI_API_KEY` in the hosting dashboard. `GEMINI_MODEL` is optional; the default is `gemini-3.8-flash`. Retired Gemini 2.0 model overrides are automatically replaced.
+- The staff leave assistant replies only to relevant leave requests, never approves/rejects them, and stays silent on unrelated messages or AI failures. Check the host logs for the exact API error if Gemini is unavailable.
