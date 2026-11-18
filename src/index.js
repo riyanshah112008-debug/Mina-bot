@@ -7,6 +7,7 @@ const store = require('./store');
 const security = require('./security');
 const commands = require('./commands');
 const lilgrave = require('./lilgrave');
+const features = require('./features');
 const utility = require('./utility');
 const music = require('./music');
 const { brandInteraction } = require('./utils/embeds');
@@ -55,18 +56,30 @@ client.once(Events.ClientReady,async ready => {
   try {
     const rest=new REST({version:'10'}).setToken(token);
     const route=process.env.GUILD_ID?Routes.applicationGuildCommands(clientId,process.env.GUILD_ID):Routes.applicationCommands(clientId);
-    await rest.put(route,{body:[...commands.commands,...lilgrave.commands]}); console.log('[NovaBot] Registered '+commands.commands.length+' commands.');
+    await rest.put(route,{body:[...commands.commands,...lilgrave.commands,...features.commands]}); console.log('[NovaBot] Registered '+commands.commands.length+' commands.');
   } catch(error) { console.error('[NovaBot] Command registration failed:',error.message); }
   utility.resumeReminders(client);
 });
 client.on(Events.InteractionCreate,async interaction => {
   if (!interaction.isAutocomplete()) brandInteraction(interaction);
   try {
-    if(interaction.isAutocomplete()) return await music.autocomplete(interaction,client);
-    if(interaction.isButton() && interaction.customId.startsWith('mina_music_')) return await music.handleButton(interaction,client);
+    if(interaction.isAutocomplete()) {
+      if (!features.isEnabled(interaction.guildId, 'music')) return interaction.respond([]);
+      return await music.autocomplete(interaction,client);
+    }
+    if(interaction.isButton() && interaction.customId.startsWith('mina_music_')) {
+      if (!features.isEnabled(interaction.guildId, 'music')) return interaction.reply({content:'Music is disabled in this server.',ephemeral:true});
+      return await music.handleButton(interaction,client);
+    }
+    if(interaction.isButton() && interaction.customId.startsWith('lilgrave_features:')) return await features.handleComponent(interaction);
+    if(interaction.isStringSelectMenu() && interaction.customId==='lilgrave_features:select') return await features.handleComponent(interaction);
+    if(interaction.isButton() && interaction.customId==='mina_verify_start' && !features.isEnabled(interaction.guildId,'verification')) return interaction.reply({content:'Verification is disabled in this server.',ephemeral:true});
     if(interaction.isButton()||interaction.isModalSubmit()) return await commands.handleComponent(interaction);
     if(!interaction.isChatInputCommand()) return;
     if(process.env.GUILD_ID&&interaction.guildId!==process.env.GUILD_ID) return interaction.reply({content:'This bot is configured for a different server.',ephemeral:true});
+    if (interaction.commandName === 'features') return await features.execute(interaction);
+    const feature = features.commandFeature(interaction.commandName);
+    if (feature && !features.isEnabled(interaction.guildId, feature)) return interaction.reply({content:'This feature is currently disabled in this server. An administrator can enable it with /features.',ephemeral:true});
     if (['punishment-setup','staff-leave-setup'].includes(interaction.commandName)) return await lilgrave.execute(interaction);
     await commands.execute(interaction,client,player);
   } catch(error) {
@@ -75,12 +88,12 @@ client.on(Events.InteractionCreate,async interaction => {
     if(interaction.replied||interaction.deferred) await interaction.followUp(payload).catch(()=>null); else await interaction.reply(payload).catch(()=>null);
   }
 });
-client.on(Events.MessageCreate,message=>music.handlePrefix(message,client).catch(error=>console.error('[NovaBot] Prefix command error:',error)));
-client.on(Events.MessageCreate,message=>commands.handlePrefix(message).catch(error=>console.error('[NovaBot] Moderation prefix error:',error)));
-client.on(Events.MessageCreate,message=>lilgrave.handleMessage(message).catch(error=>console.error('[Lilgrave] Message handler error:',error)));
-client.on(Events.GuildMemberAdd,member=>security.onJoin(member).catch(console.error));
-client.on(Events.MessageCreate,message=>security.onMessage(message).catch(console.error));
-client.on(Events.GuildAuditLogEntryCreate,entry=>{ const item=security.auditTypes.find(([type])=>type===entry.action); if(item) security.handleDestructiveAudit(entry,item[1]).catch(console.error); });
+client.on(Events.MessageCreate,message=>{ if(features.isEnabled(message.guildId,'music')) music.handlePrefix(message,client).catch(error=>console.error('[NovaBot] Prefix command error:',error)); });
+client.on(Events.MessageCreate,message=>{ if(features.isEnabled(message.guildId,'moderation')) commands.handlePrefix(message).catch(error=>console.error('[NovaBot] Moderation prefix error:',error)); });
+client.on(Events.MessageCreate,message=>{ if(features.isEnabled(message.guildId,'lilgrave')) lilgrave.handleMessage(message).catch(error=>console.error('[Lilgrave] Message handler error:',error)); });
+client.on(Events.GuildMemberAdd,member=>{ if(features.isEnabled(member.guild.id,'security')) security.onJoin(member).catch(console.error); });
+client.on(Events.MessageCreate,message=>{ if(features.isEnabled(message.guildId,'security')) security.onMessage(message).catch(console.error); });
+client.on(Events.GuildAuditLogEntryCreate,entry=>{ if(!features.isEnabled(entry.guild?.id,'security')) return; const item=security.auditTypes.find(([type])=>type===entry.action); if(item) security.handleDestructiveAudit(entry,item[1]).catch(console.error); });
 client.on(Events.Error,error=>console.error('[NovaBot] Discord error:',error));
 process.on('unhandledRejection',error=>console.error('[NovaBot] Unhandled rejection:',error));
 async function shutdown(signal) { console.log('[NovaBot] Shutdown: '+signal); store.save(); healthServer.close(); try { player.shoukaku?.disconnect?.(); } catch {} client.destroy(); process.exit(0); }

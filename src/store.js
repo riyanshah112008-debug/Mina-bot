@@ -12,6 +12,7 @@ const defaults = () => ({
   trusted: [], trustedRoles: [], incidents: [], warnings: [], nextCaseId: 0, logChannelId: null, quarantineRoleId: null,
   verification: { enabled: false, verifiedRoleId: null, quarantineRoleId: null },
   lilgrave: { punishment: { channelId: null, enabled: false }, leave: { channelId: null, enabled: false } },
+  features: { security: true, verification: true, moderation: true, music: true, utilities: true, reminders: true, lilgrave: true },
   lockdown: { active: false, changed: [] }, music: { defaultVolume: 70, maxVolume: 100 }, reminders: []
 });
 let cache = {};
@@ -25,6 +26,7 @@ function get(guildId) {
   const cfg = cache[guildId], base = defaults();
   for (const key of Object.keys(base)) if (cfg[key] === undefined) cfg[key] = base[key];
   for (const key of ['antiNuke','antiRaid','joinGate','automod','verification','lockdown','music']) cfg[key] = { ...base[key], ...(cfg[key] || {}) };
+  cfg.features = { security: true, verification: true, moderation: true, music: true, utilities: true, reminders: true, lilgrave: true, ...(cfg.features || {}) };
   cfg.lilgrave = { punishment: { channelId: null, enabled: false, ...(cfg.lilgrave?.punishment || {}) }, leave: { channelId: null, enabled: false, ...(cfg.lilgrave?.leave || {}) } };
   for (const key of ['trusted','trustedRoles','incidents','warnings','reminders']) if (!Array.isArray(cfg[key])) cfg[key] = [];
   if (!Array.isArray(cfg.automod.allowedDomains)) cfg.automod.allowedDomains = [];
