@@ -137,7 +137,17 @@ async function handleMessage(message) {
   store.save();
   try {
     await message.react('✅');
-    const ack = await message.reply({ content: '✅ Leave request received — awaiting staff review.' });
+    const reviewerRoles = (cfg.authorityRoleIds || []).filter(id => /^\\d{17,20}$/.test(id));
+    const roleMentions = reviewerRoles.map(id => '<@&' + id + '>').join(' ');
+    const reviewRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('lilgrave_leave:decision:approve:' + request.id).setLabel('Approve leave').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('lilgrave_leave:decision:reject:' + request.id).setLabel('Reject leave').setStyle(ButtonStyle.Danger)
+    );
+    const ack = await message.reply({
+      content: (roleMentions ? roleMentions + ' ' : '⚠️ No reviewer roles are configured in /staff-leave-setup. ') + '✅ Leave request received — awaiting staff review.',
+      components: [reviewRow],
+      allowedMentions: { roles: reviewerRoles, repliedUser: false }
+    });
     request.ackMessageId = ack.id;
     store.save();
   } catch (error) {
@@ -167,8 +177,27 @@ async function handleComponent(interaction) {
   if (!interaction.customId?.startsWith('lilgrave_leave:')) return false;
   if (!interaction.inGuild()) return interaction.reply({ content: 'Use this in a server.', ephemeral: true });
   const cfg = store.get(interaction.guildId);
+  const parts = interaction.customId.split(':');
+  if (parts[1] === 'decision') {
+    const [, , decision, requestId] = parts;
+    const leave = cfg.lilgrave.leave;
+    const request = (leave.requests || []).find(item => item.id === requestId);
+    if (!request || request.status !== 'pending') return interaction.reply({ content: 'This leave request has already been reviewed or no longer exists.', ephemeral: true });
+    const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+    if (!isAuthority(member, leave)) return interaction.reply({ content: 'You do not have a configured leave-review authority role.', ephemeral: true });
+    if (!['approve', 'reject'].includes(decision)) return interaction.reply({ content: 'Invalid review action.', ephemeral: true });
+    request.status = decision === 'approve' ? 'approved' : 'rejected';
+    request.reviewedBy = interaction.user.id;
+    request.reviewedAt = Date.now();
+    if (decision === 'approve') request.dueAt = Date.now() + request.durationMs;
+    store.save();
+    const result = decision === 'approve'
+      ? '✅ Leave approved by <@' + interaction.user.id + '>. Return deadline: <t:' + Math.floor(request.dueAt / 1000) + ':F>. Use /leave-return when back.'
+      : '❌ Leave rejected by <@' + interaction.user.id + '>.';
+    return interaction.update({ content: result, components: [], allowedMentions: { users: [interaction.user.id] } });
+  }
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'Administrator permission required.', ephemeral: true });
-  const action = interaction.customId.split(':')[1];
+  const action = parts[1];
   if (action === 'refresh') return interaction.update(panelPayload(interaction.guild, cfg));
   if (action === 'cases') {
     const cases = (cfg.lilgrave.leave.requests || []).slice(-12).reverse();
