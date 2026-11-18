@@ -137,35 +137,6 @@ async function handleMessage(message) {
   if (!message.guild || message.author.bot || message.webhookId) return;
   const guildCfg = store.get(message.guildId).lilgrave;
   if (message.channelId === guildCfg.punishment.channelId) await verifyPunishment(message);
-  const cfg = guildCfg.leave;
-  if (!cfg.enabled || message.channelId !== cfg.channelId) return;
-  if (await handleReply(message)) return;
-  const parsed = parseLeave(message.content);
-  if (!parsed) return;
-  const requests = cfg.requests || [];
-  if (requests.some(item => item.messageId === message.id)) return;
-  const request = { id: message.id, messageId: message.id, userId: message.author.id, channelId: message.channelId, text: message.content.slice(0, 1500), durationMs: parsed.durationMs, durationLabel: parsed.durationLabel, status: 'pending', createdAt: Date.now(), ackMessageId: null, reminded: false, overdueNotified: false };
-  requests.push(request);
-  cfg.requests = requests.slice(-500);
-  store.save();
-  try {
-    await message.react('✅');
-    const authorityRoles = (cfg.authorityRoleIds || []).filter(id => /^\d{17,20}$/.test(id));
-    const roleMentions = authorityRoles.map(id => '<@&' + id + '>').join(' ');
-    const reviewLine = roleMentions
-      ? roleMentions + ' — new staff leave request needs your review.'
-      : '⚠️ No reviewer roles are selected. Choose reviewer roles in /staff-leave-setup. Server administrators can still review.';
-    const ack = await message.reply({
-      content: '✅ Leave request received — awaiting staff review.\n' + reviewLine,
-      allowedMentions: { roles: authorityRoles, repliedUser: false }
-    });
-    request.ackMessageId = ack.id;
-    request.notifiedRoleIds = authorityRoles;
-    request.notifiedAt = Date.now();
-    store.save();
-  } catch (error) {
-    console.error('[Lilgrave] Leave acknowledgement failed:', error.message);
-  }
 }
 async function handleReply(message) {
   if (!message.reference?.messageId || !message.guild) return false;
@@ -192,7 +163,6 @@ async function handleComponent(interaction) {
   const cfg = store.get(interaction.guildId);
   const action = interaction.customId.split(':')[1];
   if (action === 'decision') return handleApplicationDecision(interaction);
-  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'Administrator permission required.', ephemeral: true });
   if (action === 'apply') {
     if (!cfg.lilgrave.leave.enabled || !cfg.lilgrave.leave.channelId) return interaction.reply({ content: 'Leave applications are not available right now.', ephemeral: true });
     const modal = new ModalBuilder().setCustomId('lilgrave_leave:application').setTitle('Staff Leave Application');
@@ -203,6 +173,7 @@ async function handleComponent(interaction) {
     );
     return interaction.showModal(modal);
   }
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'Administrator permission required.', ephemeral: true });
   if (action === 'select-channel') {
     const channelId = interaction.values[0];
     const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
