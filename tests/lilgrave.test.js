@@ -45,3 +45,16 @@ test('leave request acknowledgement is a single-line reply and only follows a re
   assert.match(source, /request\.notifiedRoleIds = authorityRoles/);
   assert.match(source, /if \(await handleReply\(message\)\) return/);
 });
+
+test('leave setup supports Discord channel and role pickers plus manual ID fallback', () => {
+  const source = require('node:fs').readFileSync(require.resolve('../src/lilgrave'), 'utf8');
+  const router = require('node:fs').readFileSync(require.resolve('../src/index'), 'utf8');
+  assert.match(source, /new ChannelSelectMenuBuilder\(\)/);
+  assert.match(source, /new RoleSelectMenuBuilder\(\)/);
+  assert.match(source, /lilgrave_leave:select-authority/);
+  assert.match(source, /lilgrave_leave:select-staff/);
+  assert.match(source, /lilgrave_leave:select-demoted/);
+  assert.match(source, /Leave channel ID/);
+  assert.match(source, /Demotion \/ review role IDs/);
+  assert.match(router, /isChannelSelectMenu\(\) \|\| interaction\.isRoleSelectMenu\(\)/);
+});
