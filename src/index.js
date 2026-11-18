@@ -75,7 +75,7 @@ client.on(Events.InteractionCreate,async interaction => {
     if(interaction.isButton() && interaction.customId.startsWith('lilgrave_leave:demote:')) return await lilgrave.handleDemotionButton(interaction);
     if((interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu()) && interaction.customId.startsWith('lilgrave_leave:')) return await lilgrave.handleComponent(interaction);
     if(interaction.isButton() && interaction.customId.startsWith('lilgrave_leave:')) return await lilgrave.handleComponent(interaction);
-    if(interaction.isModalSubmit() && interaction.customId === 'lilgrave_leave:save') return await lilgrave.handleModal(interaction);
+    if(interaction.isModalSubmit() && interaction.customId.startsWith('lilgrave_leave:')) return await lilgrave.handleModal(interaction);
     if(interaction.isButton() && interaction.customId.startsWith('lilgrave_features:')) return await features.handleComponent(interaction);
     if(interaction.isStringSelectMenu() && interaction.customId==='lilgrave_features:select') return await features.handleComponent(interaction);
     if(interaction.isButton() && interaction.customId==='mina_verify_start' && !features.isEnabled(interaction.guildId,'verification')) return interaction.reply({content:'Verification is disabled in this server.',ephemeral:true});
