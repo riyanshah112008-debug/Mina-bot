@@ -73,6 +73,7 @@ client.on(Events.InteractionCreate,async interaction => {
     }
     if(interaction.isButton() && interaction.customId.startsWith('lilgrave_features:')) return await features.handleComponent(interaction);
     if(interaction.isStringSelectMenu() && interaction.customId==='lilgrave_features:select') return await features.handleComponent(interaction);
+    if(interaction.isButton() && interaction.customId==='mina_verify_start' && !features.isEnabled(interaction.guildId,'verification')) return interaction.reply({content:'Verification is disabled in this server.',ephemeral:true});
     if(interaction.isButton()||interaction.isModalSubmit()) return await commands.handleComponent(interaction);
     if(!interaction.isChatInputCommand()) return;
     if(process.env.GUILD_ID&&interaction.guildId!==process.env.GUILD_ID) return interaction.reply({content:'This bot is configured for a different server.',ephemeral:true});
