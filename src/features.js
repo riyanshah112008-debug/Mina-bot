@@ -64,6 +64,7 @@ async function handleComponent(interaction) {
     const [key,state] = interaction.values[0].split(':');
     if (!definitions.some(([name])=>name===key) || !['on','off'].includes(state)) return interaction.reply({content:'Unknown feature selection.',ephemeral:true});
     store.update(interaction.guildId,cfg=>{cfg.features[key]=state==='on';});
+    if (key === 'reminders' && state === 'on') require('./utility').resumeReminders(interaction.client);
   } else {
     return interaction.reply({content:'This control is no longer available.',ephemeral:true});
   }
