@@ -77,34 +77,34 @@ function panelPayload(guild, cfg) {
   const leave = cfg.lilgrave.leave;
   const embed = new EmbedBuilder().setColor(0x5865F2).setTitle('Staff Leave Management')
     .setDescription([
-      '**Request channel:** ' + (leave.channelId ? '<#' + leave.channelId + '>' : 'Not configured'),
+      '**Leave channel:** ' + (leave.channelId ? '<#' + leave.channelId + '>' : 'Choose a channel below'),
       '**Status:** ' + (leave.enabled ? 'Enabled' : 'Disabled'),
-      '**Demotion authority:** ' + ((leave.authorityRoleIds || []).length ? leave.authorityRoleIds.map(id => '<@&' + id + '>').join(', ') : 'Administrators only'),
-      '**Staff roles:** ' + ((leave.staffRoleIds || []).length ? leave.staffRoleIds.map(id => '<@&' + id + '>').join(', ') : 'Not configured'),
-      '**Demoted role:** ' + (leave.demotedRoleId ? '<@&' + leave.demotedRoleId + '>' : 'Not configured'),
-      '**Reminder:** ' + (leave.reminderHours ?? 12) + ' hour(s) before return',
-      '**Open cases:** ' + (leave.requests || []).filter(item => ['pending','approved'].includes(item.status)).length,
+      '**Who reviews requests:** ' + ((leave.authorityRoleIds || []).length ? leave.authorityRoleIds.map(id => '<@&' + id + '>').join(', ') : 'No roles selected — choose reviewer roles below'),
+      '**Staff roles removed after demotion:** ' + ((leave.staffRoleIds || []).length ? leave.staffRoleIds.map(id => '<@&' + id + '>').join(', ') : 'Choose staff roles below'),
+      '**Lower role after demotion:** ' + (leave.demotedRoleId ? '<@&' + leave.demotedRoleId + '>' : 'Choose a role below'),
+      '**Return reminder:** ' + (leave.reminderHours ?? 12) + ' hours before the return deadline',
+      '**Active leave requests:** ' + (leave.requests || []).filter(item => ['pending','approved'].includes(item.status)).length,
       '',
-      'Requests are detected from messages containing leave/absence wording and a duration (for example: “I need sick leave for 2 days”). The bot acknowledges only detected requests.'
+      'Staff post a message such as “I need 2 days leave”. The bot sends it to the reviewer roles above. Reviewers reply “approve” or “reject”. When staff return, they use /leave-return.'
     ].join('\n'));
   const rows = [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('lilgrave_leave:settings').setLabel('Manual ID setup').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('lilgrave_leave:settings').setLabel('Enter IDs manually').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('lilgrave_leave:toggle').setLabel(leave.enabled ? 'Disable' : 'Enable').setStyle(leave.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
       new ButtonBuilder().setCustomId('lilgrave_leave:refresh').setLabel('Refresh').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('lilgrave_leave:cases').setLabel('View cases').setStyle(ButtonStyle.Secondary)
     ),
     new ActionRowBuilder().addComponents(
-      new ChannelSelectMenuBuilder().setCustomId('lilgrave_leave:select-channel').setPlaceholder('Select leave request channel').setChannelTypes(ChannelType.GuildText).setMinValues(1).setMaxValues(1)
+      new ChannelSelectMenuBuilder().setCustomId('lilgrave_leave:select-channel').setPlaceholder('1. Choose the leave request channel').setChannelTypes(ChannelType.GuildText).setMinValues(1).setMaxValues(1)
     ),
     new ActionRowBuilder().addComponents(
-      new RoleSelectMenuBuilder().setCustomId('lilgrave_leave:select-authority').setPlaceholder('Select reviewer / demotion authority roles').setMinValues(0).setMaxValues(25)
+      new RoleSelectMenuBuilder().setCustomId('lilgrave_leave:select-authority').setPlaceholder('2. Choose who can review leave requests').setMinValues(0).setMaxValues(25)
     ),
     new ActionRowBuilder().addComponents(
-      new RoleSelectMenuBuilder().setCustomId('lilgrave_leave:select-staff').setPlaceholder('Select staff roles removed on approved demotion').setMinValues(0).setMaxValues(25)
+      new RoleSelectMenuBuilder().setCustomId('lilgrave_leave:select-staff').setPlaceholder('3. Choose staff roles to remove after demotion').setMinValues(0).setMaxValues(25)
     ),
     new ActionRowBuilder().addComponents(
-      new RoleSelectMenuBuilder().setCustomId('lilgrave_leave:select-demoted').setPlaceholder('Select lower role assigned after demotion').setMinValues(0).setMaxValues(1)
+      new RoleSelectMenuBuilder().setCustomId('lilgrave_leave:select-demoted').setPlaceholder('4. Choose the lower role to assign').setMinValues(0).setMaxValues(1)
     )
   ];
   return { embeds: [embed], components: rows, ephemeral: true };
@@ -149,11 +149,11 @@ async function handleMessage(message) {
   store.save();
   try {
     await message.react('✅');
-    const authorityRoles = (cfg.authorityRoleIds || []).filter(id => /^\\d{17,20}$/.test(id));
+    const authorityRoles = (cfg.authorityRoleIds || []).filter(id => /^\d{17,20}$/.test(id));
     const roleMentions = authorityRoles.map(id => '<@&' + id + '>').join(' ');
     const reviewLine = roleMentions
       ? roleMentions + ' — new staff leave request needs your review.'
-      : '⚠️ No review-authority roles are configured. Administrators must review this request; configure authority roles in /staff-leave-setup.';
+      : '⚠️ No reviewer roles are selected. Choose reviewer roles in /staff-leave-setup. Server administrators can still review.';
     const ack = await message.reply({
       content: '✅ Leave request received — awaiting staff review.\n' + reviewLine,
       allowedMentions: { roles: authorityRoles, repliedUser: false }
@@ -226,10 +226,10 @@ async function handleComponent(interaction) {
     const modal = new ModalBuilder().setCustomId('lilgrave_leave:save').setTitle('Leave system settings');
     const fields = [
       ['channel', 'Leave channel ID', leave.channelId || '', true],
-      ['authority', 'Demotion / review role IDs (comma separated)', (leave.authorityRoleIds || []).join(', '), false],
-      ['staff', 'Staff role IDs to remove on approved demotion', (leave.staffRoleIds || []).join(', '), false],
-      ['demoted', 'Lower role ID to assign (optional)', leave.demotedRoleId || '', false],
-      ['reminder', 'Reminder hours before deadline', String(leave.reminderHours ?? 12), true]
+      ['authority', 'Reviewer role IDs (comma separated)', (leave.authorityRoleIds || []).join(', '), false],
+      ['staff', 'Staff role IDs to remove after demotion', (leave.staffRoleIds || []).join(', '), false],
+      ['demoted', 'Lower role ID to give after demotion', leave.demotedRoleId || '', false],
+      ['reminder', 'Hours before return to send reminder', String(leave.reminderHours ?? 12), true]
     ];
     modal.addComponents(...fields.map(([id, label, value, required]) => new ActionRowBuilder().addComponents(
       new TextInputBuilder().setCustomId(id).setLabel(label).setStyle(TextInputStyle.Short).setRequired(required).setValue(String(value).slice(0, 100)).setMaxLength(100)
