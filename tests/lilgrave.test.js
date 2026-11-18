@@ -35,17 +35,22 @@ test('leave workflow supports approval, return reporting and deadline processing
   assert.match(source, /async function handleDemotionButton/);
 });
 
-test('leave request acknowledgement is a single-line reply and only follows a recognized duration request', () => {
+test('staff submit leave forms through a panel and reviewers approve or reject with buttons', () => {
   const source = require('node:fs').readFileSync(require.resolve('../src/lilgrave'), 'utf8');
-  assert.match(source, /await message\.react\('✅'\)/);
-  assert.match(source, /Leave request received — awaiting staff review\./);
-  assert.match(source, /if \(!parsed\) return/);
-  assert.match(source, /const authorityRoles = \(cfg\.authorityRoleIds \|\| \[\]\)/);
-  assert.match(source, /allowedMentions: \{ roles: authorityRoles, repliedUser: false \}/);
-  assert.match(source, /request\.notifiedRoleIds = authorityRoles/);
-  assert.match(source, /if \(await handleReply\(message\)\) return/);
+  assert.match(source, /lilgrave_leave:post-panel/);
+  assert.match(source, /lilgrave_leave:apply/);
+  assert.match(source, /lilgrave_leave:application/);
+  assert.match(source, /Reason for leave/);
+  assert.match(source, /Start date \\(YYYY-MM-DD\\)/);
+  assert.match(source, /How many days/);
+  assert.match(source, /lilgrave_leave:decision:approve:/);
+  assert.match(source, /lilgrave_leave:decision:reject:/);
+  assert.match(source, /Only configured reviewer roles can approve or reject/);
+  assert.match(source, /request\\.dueAt = Math\\.max\\(Date\\.now\\(\\), request\\.startAt\\) \\+ request\\.durationMs/);
+  assert.match(source, /Your leave application has been submitted to the reviewers/);
+  assert.match(source, /async function handleApplicationSubmit/);
+  assert.match(source, /async function handleApplicationDecision/);
 });
-
 test('leave setup supports Discord channel and role pickers plus manual ID fallback', () => {
   const source = require('node:fs').readFileSync(require.resolve('../src/lilgrave'), 'utf8');
   const router = require('node:fs').readFileSync(require.resolve('../src/index'), 'utf8');
