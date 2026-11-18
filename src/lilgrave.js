@@ -29,16 +29,16 @@ async function askGemini(parts, instruction) {
   if (!text) throw new Error('Gemini returned an empty response');
   return text;
 }
-function parseJson(text) { return JSON.parse(text.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '').trim()); }
+function parseJson(text) { return JSON.parse(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()); }
 async function verifyPunishment(message) {
   const cfg = store.get(message.guildId).lilgrave.punishment;
   if (!cfg.enabled || message.channelId !== cfg.channelId) return;
-  const idMatch = message.content.match(/(?:user(?:\\s*id)?|member|target)\\s*[:：= -]*\\s*(\\d{17,20})/i) || message.content.match(/\\b(\\d{17,20})\\b/);
-  const reasonMatch = message.content.match(/reason\\s*[:：=]\\s*([\\s\\S]+)/i);
-  const actionMatch = message.content.match(/\\b(ban|banned|kick|kicked)\\b/i);
-  const attachments = [...message.attachments.values()].filter(a => /^image\\//i.test(a.contentType || '')).slice(0, 3);
+  const idMatch = message.content.match(/(?:user(?:\s*id)?|member|target)\s*[:：= -]*\s*(\d{17,20})/i) || message.content.match(/\b(\d{17,20})\b/);
+  const reasonMatch = message.content.match(/reason\s*[:：=]\s*([\s\S]+)/i);
+  const actionMatch = message.content.match(/\b(ban|banned|kick|kicked)\b/i);
+  const attachments = [...message.attachments.values()].filter(a => /^image\//i.test(a.contentType || '')).slice(0, 3);
   if (!idMatch || !reasonMatch || !actionMatch || attachments.length === 0) return;
-  const parts = [{ text: 'Claimed action: ' + (/ban/i.test(actionMatch[1]) ? 'ban' : 'kick') + '\\nTarget Discord ID: ' + idMatch[1] + '\\nClaimed reason: ' + reasonMatch[1].slice(0, 1000) }];
+  const parts = [{ text: 'Claimed action: ' + (/ban/i.test(actionMatch[1]) ? 'ban' : 'kick') + '\nTarget Discord ID: ' + idMatch[1] + '\nClaimed reason: ' + reasonMatch[1].slice(0, 1000) }];
   for (const attachment of attachments) {
     try {
       const result = await fetch(attachment.url, { signal: AbortSignal.timeout(15000) });
@@ -98,7 +98,13 @@ function panelPayload(guild, cfg) {
 }
 async function execute(interaction) {
   if (!interaction.inGuild()) return interaction.reply({ content: 'Use this command in a server.', ephemeral: true });
-  const cfg = store.get(interaction.guildId).lilgrave.leave;
+  if (interaction.commandName === 'punishment-setup') {
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'Administrator permission required.', ephemeral: true });
+    const channel = interaction.options.getChannel('channel', true);
+    const enabled = interaction.options.getBoolean('enabled', true);
+    store.update(interaction.guildId, cfg => { cfg.lilgrave.punishment = { channelId: channel.id, enabled }; });
+    return interaction.reply({ content: 'Lilgrave punishment evidence verification ' + (enabled ? 'enabled' : 'disabled') + ' in ' + channel.toString() + '.', ephemeral: true });
+  }
   if (interaction.commandName === 'staff-leave-setup') {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'Administrator permission required.', ephemeral: true });
     return interaction.reply(panelPayload(interaction.guild, store.get(interaction.guildId)));
@@ -115,7 +121,9 @@ async function execute(interaction) {
 }
 async function handleMessage(message) {
   if (!message.guild || message.author.bot || message.webhookId) return;
-  const cfg = store.get(message.guildId).lilgrave.leave;
+  const guildCfg = store.get(message.guildId).lilgrave;
+  if (message.channelId === guildCfg.punishment.channelId) await verifyPunishment(message);
+  const cfg = guildCfg.leave;
   if (!cfg.enabled || message.channelId !== cfg.channelId) return;
   if (await handleReply(message)) return;
   const parsed = parseLeave(message.content);
