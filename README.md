@@ -55,7 +55,8 @@ Anti-nuke is reactive to audit-log events and cannot guarantee prevention of eve
 
 
 ## Lilgrave assistants
-- Run `/staff-leave-setup` and select the staff leave channel with `enabled: true`. Enabling this command also enables the Lilgrave group in `/features`.
-- Run `/punishment-setup` separately to configure the punishment evidence channel.
-- Set `GEMINI_API_KEY` in the hosting dashboard. `GEMINI_MODEL` is optional; the default is `gemini-3.8-flash`. Retired Gemini 2.0 model overrides are automatically replaced.
-- The staff leave assistant adds a ✅ reaction to every human post in the dedicated leave channel. It does not call Gemini, so leave acknowledgements continue even when the Gemini API is unavailable. Give the bot View Channel and Add Reactions permissions there.
+- Run `/staff-leave-setup` to open the full leave management panel. Configure the request channel, review/demotion authority roles, staff roles to remove on demotion, lower role to assign, and reminder lead time.
+- Staff submit leave requests in the configured channel using a clear reason and duration, for example `I need sick leave for 2 days`. The bot reacts with ✅ and replies once on that message only when it recognizes a leave request with a duration.
+- An authorized reviewer replies directly to the bot acknowledgement with `approved` or `rejected`. Approval starts the return countdown. Staff use `/leave-return` when they are back.
+- The bot sends a reminder before the deadline and alerts configured authority roles when a return is overdue. An authorized reviewer can approve demotion using the alert button; the bot removes configured staff roles and assigns the configured lower role. Configure bot Manage Roles permission and role hierarchy carefully.
+- `/punishment-setup` remains separate. Gemini is not required for leave request recognition or tracking. Persist `DATA_DIR` across restarts so pending leave cases and deadlines survive deployments.

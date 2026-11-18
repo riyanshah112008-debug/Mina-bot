@@ -59,6 +59,7 @@ client.once(Events.ClientReady,async ready => {
     await rest.put(route,{body:[...commands.commands,...lilgrave.commands,...features.commands]}); console.log('[NovaBot] Registered '+commands.commands.length+' commands.');
   } catch(error) { console.error('[NovaBot] Command registration failed:',error.message); }
   utility.resumeReminders(client);
+  lilgrave.start(client);
 });
 client.on(Events.InteractionCreate,async interaction => {
   if (!interaction.isAutocomplete()) brandInteraction(interaction);
@@ -71,6 +72,9 @@ client.on(Events.InteractionCreate,async interaction => {
       if (!features.isEnabled(interaction.guildId, 'music')) return interaction.reply({content:'Music is disabled in this server.',ephemeral:true});
       return await music.handleButton(interaction,client);
     }
+    if(interaction.isButton() && interaction.customId.startsWith('lilgrave_leave:demote:')) return await lilgrave.handleDemotionButton(interaction);
+    if(interaction.isButton() && interaction.customId.startsWith('lilgrave_leave:')) return await lilgrave.handleComponent(interaction);
+    if(interaction.isModalSubmit() && interaction.customId === 'lilgrave_leave:save') return await lilgrave.handleModal(interaction);
     if(interaction.isButton() && interaction.customId.startsWith('lilgrave_features:')) return await features.handleComponent(interaction);
     if(interaction.isStringSelectMenu() && interaction.customId==='lilgrave_features:select') return await features.handleComponent(interaction);
     if(interaction.isButton() && interaction.customId==='mina_verify_start' && !features.isEnabled(interaction.guildId,'verification')) return interaction.reply({content:'Verification is disabled in this server.',ephemeral:true});
@@ -80,7 +84,7 @@ client.on(Events.InteractionCreate,async interaction => {
     if (interaction.commandName === 'features') return await features.execute(interaction);
     const feature = features.commandFeature(interaction.commandName);
     if (feature && !features.isEnabled(interaction.guildId, feature)) return interaction.reply({content:'This feature is currently disabled in this server. An administrator can enable it with /features.',ephemeral:true});
-    if (['punishment-setup','staff-leave-setup'].includes(interaction.commandName)) return await lilgrave.execute(interaction);
+    if (['punishment-setup','staff-leave-setup','leave-return'].includes(interaction.commandName)) return await lilgrave.execute(interaction);
     await commands.execute(interaction,client,player);
   } catch(error) {
     console.error('[NovaBot] Interaction error:',error);
