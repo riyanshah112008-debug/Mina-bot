@@ -13,7 +13,9 @@ test('leave parser accepts explicit leave duration and rejects ordinary chat', (
 test('leave setup exposes the management panel and return command', () => {
   const names = lilgrave.commands.map(command => command.name);
   assert.ok(names.includes('staff-leave-setup'));
-  assert.ok(names.includes('leave-return'));\n  assert.ok(names.includes('punishment-setup'));\n  assert.equal(typeof lilgrave.verifyPunishment, 'function');
+  assert.ok(names.includes('leave-return'));
+  assert.ok(names.includes('punishment-setup'));
+  assert.equal(typeof lilgrave.verifyPunishment, 'function');
 });
 
 test('leave configuration defaults include role authority and persistent request tracking', () => {
@@ -28,7 +30,7 @@ test('leave workflow supports approval, return reporting and deadline processing
   const source = require('node:fs').readFileSync(require.resolve('../src/lilgrave'), 'utf8');
   assert.match(source, /request\.status = decision/);
   assert.match(source, /request\.dueAt = Date\.now\(\) \+ request\.durationMs/);
-  assert.match(source, /request\.status = 'returned'/);
+  assert.match(source, /active\.status = 'returned'/);
   assert.match(source, /async function processDeadlines/);
   assert.match(source, /async function handleDemotionButton/);
 });
