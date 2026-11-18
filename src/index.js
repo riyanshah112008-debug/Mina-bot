@@ -73,7 +73,7 @@ client.on(Events.InteractionCreate,async interaction => {
       return await music.handleButton(interaction,client);
     }
     if(interaction.isButton() && interaction.customId.startsWith('lilgrave_leave:demote:')) return await lilgrave.handleDemotionButton(interaction);
-    if(interaction.isButton() && interaction.customId.startsWith('lilgrave_leave:')) return await lilgrave.handleComponent(interaction);
+    if((interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu()) && interaction.customId.startsWith('lilgrave_leave:')) return await lilgrave.handleComponent(interaction);\n    if(interaction.isButton() && interaction.customId.startsWith('lilgrave_leave:')) return await lilgrave.handleComponent(interaction);
     if(interaction.isModalSubmit() && interaction.customId === 'lilgrave_leave:save') return await lilgrave.handleModal(interaction);
     if(interaction.isButton() && interaction.customId.startsWith('lilgrave_features:')) return await features.handleComponent(interaction);
     if(interaction.isStringSelectMenu() && interaction.customId==='lilgrave_features:select') return await features.handleComponent(interaction);
