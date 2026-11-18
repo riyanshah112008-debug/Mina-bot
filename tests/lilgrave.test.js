@@ -17,10 +17,11 @@ test('punishment verification is fail-closed and only reacts after high-confiden
   assert.match(source, /leaving unverified/);
 });
 
-test('staff leave assistant only replies when Gemini marks a message relevant', () => {
+test('staff leave assistant reacts with a check mark only when Gemini marks a message relevant', () => {
   const source = fs.readFileSync(require.resolve('../src/lilgrave'), 'utf8');
   assert.match(source, /result\.relevant === true/);
-  assert.match(source, /allowedMentions: \{ repliedUser: false \}/);
+  assert.match(source, /message\.react\('✅'\)/);
+  assert.doesNotMatch(source, /message\.reply\(\{ content: reply/);
 });
 
 test('Lilgrave defaults to a supported Gemini model and replaces retired Gemini 2.0 overrides', () => {
