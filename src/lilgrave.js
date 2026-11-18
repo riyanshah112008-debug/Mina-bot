@@ -2,9 +2,60 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const store = require('./store');
 
+const punishmentCommand = new SlashCommandBuilder()
+  .setName('punishment-setup')
+  .setDescription('Configure Lilgrave punishment evidence verification')
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addChannelOption(o => o.setName('channel').setDescription('Channel where staff submit punishment evidence').addChannelTypes(ChannelType.GuildText).setRequired(true))
+  .addBooleanOption(o => o.setName('enabled').setDescription('Enable evidence verification').setRequired(true));
+
 const setupCommand = new SlashCommandBuilder().setName('staff-leave-setup').setDescription('Open the complete staff leave management panel').setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 const returnCommand = new SlashCommandBuilder().setName('leave-return').setDescription('Report that you have returned from approved leave');
-const commands = [setupCommand.toJSON(), returnCommand.toJSON()];
+const commands = [punishmentCommand.toJSON(), setupCommand.toJSON(), returnCommand.toJSON()];
+const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/';
+const configuredModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+const model = configuredModel; 
+async function askGemini(parts, instruction) {
+  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+  if (!key) throw new Error('Gemini API key is not configured (set GEMINI_API_KEY)');
+  const response = await fetch(endpoint + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key), {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: instruction }, ...parts] }], generationConfig: { temperature: 0.1, maxOutputTokens: 180, responseMimeType: 'application/json' } }),
+    signal: AbortSignal.timeout(25000)
+  });
+  if (!response.ok) throw new Error('Gemini request failed with HTTP ' + response.status);
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
+  if (!text) throw new Error('Gemini returned an empty response');
+  return text;
+}
+function parseJson(text) { return JSON.parse(text.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '').trim()); }
+async function verifyPunishment(message) {
+  const cfg = store.get(message.guildId).lilgrave.punishment;
+  if (!cfg.enabled || message.channelId !== cfg.channelId) return;
+  const idMatch = message.content.match(/(?:user(?:\\s*id)?|member|target)\\s*[:：= -]*\\s*(\\d{17,20})/i) || message.content.match(/\\b(\\d{17,20})\\b/);
+  const reasonMatch = message.content.match(/reason\\s*[:：=]\\s*([\\s\\S]+)/i);
+  const actionMatch = message.content.match(/\\b(ban|banned|kick|kicked)\\b/i);
+  const attachments = [...message.attachments.values()].filter(a => /^image\\//i.test(a.contentType || '')).slice(0, 3);
+  if (!idMatch || !reasonMatch || !actionMatch || attachments.length === 0) return;
+  const parts = [{ text: 'Claimed action: ' + (/ban/i.test(actionMatch[1]) ? 'ban' : 'kick') + '\\nTarget Discord ID: ' + idMatch[1] + '\\nClaimed reason: ' + reasonMatch[1].slice(0, 1000) }];
+  for (const attachment of attachments) {
+    try {
+      const result = await fetch(attachment.url, { signal: AbortSignal.timeout(15000) });
+      if (!result.ok) continue;
+      const bytes = Buffer.from(await result.arrayBuffer());
+      if (bytes.length > 8 * 1024 * 1024) continue;
+      const mimeType = (result.headers.get('content-type') || attachment.contentType || 'image/png').split(';')[0];
+      if (mimeType.startsWith('image/')) parts.push({ inlineData: { mimeType, data: bytes.toString('base64') } });
+    } catch (_) { /* Unavailable attachment: fail closed. */ }
+  }
+  if (parts.length === 1) return;
+  try {
+    const answer = await askGemini(parts, 'You are a strict evidence reviewer. Verify whether the image visibly proves the stated ban or kick for the exact target ID. Reject ambiguous, cropped, unrelated or contradictory evidence. Respond ONLY as JSON: {"verified":true|false,"confidence":0-1}.');
+    const result = parseJson(answer);
+    if (result.verified === true && Number(result.confidence) >= 0.92) await message.react('✅');
+  } catch (error) { console.error('[Lilgrave] Punishment evidence analysis failed; leaving unverified:', error.message); }
+}
 
 function isAuthority(member, cfg) {
   return member?.permissions?.has(PermissionFlagsBits.Administrator) ||
@@ -208,4 +259,4 @@ function start(client) {
   globalThis.__lilgraveLeaveTimer = setInterval(() => processDeadlines(client).catch(error => console.error('[Lilgrave] Deadline processor failed:', error.message)), 60000);
   globalThis.__lilgraveLeaveTimer.unref?.();
 }
-module.exports = { commands, execute, handleMessage, handleComponent, handleModal, handleDemotionButton, processDeadlines, start, parseLeave, askGemini: async () => { throw new Error('Gemini is not used by the leave workflow'); } };
+module.exports = { commands, execute, handleMessage, handleComponent, handleModal, handleDemotionButton, processDeadlines, start, parseLeave, verifyPunishment, askGemini };
