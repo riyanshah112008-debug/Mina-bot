@@ -18,18 +18,27 @@ const leaveCommand = new SlashCommandBuilder()
 
 const commands = [punishmentCommand.toJSON(), leaveCommand.toJSON()];
 const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/';
-const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const retiredModels = new Set(['gemini-2.0-flash', 'gemini-2.0-flash-001', 'gemini-2.0-flash-lite', 'gemini-2.0-flash-lite-001']);
+const configuredModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+const model = retiredModels.has(configuredModel) ? 'gemini-3.8-flash' : configuredModel;
+if (model !== configuredModel) console.warn('[Lilgrave] GEMINI_MODEL=' + configuredModel + ' is retired; using ' + model + ' instead.');
 
 async function askGemini(parts, instruction) {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
-  if (!key) throw new Error('Gemini API key is not configured');
+  if (!key) throw new Error('Gemini API key is not configured (set GEMINI_API_KEY)');
   const response = await fetch(endpoint + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: instruction }, ...parts] }], generationConfig: { temperature: 0.1, maxOutputTokens: 180 } }),
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: instruction }, ...parts] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 180, responseMimeType: 'application/json' }
+    }),
     signal: AbortSignal.timeout(25000)
   });
-  if (!response.ok) throw new Error('Gemini request failed with HTTP ' + response.status);
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new Error('Gemini request failed with HTTP ' + response.status + (detail ? ': ' + detail.slice(0, 400) : ''));
+  }
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
   if (!text) throw new Error('Gemini returned an empty response');
@@ -87,7 +96,7 @@ async function handleStaffLeave(message) {
     }
   } catch (error) {
     console.error('[Lilgrave] Staff leave assistant failed:', error.message);
-    // Do not guess relevance when the AI service is unavailable; stay silent.
+    // Keep the channel free of guessed replies; log the actionable API error for the operator.
   }
 }
 
@@ -108,8 +117,11 @@ async function execute(interaction) {
     return interaction.reply({ content: 'Lilgrave punishment evidence verification ' + (enabled ? 'enabled' : 'disabled') + ' in ' + channel.toString() + '.', ephemeral: true });
   }
   if (interaction.commandName === 'staff-leave-setup') {
-    store.update(interaction.guildId, cfg => { cfg.lilgrave.leave = { channelId: channel.id, enabled }; });
-    return interaction.reply({ content: 'Lilgrave staff leave assistant ' + (enabled ? 'enabled' : 'disabled') + ' in ' + channel.toString() + '.', ephemeral: true });
+    store.update(interaction.guildId, cfg => {
+      cfg.lilgrave.leave = { channelId: channel.id, enabled };
+      if (enabled) cfg.features.lilgrave = true;
+    });
+    return interaction.reply({ content: 'Lilgrave staff leave assistant ' + (enabled ? 'enabled' : 'disabled') + ' in ' + channel.toString() + (enabled ? '. The Lilgrave feature group is also enabled.' : '.'), ephemeral: true });
   }
   return null;
 }
