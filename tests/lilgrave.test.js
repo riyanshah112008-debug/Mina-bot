@@ -22,3 +22,15 @@ test('staff leave assistant only replies when Gemini marks a message relevant', 
   assert.match(source, /result\.relevant === true/);
   assert.match(source, /allowedMentions: \{ repliedUser: false \}/);
 });
+
+test('Lilgrave defaults to a supported Gemini model and replaces retired Gemini 2.0 overrides', () => {
+  const source = fs.readFileSync(require.resolve('../src/lilgrave'), 'utf8');
+  assert.match(source, /process\.env\.GEMINI_MODEL \|\| 'gemini-3\.8-flash'/);
+  assert.match(source, /retiredModels\.has\(configuredModel\) \? 'gemini-3\.8-flash'/);
+  assert.match(source, /responseMimeType: 'application\/json'/);
+});
+
+test('enabling staff leave also enables the Lilgrave feature group', () => {
+  const source = fs.readFileSync(require.resolve('../src/lilgrave'), 'utf8');
+  assert.match(source, /if \(enabled\) cfg\.features\.lilgrave = true/);
+});
