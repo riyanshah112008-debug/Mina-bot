@@ -37,19 +37,21 @@ test('leave workflow supports approval, return reporting and deadline processing
 
 test('staff submit leave forms through a panel and reviewers approve or reject with buttons', () => {
   const source = require('node:fs').readFileSync(require.resolve('../src/lilgrave'), 'utf8');
-  assert.match(source, /lilgrave_leave:post-panel/);
-  assert.match(source, /lilgrave_leave:apply/);
-  assert.match(source, /lilgrave_leave:application/);
-  assert.match(source, /Reason for leave/);
-  assert.match(source, /Start date \\(YYYY-MM-DD\\)/);
-  assert.match(source, /How many days/);
-  assert.match(source, /lilgrave_leave:decision:approve:/);
-  assert.match(source, /lilgrave_leave:decision:reject:/);
-  assert.match(source, /Only configured reviewer roles can approve or reject/);
-  assert.match(source, /request\\.dueAt = Math\\.max\\(Date\\.now\\(\\), request\\.startAt\\) \\+ request\\.durationMs/);
-  assert.match(source, /Your leave application has been submitted to the reviewers/);
-  assert.match(source, /async function handleApplicationSubmit/);
-  assert.match(source, /async function handleApplicationDecision/);
+  for (const expected of [
+    'lilgrave_leave:post-panel',
+    'lilgrave_leave:apply',
+    'lilgrave_leave:application',
+    'Reason for leave',
+    'Start date (YYYY-MM-DD)',
+    'How many days?',
+    'lilgrave_leave:decision:approve:',
+    'lilgrave_leave:decision:reject:',
+    'Only configured reviewer roles can approve or reject',
+    'request.dueAt = Math.max(Date.now(), request.startAt) + request.durationMs',
+    'Your leave application has been submitted to the reviewers',
+    'async function handleApplicationSubmit',
+    'async function handleApplicationDecision'
+  ]) assert.ok(source.includes(expected), 'Missing leave form behavior: ' + expected);
 });
 test('leave setup supports Discord channel and role pickers plus manual ID fallback', () => {
   const source = require('node:fs').readFileSync(require.resolve('../src/lilgrave'), 'utf8');
