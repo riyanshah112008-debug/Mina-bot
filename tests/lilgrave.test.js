@@ -17,11 +17,38 @@ test('punishment verification is fail-closed and only reacts after high-confiden
   assert.match(source, /leaving unverified/);
 });
 
-test('staff leave assistant reacts with a check mark only when Gemini marks a message relevant', () => {
-  const source = fs.readFileSync(require.resolve('../src/lilgrave'), 'utf8');
-  assert.match(source, /result\.relevant === true/);
-  assert.match(source, /message\.react\('✅'\)/);
-  assert.doesNotMatch(source, /message\.reply\(\{ content: reply/);
+test('staff leave handler reacts directly without calling Gemini', async () => {
+  const store = require('../src/store');
+  const lilgrave = require('../src/lilgrave');
+  const originalGet = store.get;
+  let reactedWith = null;
+  store.get = () => ({ lilgrave: { leave: { channelId: 'leave-channel', enabled: true } } });
+  try {
+    await lilgrave.handleStaffLeave({
+      guildId: 'guild',
+      channelId: 'leave-channel',
+      react: async emoji => { reactedWith = emoji; }
+    });
+    assert.equal(reactedWith, '✅');
+  } finally {
+    store.get = originalGet;
+  }
+});
+
+test('staff leave handler ignores disabled configuration and messages outside its channel', async () => {
+  const store = require('../src/store');
+  const lilgrave = require('../src/lilgrave');
+  const originalGet = store.get;
+  let reactionCount = 0;
+  try {
+    store.get = () => ({ lilgrave: { leave: { channelId: 'leave-channel', enabled: false } } });
+    await lilgrave.handleStaffLeave({ guildId: 'guild', channelId: 'leave-channel', react: async () => { reactionCount++; } });
+    store.get = () => ({ lilgrave: { leave: { channelId: 'leave-channel', enabled: true } } });
+    await lilgrave.handleStaffLeave({ guildId: 'guild', channelId: 'other-channel', react: async () => { reactionCount++; } });
+    assert.equal(reactionCount, 0);
+  } finally {
+    store.get = originalGet;
+  }
 });
 
 test('Lilgrave defaults to a supported Gemini model and replaces retired Gemini 2.0 overrides', () => {
