@@ -33,7 +33,8 @@ function panelPayload(guild, cfg) {
       '**Reminder:** ' + (leave.reminderHours ?? 12) + ' hour(s) before return',
       '',
       'Requests are detected from messages containing leave/absence wording and a duration (for example: “I need sick leave for 2 days”). The bot acknowledges only detected requests.'
-    ].join('\n'));
+    ].join('
+'));
   const rows = [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('lilgrave_leave:settings').setLabel('Configure panel').setStyle(ButtonStyle.Primary),
@@ -64,7 +65,8 @@ async function handleMessage(message) {
   if (!message.guild || message.author.bot || message.webhookId) return;
   const cfg = store.get(message.guildId).lilgrave.leave;
   if (!cfg.enabled || message.channelId !== cfg.channelId) return;
-  if (await handleReply(message)) return;\n  const parsed = parseLeave(message.content);
+  if (await handleReply(message)) return;
+  const parsed = parseLeave(message.content);
   if (!parsed) return;
   const requests = cfg.requests || [];
   if (requests.some(item => item.messageId === message.id)) return;
