@@ -1,5 +1,5 @@
 'use strict';
-const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const store = require('./store');
 
 const punishmentCommand = new SlashCommandBuilder()
@@ -89,10 +89,22 @@ function panelPayload(guild, cfg) {
     ].join('\n'));
   const rows = [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('lilgrave_leave:settings').setLabel('Configure panel').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('lilgrave_leave:settings').setLabel('Manual ID setup').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('lilgrave_leave:toggle').setLabel(leave.enabled ? 'Disable' : 'Enable').setStyle(leave.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
       new ButtonBuilder().setCustomId('lilgrave_leave:refresh').setLabel('Refresh').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('lilgrave_leave:cases').setLabel('View cases').setStyle(ButtonStyle.Secondary)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ChannelSelectMenuBuilder().setCustomId('lilgrave_leave:select-channel').setPlaceholder('Select leave request channel').setChannelTypes(ChannelType.GuildText).setMinValues(1).setMaxValues(1)
+    ),
+    new ActionRowBuilder().addComponents(
+      new RoleSelectMenuBuilder().setCustomId('lilgrave_leave:select-authority').setPlaceholder('Select reviewer / demotion authority roles').setMinValues(0).setMaxValues(25)
+    ),
+    new ActionRowBuilder().addComponents(
+      new RoleSelectMenuBuilder().setCustomId('lilgrave_leave:select-staff').setPlaceholder('Select staff roles removed on approved demotion').setMinValues(0).setMaxValues(25)
+    ),
+    new ActionRowBuilder().addComponents(
+      new RoleSelectMenuBuilder().setCustomId('lilgrave_leave:select-demoted').setPlaceholder('Select lower role assigned after demotion').setMinValues(0).setMaxValues(1)
     )
   ];
   return { embeds: [embed], components: rows, ephemeral: true };
@@ -179,6 +191,25 @@ async function handleComponent(interaction) {
   const cfg = store.get(interaction.guildId);
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'Administrator permission required.', ephemeral: true });
   const action = interaction.customId.split(':')[1];
+  if (action === 'select-channel') {
+    const channelId = interaction.values[0];
+    const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
+    if (!channel || channel.type !== ChannelType.GuildText) return interaction.reply({ content: 'Please select a valid text channel.', ephemeral: true });
+    cfg.lilgrave.leave.channelId = channelId;
+    cfg.lilgrave.leave.enabled = true;
+    cfg.features.lilgrave = true;
+    store.save();
+    return interaction.update(panelPayload(interaction.guild, cfg));
+  }
+  if (action === 'select-authority' || action === 'select-staff' || action === 'select-demoted') {
+    const ids = interaction.values || [];
+    for (const id of ids) if (!await interaction.guild.roles.fetch(id).catch(() => null)) return interaction.reply({ content: 'One of the selected roles is no longer available. Refresh and try again.', ephemeral: true });
+    if (action === 'select-authority') cfg.lilgrave.leave.authorityRoleIds = ids;
+    if (action === 'select-staff') cfg.lilgrave.leave.staffRoleIds = ids;
+    if (action === 'select-demoted') cfg.lilgrave.leave.demotedRoleId = ids[0] || null;
+    store.save();
+    return interaction.update(panelPayload(interaction.guild, cfg));
+  }
   if (action === 'refresh') return interaction.update(panelPayload(interaction.guild, cfg));
   if (action === 'cases') {
     const cases = (cfg.lilgrave.leave.requests || []).slice(-12).reverse();
