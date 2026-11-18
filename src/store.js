@@ -11,7 +11,7 @@ const defaults = () => ({
   automod: { enabled: true, heatEnabled: true, heatThreshold: 100, heatDecayPerSecond: 2, windowMs: 7000, messageLimit: 6, mentionLimit: 5, attachmentLimit: 3, inviteFilter: true, linkFilter: true, webhookFilter: true, blacklistedWords: [], timeoutBaseMs: 300000, timeoutCapMs: 86400000, allowedDomains: [] },
   trusted: [], trustedRoles: [], incidents: [], warnings: [], nextCaseId: 0, logChannelId: null, quarantineRoleId: null,
   verification: { enabled: false, verifiedRoleId: null, quarantineRoleId: null },
-  lilgrave: { punishment: { channelId: null, enabled: false }, leave: { channelId: null, enabled: false } },
+  lilgrave: { punishment: { channelId: null, enabled: false }, leave: { channelId: null, enabled: false, authorityRoleIds: [], staffRoleIds: [], demotedRoleId: null, reminderHours: 12, requests: [] } },
   features: { security: true, verification: true, moderation: true, music: true, utilities: true, reminders: true, lilgrave: true },
   lockdown: { active: false, changed: [] }, music: { defaultVolume: 70, maxVolume: 100 }, reminders: []
 });
@@ -27,8 +27,9 @@ function get(guildId) {
   for (const key of Object.keys(base)) if (cfg[key] === undefined) cfg[key] = base[key];
   for (const key of ['antiNuke','antiRaid','joinGate','automod','verification','lockdown','music']) cfg[key] = { ...base[key], ...(cfg[key] || {}) };
   cfg.features = { security: true, verification: true, moderation: true, music: true, utilities: true, reminders: true, lilgrave: true, ...(cfg.features || {}) };
-  cfg.lilgrave = { punishment: { channelId: null, enabled: false, ...(cfg.lilgrave?.punishment || {}) }, leave: { channelId: null, enabled: false, ...(cfg.lilgrave?.leave || {}) } };
+  cfg.lilgrave = { punishment: { ...base.lilgrave.punishment, ...(cfg.lilgrave?.punishment || {}) }, leave: { ...base.lilgrave.leave, ...(cfg.lilgrave?.leave || {}) } };
   for (const key of ['trusted','trustedRoles','incidents','warnings','reminders']) if (!Array.isArray(cfg[key])) cfg[key] = [];
+  for (const key of ['authorityRoleIds','staffRoleIds','requests']) if (!Array.isArray(cfg.lilgrave.leave[key])) cfg.lilgrave.leave[key] = [];
   if (!Array.isArray(cfg.automod.allowedDomains)) cfg.automod.allowedDomains = [];
   if (!Array.isArray(cfg.automod.blacklistedWords)) cfg.automod.blacklistedWords = [];
   cfg.automod.heatThreshold = Math.min(500, Math.max(10, Number(cfg.automod.heatThreshold) || 100));
