@@ -88,12 +88,9 @@ async function handleStaffLeave(message) {
   const text = message.content.trim();
   if (!text || text.length < 8) return;
   try {
-    const answer = await askGemini([{ text: text.slice(0, 2500) }], 'You are Lilgrave, a concise formal staff leave assistant. Decide whether this message is genuinely a staff leave/absence request. If unrelated, respond with exactly {"relevant":false}. If relevant, write one polite, professional, empathetic one-line acknowledgement or ask one concise clarification if duration/details are unclear. Never approve or reject leave, promise coverage, request sensitive medical details, or add explanations/emojis. Respond ONLY as JSON: {"relevant":true|false,"reply":"one line"}');
+    const answer = await askGemini([{ text: text.slice(0, 2500) }], 'You are Lilgrave, a strict staff leave request classifier. Decide whether this message is genuinely a staff leave or absence request. A message asking for leave for a period of time is relevant. Unrelated conversation is not relevant. Respond ONLY as JSON: {"relevant":true|false}.');
     const result = parseJson(answer);
-    if (result.relevant === true && typeof result.reply === 'string') {
-      const reply = result.reply.replace(/[\r\n]+/g, ' ').trim().slice(0, 350);
-      if (reply) await message.reply({ content: reply, allowedMentions: { repliedUser: false } });
-    }
+    if (result.relevant === true) await message.react('✅');
   } catch (error) {
     console.error('[Lilgrave] Staff leave assistant failed:', error.message);
     // Keep the channel free of guessed replies; log the actionable API error for the operator.
