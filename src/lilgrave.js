@@ -137,8 +137,18 @@ async function handleMessage(message) {
   store.save();
   try {
     await message.react('✅');
-    const ack = await message.reply({ content: '✅ Leave request received — awaiting staff review.' });
+    const authorityRoles = (cfg.authorityRoleIds || []).filter(id => /^\\d{17,20}$/.test(id));
+    const roleMentions = authorityRoles.map(id => '<@&' + id + '>').join(' ');
+    const reviewLine = roleMentions
+      ? roleMentions + ' — new staff leave request needs your review.'
+      : '⚠️ No review-authority roles are configured. Administrators must review this request; configure authority roles in /staff-leave-setup.';
+    const ack = await message.reply({
+      content: '✅ Leave request received — awaiting staff review.\n' + reviewLine,
+      allowedMentions: { roles: authorityRoles, repliedUser: false }
+    });
     request.ackMessageId = ack.id;
+    request.notifiedRoleIds = authorityRoles;
+    request.notifiedAt = Date.now();
     store.save();
   } catch (error) {
     console.error('[Lilgrave] Leave acknowledgement failed:', error.message);
