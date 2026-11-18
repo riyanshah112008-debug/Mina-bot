@@ -85,11 +85,12 @@ function panelPayload(guild, cfg) {
       '**Return reminder:** ' + (leave.reminderHours ?? 12) + ' hours before the return deadline',
       '**Active leave requests:** ' + (leave.requests || []).filter(item => ['pending','approved'].includes(item.status)).length,
       '',
-      'Staff post a message such as “I need 2 days leave”. The bot sends it to the reviewer roles above. Reviewers reply “approve” or “reject”. When staff return, they use /leave-return.'
+      'Staff apply using the button in the application panel. Reviewers use Approve or Reject on each form. Approved staff use /leave-return when they come back.'
     ].join('\n'));
   const rows = [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('lilgrave_leave:settings').setLabel('Enter IDs manually').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('lilgrave_leave:post-panel').setLabel('Post application panel').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('lilgrave_leave:settings').setLabel('Enter IDs manually').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('lilgrave_leave:toggle').setLabel(leave.enabled ? 'Disable' : 'Enable').setStyle(leave.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
       new ButtonBuilder().setCustomId('lilgrave_leave:refresh').setLabel('Refresh').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('lilgrave_leave:cases').setLabel('View cases').setStyle(ButtonStyle.Secondary)
@@ -136,35 +137,6 @@ async function handleMessage(message) {
   if (!message.guild || message.author.bot || message.webhookId) return;
   const guildCfg = store.get(message.guildId).lilgrave;
   if (message.channelId === guildCfg.punishment.channelId) await verifyPunishment(message);
-  const cfg = guildCfg.leave;
-  if (!cfg.enabled || message.channelId !== cfg.channelId) return;
-  if (await handleReply(message)) return;
-  const parsed = parseLeave(message.content);
-  if (!parsed) return;
-  const requests = cfg.requests || [];
-  if (requests.some(item => item.messageId === message.id)) return;
-  const request = { id: message.id, messageId: message.id, userId: message.author.id, channelId: message.channelId, text: message.content.slice(0, 1500), durationMs: parsed.durationMs, durationLabel: parsed.durationLabel, status: 'pending', createdAt: Date.now(), ackMessageId: null, reminded: false, overdueNotified: false };
-  requests.push(request);
-  cfg.requests = requests.slice(-500);
-  store.save();
-  try {
-    await message.react('✅');
-    const authorityRoles = (cfg.authorityRoleIds || []).filter(id => /^\d{17,20}$/.test(id));
-    const roleMentions = authorityRoles.map(id => '<@&' + id + '>').join(' ');
-    const reviewLine = roleMentions
-      ? roleMentions + ' — new staff leave request needs your review.'
-      : '⚠️ No reviewer roles are selected. Choose reviewer roles in /staff-leave-setup. Server administrators can still review.';
-    const ack = await message.reply({
-      content: '✅ Leave request received — awaiting staff review.\n' + reviewLine,
-      allowedMentions: { roles: authorityRoles, repliedUser: false }
-    });
-    request.ackMessageId = ack.id;
-    request.notifiedRoleIds = authorityRoles;
-    request.notifiedAt = Date.now();
-    store.save();
-  } catch (error) {
-    console.error('[Lilgrave] Leave acknowledgement failed:', error.message);
-  }
 }
 async function handleReply(message) {
   if (!message.reference?.messageId || !message.guild) return false;
@@ -189,8 +161,19 @@ async function handleComponent(interaction) {
   if (!interaction.customId?.startsWith('lilgrave_leave:')) return false;
   if (!interaction.inGuild()) return interaction.reply({ content: 'Use this in a server.', ephemeral: true });
   const cfg = store.get(interaction.guildId);
-  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'Administrator permission required.', ephemeral: true });
   const action = interaction.customId.split(':')[1];
+  if (action === 'decision') return handleApplicationDecision(interaction);
+  if (action === 'apply') {
+    if (!cfg.lilgrave.leave.enabled || !cfg.lilgrave.leave.channelId) return interaction.reply({ content: 'Leave applications are not available right now.', ephemeral: true });
+    const modal = new ModalBuilder().setCustomId('lilgrave_leave:application').setTitle('Staff Leave Application');
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('reason').setLabel('Reason for leave').setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(1000)),
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('start').setLabel('Start date (YYYY-MM-DD)').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(10).setPlaceholder('2026-11-20')),
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('days').setLabel('How many days? (1–30)').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(2).setPlaceholder('2'))
+    );
+    return interaction.showModal(modal);
+  }
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'Administrator permission required.', ephemeral: true });
   if (action === 'select-channel') {
     const channelId = interaction.values[0];
     const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
@@ -209,6 +192,15 @@ async function handleComponent(interaction) {
     if (action === 'select-demoted') cfg.lilgrave.leave.demotedRoleId = ids[0] || null;
     store.save();
     return interaction.update(panelPayload(interaction.guild, cfg));
+  }
+  if (action === 'post-panel') {
+    const leave = cfg.lilgrave.leave;
+    const channel = await interaction.guild.channels.fetch(leave.channelId).catch(() => null);
+    if (!channel || channel.type !== ChannelType.GuildText) return interaction.reply({ content: 'Choose a leave channel first.', ephemeral: true });
+    const panel = new EmbedBuilder().setColor(0x5865F2).setTitle('Staff Leave Applications').setDescription('Need time off? Click **Apply for Leave** and complete the form. Your application will be sent to the staff reviewers. You will be notified when it is approved or rejected.');
+    const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('lilgrave_leave:apply').setLabel('Apply for Leave').setStyle(ButtonStyle.Primary));
+    await channel.send({ embeds: [panel], components: [row] });
+    return interaction.reply({ content: '✅ Leave application panel posted in ' + channel.toString() + '.', ephemeral: true });
   }
   if (action === 'refresh') return interaction.update(panelPayload(interaction.guild, cfg));
   if (action === 'cases') {
@@ -239,6 +231,7 @@ async function handleComponent(interaction) {
   return false;
 }
 async function handleModal(interaction) {
+  if (interaction.customId === 'lilgrave_leave:application') return handleApplicationSubmit(interaction);
   if (interaction.customId !== 'lilgrave_leave:save') return false;
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'Administrator permission required.', ephemeral: true });
   const channelId = interaction.fields.getTextInputValue('channel').trim();
@@ -256,6 +249,65 @@ async function handleModal(interaction) {
     cfg.features.lilgrave = true;
   });
   return interaction.reply(panelPayload(interaction.guild, store.get(interaction.guildId)));
+}
+async function handleApplicationSubmit(interaction) {
+  if (!interaction.inGuild()) return interaction.reply({ content: 'Apply from inside the server.', ephemeral: true });
+  const leave = store.get(interaction.guildId).lilgrave.leave;
+  if (!leave.enabled || !leave.channelId) return interaction.reply({ content: 'Leave applications are currently closed.', ephemeral: true });
+  const reason = interaction.fields.getTextInputValue('reason').trim();
+  const startText = interaction.fields.getTextInputValue('start').trim();
+  const days = Number(interaction.fields.getTextInputValue('days').trim());
+  const startAt = Date.parse(startText + 'T00:00:00.000Z');
+  if (!reason || !/^\d{4}-\d{2}-\d{2}$/.test(startText) || !Number.isFinite(startAt) || new Date(startAt).toISOString().slice(0, 10) !== startText || !Number.isInteger(days) || days < 1 || days > 30) {
+    return interaction.reply({ content: 'Please enter a valid reason, start date (YYYY-MM-DD), and duration from 1 to 30 days.', ephemeral: true });
+  }
+  const channel = await interaction.guild.channels.fetch(leave.channelId).catch(() => null);
+  if (!channel || channel.type !== ChannelType.GuildText) return interaction.reply({ content: 'The leave review channel is unavailable. Contact an administrator.', ephemeral: true });
+  const request = { id: interaction.id, userId: interaction.user.id, reason: reason.slice(0, 1000), startAt, durationMs: days * 86400000, durationLabel: days + ' day(s)', status: 'pending', createdAt: Date.now(), reminded: false, overdueNotified: false };
+  leave.requests = Array.isArray(leave.requests) ? leave.requests : [];
+  leave.requests.push(request);
+  leave.requests = leave.requests.slice(-500);
+  const roles = (leave.authorityRoleIds || []).filter(id => /^\d{17,20}$/.test(id));
+  const embed = new EmbedBuilder().setColor(0xF1C40F).setTitle('New Staff Leave Application')
+    .addFields(
+      { name: 'Applicant', value: '<@' + request.userId + '>', inline: true },
+      { name: 'Duration', value: request.durationLabel, inline: true },
+      { name: 'Start date', value: '<t:' + Math.floor(startAt / 1000) + ':D>', inline: true },
+      { name: 'Reason', value: request.reason.slice(0, 1000) }
+    ).setFooter({ text: 'Application ID: ' + request.id });
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('lilgrave_leave:decision:approve:' + request.id).setLabel('Approve').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('lilgrave_leave:decision:reject:' + request.id).setLabel('Reject').setStyle(ButtonStyle.Danger)
+  );
+  try {
+    await channel.send({ content: roles.length ? roles.map(id => '<@&' + id + '>').join(' ') + ' — a leave application needs review.' : '⚠️ No reviewer roles configured. Server administrators can review this application.', embeds: [embed], components: [row], allowedMentions: { roles, repliedUser: false } });
+    store.save();
+    return interaction.reply({ content: '✅ Your leave application has been submitted to the reviewers.', ephemeral: true });
+  } catch (error) {
+    leave.requests = leave.requests.filter(item => item.id !== request.id);
+    store.save();
+    console.error('[Lilgrave] Could not deliver leave application:', error.message);
+    return interaction.reply({ content: 'I could not submit your application. Please contact an administrator.', ephemeral: true });
+  }
+}
+async function handleApplicationDecision(interaction) {
+  const cfg = store.get(interaction.guildId).lilgrave.leave;
+  const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+  if (!isAuthority(member, cfg)) return interaction.reply({ content: 'Only configured reviewer roles can approve or reject leave applications.', ephemeral: true });
+  const [, , decision, requestId] = interaction.customId.split(':');
+  const request = (cfg.requests || []).find(item => item.id === requestId);
+  if (!request || request.status !== 'pending') return interaction.reply({ content: 'This application has already been reviewed or no longer exists.', ephemeral: true });
+  request.status = decision === 'approve' ? 'approved' : 'rejected';
+  request.reviewedBy = interaction.user.id;
+  request.reviewedAt = Date.now();
+  if (decision === 'approve') request.dueAt = Math.max(Date.now(), request.startAt) + request.durationMs;
+  store.save();
+  const applicant = await interaction.guild.members.fetch(request.userId).catch(() => null);
+  if (applicant) await applicant.send(decision === 'approve'
+    ? '✅ Your leave application was approved. Your return deadline is <t:' + Math.floor(request.dueAt / 1000) + ':F>. Use /leave-return when you are back.'
+    : '❌ Your leave application was rejected. Please contact your reviewer if you need clarification.').catch(() => null);
+  const updated = EmbedBuilder.from(interaction.message.embeds[0]).setColor(decision === 'approve' ? 0x2ECC71 : 0xE74C3C).setTitle(decision === 'approve' ? 'Leave Application Approved' : 'Leave Application Rejected').addFields({ name: 'Reviewed by', value: '<@' + interaction.user.id + '>', inline: true });
+  return interaction.update({ embeds: [updated], components: [] });
 }
 async function processDeadlines(client) {
   for (const [guildId, cfg] of Object.entries(store.all())) {
