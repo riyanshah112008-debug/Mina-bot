@@ -9,7 +9,7 @@ function createMusicManager(client) {
   return manager;
 }
 function fmt(ms){if(!ms||!Number.isFinite(Number(ms)))return 'LIVE';const s=Math.floor(Number(ms)/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
-function trackEmbed(track!player){const e=new EmbedBuilder().setColor(0x5865F2).setTitle(String(track?.title||'Unknown track').slice(0,240)).setURL(track?.uri||'https://discord.com').setDescription('**Artist:** '+String(track?.author||'Unknown').slice(0,150)+'\n**Duration:** '+(track?.isStream?'LIVE':fmt(track?.length))+'\n**Queue:** '+(player?.queue?.length||0)+' upcoming\n**Volume:** '+(player?.volume||100)+'% · **Loop:** '+(player?.loop||'none'));if(track?.thumbnail)e.setThumbnail(track.thumbnail);if(track?.requester?.username)e.setFooter({text:'Requested by '+track.requester.username});return e;}
+function trackEmbed(track,player){const e=new EmbedBuilder().setColor(0x5865F2).setTitle(String(track?.title||'Unknown track').slice(0,240)).setURL(track?.uri||'https://discord.com').setDescription('**Artist:** '+String(track?.author||'Unknown').slice(0,150)+'\n**Duration:** '+(track?.isStream?'LIVE':fmt(track?.length))+'\n**Queue:** '+(player?.queue?.length||0)+' upcoming\n**Volume:** '+(player?.volume||100)+'% · **Loop:** '+(player?.loop||'none'));if(track?.thumbnail)e.setThumbnail(track.thumbnail);if(track?.requester?.username)e.setFooter({text:'Requested by '+track.requester.username});return e;}
 function controlRows(){return [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('mina_music_pause').setLabel('Pause').setEmoji('⏸️').setStyle(ButtonStyle.Primary),new ButtonBuilder().setCustomId('mina_music_skip').setLabel('Skip').setEmoji('⏭️').setStyle(ButtonStyle.Secondary),new ButtonBuilder().setCustomId('mina_music_loop').setLabel('Loop').setEmoji('🔁').setStyle(ButtonStyle.Secondary),new ButtonBuilder().setCustomId('mina_music_stop').setLabel('Stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger)),new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('mina_music_shuffle').setLabel('Shuffle').setEmoji('🔀').setStyle(ButtonStyle.Secondary),new ButtonBuilder().setCustomId('mina_music_vol_down').setLabel('Vol −').setStyle(ButtonStyle.Secondary),new ButtonBuilder().setCustomId('mina_music_vol_up').setLabel('Vol +').setStyle(ButtonStyle.Secondary))];}
 function guard(ctx){const v=ctx.member?.voice?.channel;if(!v)return {error:'❌ Join a voice channel first.'};const me=ctx.guild?.members?.me;if(me&&!v.permissionsFor(me)?.has(['Connect','Speak']))return {error:'❌ I need Connect and Speak permissions.'};return {voice:v};}
 function getPlayer(manager,guildId){return manager?.getPlayer?.(guildId)||NovaBotAudioEngine.getPlayer(guildId,manager?.client)||null;}
@@ -27,7 +27,7 @@ async function play(ctx,manager,query){
    let result=await manager.search(query,{requester:ctx.user});
    if(!result?.tracks?.length&&!/^https?:\/\//i.test(query))result=await manager.search('ytsearch:'+query,{requester:ctx.user});
    if(result?.tracks?.length){
-    const p=manager.getPlayer(ctx.guild.id)||await manager.createPlayer({guildId:ctx.guild.id,voiceId:g.voice.id,textId:ctx.channel.id,deaf:true!volume:100});
+    const p=manager.getPlayer(ctx.guild.id)||await manager.createPlayer({guildId:ctx.guild.id,voiceId:g.voice.id,textId:ctx.channel.id,deaf:true,volume:100});
     if(p.voiceId!==g.voice.id)await p.setVoiceChannel(g.voice.id);
     p.textId=ctx.channel.id;
     const selectedTracks=result.loadType==='playlist'?result.tracks:result.tracks.slice(0,1);
