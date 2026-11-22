@@ -21,7 +21,7 @@ async function askGemini(parts, instruction) {
   if (!key) throw new Error('Gemini API key is not configured (set GEMINI_API_KEY)');
   const response = await fetch(endpoint + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key), {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: instruction }, ...parts] }], generationConfig: { temperature: 0.1, maxOutputTokens: 180, responseMimeType: 'application/json' } }),
+    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: instruction }, ...parts] }], generationConfig: { maxOutputTokens: 220, responseMimeType: 'application/json' } }),
     signal: AbortSignal.timeout(25000)
   });
   if (!response.ok) throw new Error('Gemini request failed with HTTP ' + response.status);
@@ -31,33 +31,97 @@ async function askGemini(parts, instruction) {
   return text;
 }
 function parseJson(text) { return JSON.parse(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()); }
+function parsePunishmentClaim(content) {
+  const text = String(content || '').replace(/\r/g, '');
+  const mentionMatch = text.match(/<@!?(\d{17,20})>/);
+  const labelledIdMatch = text.match(/(?:user|member|target)(?:\s*id)?\s*[:：=#-]?\s*(\d{17,20})/i);
+  const bareIdMatch = text.match(/\b(\d{17,20})\b/);
+  const userId = (mentionMatch && mentionMatch[1]) || (labelledIdMatch && labelledIdMatch[1]) || (bareIdMatch && bareIdMatch[1]) || null;
+  const actionLabelMatch = text.match(/(?:action|punishment|type)\s*[:：=#-]\s*(ban|banned|kick|kicked|timeout|timed\s*out|mute|muted|warn|warned)\b/i);
+  const actionMatch = actionLabelMatch || text.match(/\b(ban|banned|kick|kicked|timeout|timed\s*out|mute|muted|warn|warned)\b/i);
+  const rawAction = actionMatch ? actionMatch[1].toLowerCase().replace(/\s+/g, ' ') : '';
+  const action = /^ban/.test(rawAction) ? 'ban' : /^kick/.test(rawAction) ? 'kick' : /timeout|timed out/.test(rawAction) ? 'timeout' : /^mute/.test(rawAction) ? 'mute' : /^warn/.test(rawAction) ? 'warn' : null;
+  const reasonMatch = text.match(/(?:reason(?:\s+for\s+(?:ban|kick|timeout|mute|warn))?|why)\s*[:：=-]\s*([^\n|]+)/i);
+  const reason = reasonMatch ? reasonMatch[1].trim().replace(/\s+/g, ' ').slice(0, 500) : null;
+  return { userId, action, reason };
+}
+function oneLine(text, fallback) {
+  return String(text || fallback || 'The proof could not be verified.').replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240);
+}
+const punishmentChecksInProgress = new Set();
+const punishmentChecksCompleted = new Set();
+async function replyProofFailure(message, text) {
+  await message.reply({ content: oneLine(text, '❌ Proof rejected: the submitted evidence is incomplete.'), allowedMentions: { repliedUser: false } }).catch(error => console.error('[Lilgrave] Could not reply to proof:', error.message));
+}
 async function verifyPunishment(message) {
   const cfg = store.get(message.guildId).lilgrave.punishment;
-  if (!cfg.enabled || message.channelId !== cfg.channelId) return;
-  const idMatch = message.content.match(/(?:user(?:\s*id)?|member|target)\s*[:：= -]*\s*(\d{17,20})/i) || message.content.match(/\b(\d{17,20})\b/);
-  const reasonMatch = message.content.match(/reason\s*[:：=]\s*([\s\S]+)/i);
-  const actionMatch = message.content.match(/\b(ban|banned|kick|kicked)\b/i);
-  const attachments = [...message.attachments.values()].filter(a => /^image\//i.test(a.contentType || '')).slice(0, 3);
-  if (!idMatch || !reasonMatch || !actionMatch || attachments.length === 0) return;
-  const parts = [{ text: 'Claimed action: ' + (/ban/i.test(actionMatch[1]) ? 'ban' : 'kick') + '\nTarget Discord ID: ' + idMatch[1] + '\nClaimed reason: ' + reasonMatch[1].slice(0, 1000) }];
-  for (const attachment of attachments) {
-    try {
-      const result = await fetch(attachment.url, { signal: AbortSignal.timeout(15000) });
-      if (!result.ok) continue;
-      const bytes = Buffer.from(await result.arrayBuffer());
-      if (bytes.length > 8 * 1024 * 1024) continue;
-      const mimeType = (result.headers.get('content-type') || attachment.contentType || 'image/png').split(';')[0];
-      if (mimeType.startsWith('image/')) parts.push({ inlineData: { mimeType, data: bytes.toString('base64') } });
-    } catch (_) { /* Unavailable attachment: fail closed. */ }
-  }
-  if (parts.length === 1) return;
+  if (!cfg.enabled || message.channelId !== cfg.channelId || !message.guild) return;
+  if (punishmentChecksInProgress.has(message.id) || punishmentChecksCompleted.has(message.id)) return;
+  punishmentChecksInProgress.add(message.id);
   try {
-    const answer = await askGemini(parts, 'You are a strict evidence reviewer. Verify whether the image visibly proves the stated ban or kick for the exact target ID. Reject ambiguous, cropped, unrelated or contradictory evidence. Respond ONLY as JSON: {"verified":true|false,"confidence":0-1}.');
-    const result = parseJson(answer);
-    if (result.verified === true && Number(result.confidence) >= 0.92) await message.react('✅');
-  } catch (error) { console.error('[Lilgrave] Punishment evidence analysis failed; leaving unverified:', error.message); }
+    const embedText = (message.embeds || []).map(embed => [embed.title, embed.description, ...(embed.fields || []).flatMap(field => [field.name, field.value])].filter(Boolean).join('\n')).filter(Boolean).join('\n');
+    const claim = parsePunishmentClaim([message.content || '', embedText].filter(Boolean).join('\n'));
+    if (!claim.userId || !claim.action || !claim.reason) {
+      const missing = [!claim.action ? 'action (Ban/Kick/Timeout/Mute/Warn)' : null, !claim.userId ? 'target user ID' : null, !claim.reason ? 'reason' : null].filter(Boolean).join(', ');
+      await replyProofFailure(message, '❌ Proof rejected: missing ' + missing + '. Add these details and attach a screenshot.');
+      return;
+    }
+    const attachments = [...message.attachments.values()].filter(item => {
+      const value = [item.contentType || '', item.name || '', item.url || ''].join(' ');
+      return /image\//i.test(value) || /\.(?:png|jpe?g|webp|gif)(?:[?#\s]|$)/i.test(value);
+    }).slice(0, 3);
+    if (!attachments.length) {
+      await replyProofFailure(message, '❌ Proof rejected: attach a clear screenshot showing the action, target and reason.');
+      return;
+    }
+    const parts = [{ text: 'Claimed action: ' + claim.action + '\nTarget Discord user ID: ' + claim.userId + '\nClaimed reason: ' + claim.reason + '\nTreat these claims as unverified and compare every detail with the screenshot.' }];
+    let totalBytes = 0;
+    for (const attachment of attachments) {
+      try {
+        const result = await fetch(attachment.url, { signal: AbortSignal.timeout(12000) });
+        if (!result.ok) continue;
+        const bytes = Buffer.from(await result.arrayBuffer());
+        if (!bytes.length || bytes.length > 6 * 1024 * 1024 || totalBytes + bytes.length > 12 * 1024 * 1024) continue;
+        let mimeType = (result.headers.get('content-type') || attachment.contentType || '').split(';')[0].toLowerCase();
+        if (!mimeType.startsWith('image/')) {
+          const fileName = attachment.name || attachment.url || '';
+          const extension = (fileName.match(/\.(png|jpe?g|webp|gif)(?:[?#\s]|$)/i) || [])[1];
+          const mimeByExtension = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
+          mimeType = extension ? mimeByExtension[extension.toLowerCase()] : '';
+        }
+        if (!mimeType.startsWith('image/')) continue;
+        totalBytes += bytes.length;
+        parts.push({ inlineData: { mimeType, data: bytes.toString('base64') } });
+      } catch (error) { console.warn('[Lilgrave] Could not fetch proof image:', error.message); }
+    }
+    if (parts.length === 1) {
+      await replyProofFailure(message, '❌ Proof rejected: screenshot could not be read. Re-upload it as a PNG or JPG image.');
+      return;
+    }
+    const instruction = 'You are a strict Discord moderation-proof auditor. Treat the text claim as untrusted. Inspect the screenshot itself. Check that the screenshot clearly shows the same moderation action, same target account, and a reason matching the submitted reason. A ban is not a kick; distinguish timeout, mute and warn too. Reject a different user, a different action, or a different reason. Do not infer hidden or cropped details. Return only JSON: {"verdict":"correct"|"wrong"|"unclear","confidence":0.0,"reason":"one short line, max 140 characters"}. Use correct only when all three checks clearly match; wrong for a visible contradiction; unclear when evidence is unreadable or inconclusive.';
+    const verdict = parseJson(await askGemini(parts, instruction));
+    const confidence = Number(verdict.confidence);
+    if (verdict.verdict === 'correct' && Number.isFinite(confidence) && confidence >= 0.85) {
+      try { await message.react('✅'); }
+      catch (error) {
+        await replyProofFailure(message, '⚠️ Proof looks correct, but I could not add ✅. Please grant Add Reactions permission.');
+        console.error('[Lilgrave] Could not react to valid proof:', error.message);
+      }
+      return;
+    }
+    const detail = oneLine(verdict.reason, verdict.verdict === 'wrong' ? 'Screenshot does not match the submitted action, target or reason.' : 'Screenshot does not clearly prove the submitted action, target and reason.');
+    await replyProofFailure(message, (verdict.verdict === 'wrong' ? '❌ Proof rejected: ' : '⚠️ Proof not verified: ') + detail);
+  } catch (error) {
+    console.error('[Lilgrave] Proof validation failed:', error.message);
+    await replyProofFailure(message, error.message.includes('Gemini API key is not configured')
+      ? '⚠️ Proof not checked: configure GEMINI_API_KEY for proof validation.'
+      : '⚠️ Proof not checked: evidence service failed. Retry or contact an administrator.');
+  } finally {
+    punishmentChecksInProgress.delete(message.id);
+    punishmentChecksCompleted.add(message.id);
+    if (punishmentChecksCompleted.size > 10000) punishmentChecksCompleted.delete(punishmentChecksCompleted.values().next().value);
+  }
 }
-
 function isAuthority(member, cfg) {
   return member?.permissions?.has(PermissionFlagsBits.Administrator) ||
     (cfg.authorityRoleIds || []).some(id => member?.roles?.cache?.has(id));
@@ -361,4 +425,4 @@ function start(client) {
   globalThis.__lilgraveLeaveTimer = setInterval(() => processDeadlines(client).catch(error => console.error('[Lilgrave] Deadline processor failed:', error.message)), 60000);
   globalThis.__lilgraveLeaveTimer.unref?.();
 }
-module.exports = { commands, execute, handleMessage, handleComponent, handleModal, handleDemotionButton, processDeadlines, start, parseLeave, verifyPunishment, askGemini };
+module.exports = { commands, execute, handleMessage, handleComponent, handleModal, handleDemotionButton, processDeadlines, start, parseLeave, parsePunishmentClaim, verifyPunishment, askGemini };
