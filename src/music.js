@@ -126,7 +126,18 @@ async function execute(ctx,manager,action,value){
  return ctx.reply('Unknown music command. Try !musichelp.');
 }
 function context(m){return {isInteraction:false,guild:m.guild,member:m.member,channel:m.channel,user:m.author,reply:async x=>brandMessage(await m.reply(brandPayload(x)))};}
-async function handlePrefix(message,client){if(!message.guild||message.author.bot||!message.content)return false;const match=message.content.trim().match(/^!([a-z]+)(?:\\s+([\\s\\S]*))?$/i);if(!match)return false;const raw=match[1].toLowerCase(),args=(match[2]||'').trim().split(/\\s+/);const aliases={p:'play',add:'play',np:'nowplaying',prev:'previous',back:'previous',summon:'join',connect:'join',vol:'volume',q:'queue',repeat:'loop',next:'skip',dc:'stop',find:'search'};const action=aliases[raw]||raw;const valid=['play','pause','resume','skip','stop','queue','nowplaying','volume','loop','shuffle','clear','remove','jump','replay','previous','join','search','autoplay','filter','speed','seek','help'];if(!valid.includes(action))return false;if(action==='help')return message.reply(brandPayload('🎵 **NovaBot Music**\n!play <song/URL> · !pause · !resume · !skip · !stop · !queue · !nowplaying\n!volume <0-150> · !loop <off/track/queue> · !shuffle · !remove <position> · !clear · !jump <position> · !seek <seconds> · !filter <name> · !speed <0.5-2>'));return execute(context(message),client.manager,action,args.join(' '));}
+async function handlePrefix(message,client){
+ if(!message.guild||message.author.bot||!message.content)return false;
+ const match=message.content.trim().match(/^!([a-z]+)(?:\s+([\s\S]*))?$/i);
+ if(!match)return false;
+ const raw=match[1].toLowerCase(),args=(match[2]||'').trim().split(/\s+/);
+ const aliases={p:'play',add:'play',np:'nowplaying',prev:'previous',back:'previous',summon:'join',connect:'join',vol:'volume',q:'queue',repeat:'loop',next:'skip',dc:'stop',find:'search'};
+ const action=aliases[raw]||raw;
+ const valid=['play','pause','resume','skip','stop','queue','nowplaying','volume','loop','shuffle','clear','remove','jump','replay','previous','join','search','autoplay','filter','speed','seek','help'];
+ if(!valid.includes(action))return false;
+ if(action==='help')return message.reply(brandPayload('🎵 **Mina Music**\n!play <song/URL> · !pause · !resume · !skip · !stop · !queue · !nowplaying\n!volume <0-150> · !loop <off/track/queue> · !shuffle · !remove <position> · !clear · !jump <position> · !seek <seconds> · !filter <name> · !speed <0.5-2>'));
+ return execute(context(message),client.manager,action,args.join(' '));
+}
 async function handleButton(i,client){
  if(!i.customId.startsWith('mina_music_'))return false;
  const a=i.customId.slice(11),p=getPlayer(client.manager,i.guildId);
