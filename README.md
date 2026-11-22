@@ -11,7 +11,7 @@ NovaBot is a single-server Discord bot with Wick-inspired security, moderation, 
 ## Configuration
 Set these environment variables in the hosting dashboard:
 - `DISCORD_TOKEN`, `CLIENT_ID`, and optionally `GUILD_ID`
-- `PREFIX` (defaults to `,`; `.` is also accepted)
+- Prefix is fixed to `!` (for example, `!play` and `!ban`)
 - Optional `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` for Spotify catalogue/playlist resolution
 - `DATA_DIR` for persisted server settings and reminders
 
@@ -21,12 +21,12 @@ Do not commit real tokens or credentials. The Lavalink fallback in the source is
 Slash commands are available individually (Manager-bot style): `/play`, `/search`, `/pause`, `/resume`, `/skip`, `/stop`, `/queue`, `/nowplaying`, `/volume`, `/loop`, `/shuffle`, `/clear`, `/remove`, `/jump`, `/seek`, `/filter`, `/speed`, `/autoplay`, `/join`, `/previous`, and `/replay`.
 
 Prefix equivalents are supported, for example:
-- `,play <song or URL>` (aliases: `,p`, `,add`)
-- `,pause`, `,resume`, `,skip`, `,stop`
-- `,queue` (alias `,q`), `,nowplaying` (alias `,np`)
-- `,volume <0-150>`, `,loop <off|track|queue>`, `,shuffle`
-- `,remove <position>`, `,jump <position>`, `,seek <seconds>`
-- `,filter <name>`, `,speed <0.5-2>`, `,autoplay`, `,join`, `,musichelp`
+- `!play <song or URL>` (aliases: `!p`, `!add`)
+- `!pause`, `!resume`, `!skip`, `!stop`
+- `!queue` (alias `!q`), `!nowplaying` (alias `!np`)
+- `!volume <0-150>`, `!loop <off|track|queue>`, `!shuffle`
+- `!remove <position>`, `!jump <position>`, `!seek <seconds>`
+- `!filter <name>`, `!speed <0.5-2>`, `!autoplay`, `!join`, `!musichelp`
 
 The music engine uses Kazagumo/Shoukaku with Lavalink, YouTube Music search and Spotify metadata-to-audio matching. Spotify audio is not streamed directly; Spotify Premium is not required. Search results are matched to playable sources, so the exact recording can vary. Lavalink node availability, source availability and provider terms can change. Voice controls require the user to be in the bot's active voice channel.
 
@@ -39,7 +39,7 @@ The music engine uses Kazagumo/Shoukaku with Lavalink, YouTube Music search and 
 - Emergency lockdown and permission restoration.
 - Moderation cases: `/warn`, `/warnings`, `/clearwarnings`, `/timeout`, `/kick`, `/ban`, and `/unban`.
 - Channel controls: `/purge` and `/slowmode`; member controls: `/nick`.
-- Prefix moderation aliases: `,warn`, `,warnings`, `,clearwarnings`, `,timeout`, `,kick`, `,ban`, `,unban`, `,nick`, `,purge`, `,slowmode`, `,lockdown`, and `,unlock` (also accepts `.` prefix).
+- Prefix moderation aliases: `!warn`, `!warnings`, `!clearwarnings`, `!timeout`, `!kick`, `!ban`, `!unban`, `!nick`, `!purge`, `!slowmode`, `!lockdown`, and `!unlock`.
 
 Start with `/security setup`, configure the quarantine role with `/security quarantine-role`, tune `/security limits`, `/security join-gate`, `/security join-raid`, and `/security heat-threshold`, then configure roles using `/verification setup` and publish `/verification panel`. Add/remove blocked phrases with `/security heat-word-add` and `/security heat-word-remove`.
 

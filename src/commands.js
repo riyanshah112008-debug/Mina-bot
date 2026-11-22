@@ -157,7 +157,7 @@ async function utilityRun(i,client){
 async function execute(i,client,player){
  if(!i.inGuild()&&!['ping','botinfo'].includes(i.commandName))return i.reply({content:'Use this command in a server.',ephemeral:true});
  const name=i.commandName;
- if(name==='help'){const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('NovaBot command guide').addFields({name:'Security',value:'/security setup · /security status · /verification setup · /lockdown · /unlock'},{name:'Music',value:'/play · /search · /pause · /resume · /skip · /queue · /nowplaying · /volume · /loop · /shuffle · /filter · /seek · /speed · /stop\nPrefix: ,play · ,pause · ,resume · ,skip · ,queue · ,volume · ,loop · ,shuffle'},{name:'Utilities',value:'/ping · /avatar · /userinfo · /serverinfo · /botinfo · /calculate · /poll · /remind'},{name:'Moderation',value:'/timeout · /kick · /ban · /verify'},{name:'Spotify',value:'/spotify search · /music play with a Spotify track or playlist URL'});return i.reply({embeds:[embed],ephemeral:true});}
+ if(name==='help'){const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('NovaBot command guide').addFields({name:'Security',value:'/security setup · /security status · /verification setup · /lockdown · /unlock'},{name:'Music',value:'/play · /search · /pause · /resume · /skip · /queue · /nowplaying · /volume · /loop · /shuffle · /filter · /seek · /speed · /stop\nPrefix: !play · !pause · !resume · !skip · !queue · !volume · !loop · !shuffle'},{name:'Utilities',value:'/ping · /avatar · /userinfo · /serverinfo · /botinfo · /calculate · /poll · /remind'},{name:'Moderation',value:'/timeout · /kick · /ban · /verify'},{name:'Spotify',value:'/spotify search · /music play with a Spotify track or playlist URL'});return i.reply({embeds:[embed],ephemeral:true});}
  if(name==='security'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});return securityRun(i);}
  if(name==='verification'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});return verificationRun(i);}
  if(name==='verify'){const cfg=store.get(i.guildId);if(!cfg.verification.enabled)return i.reply({content:'Verification is not configured.',ephemeral:true});const button=new ButtonBuilder().setCustomId('mina_verify_start').setLabel('Start verification').setStyle(ButtonStyle.Success);return i.reply({content:'Press the button to start your verification challenge.',components:[new ActionRowBuilder().addComponents(button)],ephemeral:true});}
@@ -252,7 +252,7 @@ async function handleComponent(i){
 
 async function handlePrefix(message) {
  if (!message.guild || message.author.bot || !message.content) return false;
- const match = message.content.trim().match(/^[,.]([a-z]+)(?:\s+([\s\S]*))?$/i);
+ const match = message.content.trim().match(/^!([a-z]+)(?:\s+([\s\S]*))?$/i);
  if (!match) return false;
  const name = match[1].toLowerCase(), args = (match[2] || '').trim();
  const perms = message.member?.permissions;
@@ -262,7 +262,7 @@ async function handlePrefix(message) {
 
  if (name === 'help') {
   await message.reply({ embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle('NovaBot commands').setDescription(
-   '**Security:** /security, /verification, /lockdown, /unlock\n**Moderation:** /warn, /warnings, /clearwarnings, /timeout, /kick, /ban, /unban, /purge, /slowmode, /nick\n**Music:** ,play, ,pause, ,resume, ,skip, ,queue, ,volume\n**Utilities:** /ping, /calculate, /poll, /remind'
+   '**Security:** /security, /verification, /lockdown, /unlock\n**Moderation:** /warn, /warnings, /clearwarnings, /timeout, /kick, /ban, /unban, /purge, /slowmode, /nick\n**Music:** !play, !pause, !resume, !skip, !queue, !volume\n**Utilities:** /ping, /calculate, /poll, /remind'
   )] }).catch(() => null);
   return true;
  }
@@ -277,7 +277,7 @@ async function handlePrefix(message) {
   if (!requirePerm(PermissionFlagsBits.ManageMessages)) return deny();
   const amount = Number(args.split(/\s+/)[0]);
   if (!Number.isInteger(amount) || amount < 2 || amount > 100) {
-   await message.reply('Usage: ,purge 2-100').catch(() => null);
+   await message.reply('Usage: !purge 2-100').catch(() => null);
    return true;
   }
   const deleted = await message.channel.bulkDelete(amount, true).catch(() => null);
@@ -289,7 +289,7 @@ async function handlePrefix(message) {
   if (!requirePerm(PermissionFlagsBits.ManageChannels)) return deny();
   const seconds = Number(args);
   if (!Number.isInteger(seconds) || seconds < 0 || seconds > 21600) {
-   await message.reply('Usage: ,slowmode 0-21600').catch(() => null);
+   await message.reply('Usage: !slowmode 0-21600').catch(() => null);
    return true;
   }
   await message.channel.setRateLimitPerUser(seconds, 'Changed by ' + message.author.tag);
@@ -335,7 +335,7 @@ async function handlePrefix(message) {
    const minutes = Number(cleanArgs.match(/^(\d+)/)?.[1]);
    const timeoutReason = cleanArgs.replace(/^\d+\s*/, '') || 'No reason provided';
    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 40320) {
-    await message.reply('Usage: ,timeout @member 1-40320 [reason]').catch(() => null);
+    await message.reply('Usage: !timeout @member 1-40320 [reason]').catch(() => null);
     return true;
    }
    await target.timeout(minutes * 60000, timeoutReason);
@@ -365,7 +365,7 @@ async function handlePrefix(message) {
   if (!requirePerm(PermissionFlagsBits.BanMembers)) return deny();
   const id = args.split(/\s+/)[0];
   if (!/^\d{17,20}$/.test(id || '')) {
-   await message.reply('Usage: ,unban USER_ID [reason]').catch(() => null);
+   await message.reply('Usage: !unban USER_ID [reason]').catch(() => null);
    return true;
   }
   const existing = await message.guild.bans.fetch(id).catch(() => null);

@@ -16,7 +16,7 @@ function getPlayer(manager,guildId){return manager?.getPlayer?.(guildId)||NovaBo
 function isNativePlayer(p){return Boolean(p&&Array.isArray(p.queue)&&typeof p.playNext==='function');}
 async function play(ctx,manager,query){
  const g=guard(ctx); if(g.error)return ctx.reply(g.error);
- query=String(query||'').trim(); if(!query)return ctx.reply('Usage: ,play <song or URL>');
+ query=String(query||'').trim(); if(!query)return ctx.reply('Usage: !play <song or URL>');
  let loading=null;
  if(ctx.isInteraction) await ctx.deferReply();
  else loading=await ctx.reply('🔎 Searching for **'+query.slice(0,100)+'**…').catch(()=>null);
@@ -94,39 +94,50 @@ async function execute(ctx,manager,action,value){
   if(action==='resume'){p.pause(false);return ctx.reply('▶️ Resumed.');}
   if(action==='skip'){p.skip();return ctx.reply('⏭️ Skipped.');}
   if(action==='stop'){p.stop();p.destroy();return ctx.reply('⏹️ Stopped and cleared.');}
-  if(action==='volume'){const n=Number(value);if(!Number.isFinite(n)||n<0||n>200)return ctx.reply('Usage: ,volume <0-200>');p.setVolume(n);return ctx.reply('🔊 Volume: '+n+'%.');}
-  if(action==='loop'){const m=String(value||'none').toLowerCase();if(!['none','off','track','queue'].includes(m))return ctx.reply('Usage: ,loop <off|track|queue>');p.loop=m==='off'?'none':m;return ctx.reply('🔁 Loop: '+m+'.');}
+  if(action==='volume'){const n=Number(value);if(!Number.isFinite(n)||n<0||n>200)return ctx.reply('Usage: !volume <0-200>');p.setVolume(n);return ctx.reply('🔊 Volume: '+n+'%.');}
+  if(action==='loop'){const m=String(value||'none').toLowerCase();if(!['none','off','track','queue'].includes(m))return ctx.reply('Usage: !loop <off|track|queue>');p.loop=m==='off'?'none':m;return ctx.reply('🔁 Loop: '+m+'.');}
   if(action==='shuffle'){p.shuffle();return ctx.reply('🔀 Shuffled.');}
   if(action==='clear'){const n=p.clearQueue();return ctx.reply('🧹 Cleared '+n+' upcoming tracks.');}
-  if(action==='remove'){const n=Number(value);const t=p.remove(n);return ctx.reply(t?'Removed '+t.title+'.':'Usage: ,remove <position>');}
-  if(action==='jump'){const n=Number(value);return p.jump(n)?ctx.reply('⏭️ Jumped to position '+n+'.'):ctx.reply('Usage: ,jump <position>');}
-  if(action==='seek'){const s=Number(value);if(!Number.isFinite(s)||s<0||s*1000>(current?.duration||0))return ctx.reply('Usage: ,seek <seconds>');const ok=await p.seekTo(s);return ctx.reply(ok?'⏩ Seeked to '+fmt(s*1000)+'.':'❌ This source does not support seeking.');}
+  if(action==='remove'){const n=Number(value);const t=p.remove(n);return ctx.reply(t?'Removed '+t.title+'.':'Usage: !remove <position>');}
+  if(action==='jump'){const n=Number(value);return p.jump(n)?ctx.reply('⏭️ Jumped to position '+n+'.'):ctx.reply('Usage: !jump <position>');}
+  if(action==='seek'){const s=Number(value);if(!Number.isFinite(s)||s<0||s*1000>(current?.duration||0))return ctx.reply('Usage: !seek <seconds>');const ok=await p.seekTo(s);return ctx.reply(ok?'⏩ Seeked to '+fmt(s*1000)+'.':'❌ This source does not support seeking.');}
   if(action==='replay')return ctx.reply(p.replay()?'🔁 Replaying current track.':'Nothing is playing.');
   if(action==='previous')return ctx.reply(p.previous()?'⏮️ Playing previous track.':'No previous track available.');
-  if(action==='filter'){const k=String(value||'clear').toLowerCase();const allowed=['clear','flat','empowering','bass','8d','nightcore','daycore','vaporwave','lofi','reverb','karaoke','surround','electronic','soft','radio','treble','pop'];if(!allowed.includes(k))return ctx.reply('Unknown filter. Try ,filter bass, nightcore, 8d or lofi.');await p.setFilter(k);return ctx.reply('🎧 Filter: '+k+'.');}
-  if(action==='speed'){const n=Number(value);if(!Number.isFinite(n)||n<0.5||n>2)return ctx.reply('Usage: ,speed <0.5-2>');await p.setFilter(n>1?'nightcore':n<1?'daycore':'clear');return ctx.reply('⏩ Native engine uses the matching '+(n>1?'nightcore':n<1?'daycore':'normal')+' speed profile.');}
+  if(action==='filter'){const k=String(value||'clear').toLowerCase();const allowed=['clear','flat','empowering','bass','8d','nightcore','daycore','vaporwave','lofi','reverb','karaoke','surround','electronic','soft','radio','treble','pop'];if(!allowed.includes(k))return ctx.reply('Unknown filter. Try !filter bass, nightcore, 8d or lofi.');await p.setFilter(k);return ctx.reply('🎧 Filter: '+k+'.');}
+  if(action==='speed'){const n=Number(value);if(!Number.isFinite(n)||n<0.5||n>2)return ctx.reply('Usage: !speed <0.5-2>');await p.setFilter(n>1?'nightcore':n<1?'daycore':'clear');return ctx.reply('⏩ Native engine uses the matching '+(n>1?'nightcore':n<1?'daycore':'normal')+' speed profile.');}
   if(action==='autoplay'){p.autoplay=!p.autoplay;return ctx.reply('📻 Autoplay '+(p.autoplay?'enabled':'disabled')+'.');}
  }
  if(action==='pause'){await p.pause(true);return ctx.reply('⏸️ Paused.');}
  if(action==='resume'){await p.pause(false);return ctx.reply('▶️ Resumed.');}
  if(action==='skip'){await p.skip();return ctx.reply('⏭️ Skipped.');}
  if(action==='stop'){await p.destroy();return ctx.reply('⏹️ Stopped and cleared.');}
- if(action==='volume'){const n=Math.max(0,Math.min(150,Number(value)));if(!Number.isFinite(n))return ctx.reply('Usage: ,volume <0-150>');await p.setVolume(n);return ctx.reply('🔊 Volume: '+n+'%.');}
- if(action==='loop'){const m=String(value||'none').toLowerCase();if(!['none','off','track','queue'].includes(m))return ctx.reply('Usage: ,loop <off|track|queue>');await p.setLoop(m==='off'?'none':m);return ctx.reply('🔁 Loop: '+m+'.');}
+ if(action==='volume'){const n=Math.max(0,Math.min(150,Number(value)));if(!Number.isFinite(n))return ctx.reply('Usage: !volume <0-150>');await p.setVolume(n);return ctx.reply('🔊 Volume: '+n+'%.');}
+ if(action==='loop'){const m=String(value||'none').toLowerCase();if(!['none','off','track','queue'].includes(m))return ctx.reply('Usage: !loop <off|track|queue>');await p.setLoop(m==='off'?'none':m);return ctx.reply('🔁 Loop: '+m+'.');}
  if(action==='shuffle'){p.queue.shuffle();return ctx.reply('🔀 Shuffled.');}
  if(action==='clear'){p.queue.clear();return ctx.reply('🧹 Queue cleared.');}
- if(action==='remove'){const n=Number(value)-1;if(!Number.isInteger(n)||n<0||n>=p.queue.length)return ctx.reply('Usage: ,remove <position>');const t=p.queue[n];p.queue.remove(t);return ctx.reply('Removed '+t.title+'.');}
- if(action==='jump'){const n=Number(value)-1;if(!Number.isInteger(n)||n<0||n>=p.queue.length)return ctx.reply('Usage: ,jump <position>');await p.skip(n+1);return ctx.reply('⏭️ Jumped to position '+(n+1)+'.');}
- if(action==='seek'){const s=Number(value);if(!Number.isFinite(s)||s<0||s*1000>(p.queue.current?.length||0))return ctx.reply('Usage: ,seek <seconds>');await p.seek(s*1000);return ctx.reply('⏩ Seeked to '+fmt(s*1000)+'.');}
+ if(action==='remove'){const n=Number(value)-1;if(!Number.isInteger(n)||n<0||n>=p.queue.length)return ctx.reply('Usage: !remove <position>');const t=p.queue[n];p.queue.remove(t);return ctx.reply('Removed '+t.title+'.');}
+ if(action==='jump'){const n=Number(value)-1;if(!Number.isInteger(n)||n<0||n>=p.queue.length)return ctx.reply('Usage: !jump <position>');await p.skip(n+1);return ctx.reply('⏭️ Jumped to position '+(n+1)+'.');}
+ if(action==='seek'){const s=Number(value);if(!Number.isFinite(s)||s<0||s*1000>(p.queue.current?.length||0))return ctx.reply('Usage: !seek <seconds>');await p.seek(s*1000);return ctx.reply('⏩ Seeked to '+fmt(s*1000)+'.');}
  if(action==='replay'){await p.seek(0);return ctx.reply('🔁 Replaying current track.');}
  if(action==='previous'){const t=p.data.get('previousTrack');if(!t)return ctx.reply('No previous track available.');p.queue.unshift(t);await p.skip();return ctx.reply('⏮️ Playing previous track.');}
  if(action==='filter'){const k=String(value||'clear').toLowerCase();const filters={clear:{},bass:{equalizer:[{band:0,gain:.25},{band:1,gain:.25},{band:2,gain:.15}]},nightcore:{timescale:{speed:1.25,pitch:1.25,rate:1}},daycore:{timescale:{speed:.85,pitch:.85,rate:1}},'8d':{rotation:{rotationHz:.2}},vaporwave:{timescale:{speed:.8,pitch:.8,rate:1}},lofi:{lowPass:{smoothing:16}},karaoke:{karaoke:{level:1,monoLevel:1,filterBand:220,filterWidth:100}}};if(!filters[k])return ctx.reply('Unknown filter.');await p.shoukaku.setFilters(filters[k]);p.data.set('activeFilter',k);return ctx.reply('🎧 Filter: '+k+'.');}
- if(action==='speed'){const n=Number(value);if(!Number.isFinite(n)||n<.5||n>2)return ctx.reply('Usage: ,speed <0.5-2>');await p.shoukaku.setFilters({timescale:{speed:n,pitch:n,rate:1}});return ctx.reply('⏩ Speed: '+n+'x.');}
+ if(action==='speed'){const n=Number(value);if(!Number.isFinite(n)||n<.5||n>2)return ctx.reply('Usage: !speed <0.5-2>');await p.shoukaku.setFilters({timescale:{speed:n,pitch:n,rate:1}});return ctx.reply('⏩ Speed: '+n+'x.');}
  if(action==='autoplay'){const n=!p.data.get('autoplay');p.data.set('autoplay',n);return ctx.reply('📻 Autoplay '+(n?'enabled':'disabled')+'.');}
- return ctx.reply('Unknown music command. Try ,musichelp.');
+ return ctx.reply('Unknown music command. Try !musichelp.');
 }
 function context(m){return {isInteraction:false,guild:m.guild,member:m.member,channel:m.channel,user:m.author,reply:async x=>brandMessage(await m.reply(brandPayload(x)))};}
-async function handlePrefix(message,client){if(!message.guild||message.author.bot||!message.content)return false;const prefix=process.env.PREFIX||',';const content=message.content.trim();const used=[...new Set([prefix,',','.'])].sort((a,b)=>b.length-a.length).find(x=>x&&content.toLowerCase().startsWith(x.toLowerCase()));if(!used)return false;const args=content.slice(used.length).trim().split(/\s+/),raw=(args.shift()||'').toLowerCase();const aliases={p:'play',add:'play',np:'nowplaying',prev:'previous',back:'previous',summon:'join',connect:'join',vol:'volume',q:'queue',repeat:'loop',next:'skip',dc:'stop',find:'search'};const action=aliases[raw]||raw;const valid=['play','pause','resume','skip','stop','queue','nowplaying','volume','loop','shuffle','clear','remove','jump','replay','previous','join','search','autoplay','filter','speed','seek','help'];if(!valid.includes(action))return false;if(action==='help')return message.reply(brandPayload('🎵 **NovaBot Music**\n,play <song/URL> · ,pause · ,resume · ,skip · ,stop · ,queue · ,nowplaying\n,volume <0-150> · ,loop <off/track/queue> · ,shuffle · ,remove <position> · ,clear · ,jump <position> · ,seek <seconds> · ,filter <name> · ,speed <0.5-2>'));return execute(context(message),client.manager,action,args.join(' '));}
+async function handlePrefix(message,client){
+ if(!message.guild||message.author.bot||!message.content)return false;
+ const match=message.content.trim().match(/^!([a-z]+)(?:\s+([\s\S]*))?$/i);
+ if(!match)return false;
+ const raw=match[1].toLowerCase(),args=(match[2]||'').trim().split(/\s+/);
+ const aliases={p:'play',add:'play',np:'nowplaying',prev:'previous',back:'previous',summon:'join',connect:'join',vol:'volume',q:'queue',repeat:'loop',next:'skip',dc:'stop',find:'search'};
+ const action=aliases[raw]||raw;
+ const valid=['play','pause','resume','skip','stop','queue','nowplaying','volume','loop','shuffle','clear','remove','jump','replay','previous','join','search','autoplay','filter','speed','seek','help'];
+ if(!valid.includes(action))return false;
+ if(action==='help')return message.reply(brandPayload('🎵 **Mina Music**\n!play <song/URL> · !pause · !resume · !skip · !stop · !queue · !nowplaying\n!volume <0-150> · !loop <off/track/queue> · !shuffle · !remove <position> · !clear · !jump <position> · !seek <seconds> · !filter <name> · !speed <0.5-2>'));
+ return execute(context(message),client.manager,action,args.join(' '));
+}
 async function handleButton(i,client){
  if(!i.customId.startsWith('mina_music_'))return false;
  const a=i.customId.slice(11),p=getPlayer(client.manager,i.guildId);
