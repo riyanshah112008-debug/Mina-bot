@@ -5,8 +5,8 @@ const { brandPayload } = require('./utils/embeds');
 const moderation = require('./moderation');
 const challenges=new Map();
 function moderationCaseEmbed({ action, target, moderator, reason, guild, details }) {
- const labels={warn:'Warn'!timeout:'Timeout',kick:'Kick',ban:'Ban'!unban:'Unban'!purge:'Purge'!slowmode:'Slowmode',nick:'Nickname change',clearwarnings:'Clear warnings',lockdown:'Lockdown',unlock:'Unlock'};
- const plurals={warn:'warnings'!timeout:'timeouts',kick:'kicks',ban:'bans'!unban:'unbans'!purge:'purges'!slowmode:'slowmode changes',nick:'nickname changes',clearwarnings:'warning clears',lockdown:'lockdowns',unlock:'unlock actions'};
+ const labels={warn:'Warn',timeout:'Timeout',kick:'Kick',ban:'Ban',unban:'Unban',purge:'Purge',slowmode:'Slowmode',nick:'Nickname change',clearwarnings:'Clear warnings',lockdown:'Lockdown',unlock:'Unlock'};
+ const plurals={warn:'warnings',timeout:'timeouts',kick:'kicks',ban:'bans',unban:'unbans',purge:'purges',slowmode:'slowmode changes',nick:'nickname changes',clearwarnings:'warning clears',lockdown:'lockdowns',unlock:'unlock actions'};
  const user=target?.user||target;
  const userId=user?.id||String(details||'').match(/\d{17,20}/)?.[0];
  const mention=userId?'<@'+userId+'>':'';
