@@ -252,7 +252,7 @@ async function handleComponent(i){
 
 async function handlePrefix(message) {
  if (!message.guild || message.author.bot || !message.content) return false;
- const match = message.content.trim().match(/^[,.]([a-z]+)(?:\s+([\s\S]*))?$/i);
+ const match = message.content.trim().match(/^!([a-z]+)(?:\s+([\s\S]*))?$/i);
  if (!match) return false;
  const name = match[1].toLowerCase(), args = (match[2] || '').trim();
  const perms = message.member?.permissions;
