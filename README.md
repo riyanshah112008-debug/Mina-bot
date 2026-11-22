@@ -21,9 +21,9 @@ Do not commit real tokens or credentials. The Lavalink fallback in the source is
 Slash commands are available individually (Manager-bot style): `/play`, `/search`, `/pause`, `/resume`, `/skip`, `/stop`, `/queue`, `/nowplaying`, `/volume`, `/loop`, `/shuffle`, `/clear`, `/remove`, `/jump`, `/seek`, `/filter`, `/speed`, `/autoplay`, `/join`, `/previous`, and `/replay`.
 
 Prefix equivalents are supported, for example:
-- `!play <song or URL>` (aliases: `,p`, `,add`)
+- `!play <song or URL>` (aliases: `!p`, `!add`)
 - `!pause`, `!resume`, `!skip`, `!stop`
-- `!queue` (alias `,q`), `!nowplaying` (alias `,np`)
+- `!queue` (alias `!q`), `!nowplaying` (alias `!np`)
 - `!volume <0-150>`, `!loop <off|track|queue>`, `!shuffle`
 - `!remove <position>`, `!jump <position>`, `!seek <seconds>`
 - `!filter <name>`, `!speed <0.5-2>`, `!autoplay`, `!join`, `!musichelp`
