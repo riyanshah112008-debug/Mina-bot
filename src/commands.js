@@ -5,8 +5,8 @@ const { brandPayload } = require('./utils/embeds');
 const moderation = require('./moderation');
 const challenges=new Map();
 function moderationCaseEmbed({ action, target, moderator, reason, guild, details }) {
- const labels={warn:'Warn',timeout:'Timeout',kick:'Kick',ban:'Ban',unban:'Unban',purge:'Purge',slowmode:'Slowmode',nick:'Nickname change',clearwarnings:'Clear warnings',lockdown:'Lockdown',unlock:'Unlock'};
- const plurals={warn:'warnings',timeout:'timeouts',kick:'kicks',ban:'bans',unban:'unbans',purge:'purges',slowmode:'slowmode changes',nick:'nickname changes',clearwarnings:'warning clears',lockdown:'lockdowns',unlock:'unlock actions'};
+ const labels={warn:'Warn'!timeout:'Timeout',kick:'Kick',ban:'Ban'!unban:'Unban'!purge:'Purge'!slowmode:'Slowmode',nick:'Nickname change',clearwarnings:'Clear warnings',lockdown:'Lockdown',unlock:'Unlock'};
+ const plurals={warn:'warnings'!timeout:'timeouts',kick:'kicks',ban:'bans'!unban:'unbans'!purge:'purges'!slowmode:'slowmode changes',nick:'nickname changes',clearwarnings:'warning clears',lockdown:'lockdowns',unlock:'unlock actions'};
  const user=target?.user||target;
  const userId=user?.id||String(details||'').match(/\d{17,20}/)?.[0];
  const mention=userId?'<@'+userId+'>':'';
@@ -154,10 +154,10 @@ async function utilityRun(i,client){
  if(name==='poll'){const opts=['option1','option2','option3','option4','option5'].map(k=>i.options.getString(k)).filter(Boolean),emojis=['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('📊 '+i.options.getString('question')).setDescription(opts.map((x,n)=>emojis[n]+' '+x).join('\n')).setFooter({text:'Poll by '+i.user.tag});await i.reply({embeds:[embed]});const msg=await i.fetchReply();for(let n=0;n<opts.length;n++)await msg.react(emojis[n]).catch(()=>null);return;}
  if(name==='remind'){const sub=i.options.getSubcommand(),cfg=store.get(i.guildId);if(sub==='create'){const duration=utility.parseDuration(i.options.getString('in'));if(!duration)return i.reply({content:'Use 15m, 2h or 1d (maximum 24 days).',ephemeral:true});const item=utility.addReminder(client,i.guildId,i.user.id,i.channelId,duration,i.options.getString('message'));return i.reply({content:'Reminder set. ID: '+item.id+' — <t:'+Math.floor(item.at/1000)+':R>',ephemeral:true});}if(sub==='list'){const mine=cfg.reminders.filter(x=>x.userId===i.user.id);return i.reply({content:mine.length?mine.map(x=>x.id+' · <t:'+Math.floor(x.at/1000)+':R> · '+x.text).join('\n').slice(0,1900):'You have no reminders.',ephemeral:true});}const ok=utility.cancelReminder(i.guildId,i.user.id,i.options.getString('id'));return i.reply({content:ok?'Reminder cancelled.':'Reminder not found.',ephemeral:true});}
 }
-async function execute(i,client,player){
+async function execute(i,client!player){
  if(!i.inGuild()&&!['ping','botinfo'].includes(i.commandName))return i.reply({content:'Use this command in a server.',ephemeral:true});
  const name=i.commandName;
- if(name==='help'){const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('NovaBot command guide').addFields({name:'Security',value:'/security setup · /security status · /verification setup · /lockdown · /unlock'},{name:'Music',value:'/play · /search · /pause · /resume · /skip · /queue · /nowplaying · /volume · /loop · /shuffle · /filter · /seek · /speed · /stop\nPrefix: ,play · ,pause · ,resume · ,skip · ,queue · ,volume · ,loop · ,shuffle'},{name:'Utilities',value:'/ping · /avatar · /userinfo · /serverinfo · /botinfo · /calculate · /poll · /remind'},{name:'Moderation',value:'/timeout · /kick · /ban · /verify'},{name:'Spotify',value:'/spotify search · /music play with a Spotify track or playlist URL'});return i.reply({embeds:[embed],ephemeral:true});}
+ if(name==='help'){const embed=new EmbedBuilder().setColor(0x5865F2).setTitle('NovaBot command guide').addFields({name:'Security',value:'/security setup · /security status · /verification setup · /lockdown · /unlock'},{name:'Music',value:'/play · /search · /pause · /resume · /skip · /queue · /nowplaying · /volume · /loop · /shuffle · /filter · /seek · /speed · /stop\nPrefix: !play · !pause · !resume · !skip · !queue · !volume · !loop · !shuffle'},{name:'Utilities',value:'/ping · /avatar · /userinfo · /serverinfo · /botinfo · /calculate · /poll · /remind'},{name:'Moderation',value:'/timeout · /kick · /ban · /verify'},{name:'Spotify',value:'/spotify search · /music play with a Spotify track or playlist URL'});return i.reply({embeds:[embed],ephemeral:true});}
  if(name==='security'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});return securityRun(i);}
  if(name==='verification'){if(!i.memberPermissions?.has(PermissionFlagsBits.Administrator))return i.reply({content:'Administrator permission required.',ephemeral:true});return verificationRun(i);}
  if(name==='verify'){const cfg=store.get(i.guildId);if(!cfg.verification.enabled)return i.reply({content:'Verification is not configured.',ephemeral:true});const button=new ButtonBuilder().setCustomId('mina_verify_start').setLabel('Start verification').setStyle(ButtonStyle.Success);return i.reply({content:'Press the button to start your verification challenge.',components:[new ActionRowBuilder().addComponents(button)],ephemeral:true});}
@@ -165,7 +165,7 @@ async function execute(i,client,player){
  const action=name==='music'?i.options.getSubcommand():name;
  const value=action==='play'?i.options.getString('song'):action==='search'?i.options.getString('query'):action==='volume'?i.options.getInteger('amount'):action==='loop'?i.options.getString('mode'):action==='remove'||action==='jump'?i.options.getInteger('position'):action==='seek'?i.options.getNumber('seconds'):action==='filter'?i.options.getString('name'):action==='speed'?i.options.getNumber('multiplier'):null;
  const ctx={isInteraction:true,interaction:i,guild:i.guild,member:i.member,channel:i.channel,user:i.user,deferReply:()=>i.deferReply(),editReply:p=>i.editReply(p),reply:p=>i.reply(p)};
- return music.execute(ctx,player,action,value);
+ return music.execute(ctx!player,action,value);
 }
  if(name==='spotify'){try{const tracks=await spotify.search(i.options.getString('query'),5);if(!tracks.length)return i.reply({content:'No Spotify tracks found.',ephemeral:true});const embed=new EmbedBuilder().setColor(0x1DB954).setTitle('Spotify search results').setDescription(tracks.map((t,n)=>(n+1)+'. **'+t.name+'** — '+t.artists.join(', ')+'\n[Open in Spotify]('+t.url+')').join('\n\n'));return i.reply({embeds:[embed],ephemeral:true});}catch(e){return i.reply({content:e.message+' Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to the environment.',ephemeral:true});}}
  if(['ping','avatar','userinfo','serverinfo','botinfo','calculate','poll','remind'].includes(name))return utilityRun(i,client);
@@ -262,7 +262,7 @@ async function handlePrefix(message) {
 
  if (name === 'help') {
   await message.reply({ embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle('NovaBot commands').setDescription(
-   '**Security:** /security, /verification, /lockdown, /unlock\n**Moderation:** /warn, /warnings, /clearwarnings, /timeout, /kick, /ban, /unban, /purge, /slowmode, /nick\n**Music:** ,play, ,pause, ,resume, ,skip, ,queue, ,volume\n**Utilities:** /ping, /calculate, /poll, /remind'
+   '**Security:** /security, /verification, /lockdown, /unlock\n**Moderation:** /warn, /warnings, /clearwarnings, /timeout, /kick, /ban, /unban, /purge, /slowmode, /nick\n**Music:** !play, !pause, !resume, !skip, !queue, !volume\n**Utilities:** /ping, /calculate, /poll, /remind'
   )] }).catch(() => null);
   return true;
  }
@@ -277,7 +277,7 @@ async function handlePrefix(message) {
   if (!requirePerm(PermissionFlagsBits.ManageMessages)) return deny();
   const amount = Number(args.split(/\s+/)[0]);
   if (!Number.isInteger(amount) || amount < 2 || amount > 100) {
-   await message.reply('Usage: ,purge 2-100').catch(() => null);
+   await message.reply('Usage: !purge 2-100').catch(() => null);
    return true;
   }
   const deleted = await message.channel.bulkDelete(amount, true).catch(() => null);
@@ -289,7 +289,7 @@ async function handlePrefix(message) {
   if (!requirePerm(PermissionFlagsBits.ManageChannels)) return deny();
   const seconds = Number(args);
   if (!Number.isInteger(seconds) || seconds < 0 || seconds > 21600) {
-   await message.reply('Usage: ,slowmode 0-21600').catch(() => null);
+   await message.reply('Usage: !slowmode 0-21600').catch(() => null);
    return true;
   }
   await message.channel.setRateLimitPerUser(seconds, 'Changed by ' + message.author.tag);
@@ -335,7 +335,7 @@ async function handlePrefix(message) {
    const minutes = Number(cleanArgs.match(/^(\d+)/)?.[1]);
    const timeoutReason = cleanArgs.replace(/^\d+\s*/, '') || 'No reason provided';
    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 40320) {
-    await message.reply('Usage: ,timeout @member 1-40320 [reason]').catch(() => null);
+    await message.reply('Usage: !timeout @member 1-40320 [reason]').catch(() => null);
     return true;
    }
    await target.timeout(minutes * 60000, timeoutReason);
@@ -365,7 +365,7 @@ async function handlePrefix(message) {
   if (!requirePerm(PermissionFlagsBits.BanMembers)) return deny();
   const id = args.split(/\s+/)[0];
   if (!/^\d{17,20}$/.test(id || '')) {
-   await message.reply('Usage: ,unban USER_ID [reason]').catch(() => null);
+   await message.reply('Usage: !unban USER_ID [reason]').catch(() => null);
    return true;
   }
   const existing = await message.guild.bans.fetch(id).catch(() => null);
